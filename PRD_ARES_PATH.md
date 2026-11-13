@@ -2,7 +2,7 @@
 
 **Product name:** ARES Path  
 **Expansion:** Astronaut Route & Exploration Safety Planner  
-**Version:** 1.0  
+**Version:** 1.1
 **Date:** 14 November 2026  
 **Status:** Draft for implementation  
 **Target event:** 2026 NASA Space Apps Challenge  
@@ -11,7 +11,7 @@
 
 ## 1. Executive Summary
 
-ARES Path is an interactive Marswalk planning application for a simulated human exploration mission in Jezero Crater. It combines topography, orbital imagery, geology or mineralogy, rover observations, and historical environmental measurements to recommend routes that balance astronaut safety, resource limits, and scientific value.
+ARES Path is an interactive Marswalk planning and 3D exploration application for a simulated human mission in Jezero Crater. It combines topography, orbital imagery, geology or mineralogy, rover observations, and historical environmental measurements to recommend routes that balance astronaut safety, resource limits, and scientific value. A synchronized **MarsWalk 3D** mode then lets the user experience the selected route from the surface while retaining mission, safety, and science context.
 
 Unlike a conventional map that only displays layers, ARES Path converts those layers into operational decisions:
 
@@ -20,8 +20,9 @@ Unlike a conventional map that only displays layers, ARES Path converts those la
 - Why did the system avoid a particular area?
 - Can the astronauts still return safely to the habitat?
 - What should change if energy, time, or environmental conditions worsen?
+- What terrain, hazards, and scientific targets would the astronaut encounter while following the route?
 
-The main differentiator is the **Dynamic Return-to-Safety Envelope**, which continuously shows whether an astronaut can return to the habitat while preserving a configurable safety reserve.
+The main differentiators are the **Dynamic Return-to-Safety Envelope**, which continuously shows whether an astronaut can return to the habitat while preserving a configurable safety reserve, and **MarsWalk 3D**, which turns the planned route into an evidence-based surface experience rather than a disconnected decorative visualization.
 
 > ARES Path is a decision-support prototype, not a flight-certified navigation or life-support system.
 
@@ -66,6 +67,7 @@ Enable an astronaut or mission planner to build, understand, and adapt a Marswal
 3. **Explainable recommendations:** route decisions must be traceable to data and constraints.
 4. **Graceful uncertainty:** estimates and missing data must be visible to the user.
 5. **Focused scope:** demonstrate one small area convincingly instead of mapping all of Mars superficially.
+6. **One synchronized mission:** the 2D planner and MarsWalk 3D must share the same route, position, constraints, warnings, and waypoint state.
 
 ---
 
@@ -80,6 +82,7 @@ Enable an astronaut or mission planner to build, understand, and adapt a Marswal
 - Explain hazards and route-selection decisions in plain language.
 - Recalculate the route after a simulated change in mission conditions.
 - Provide surface imagery and scientific context at selected waypoints.
+- Allow the user to enter MarsWalk 3D and follow the planned route over terrain derived from the same elevation and imagery data used by the planner.
 
 ### 5.2 MVP success metrics
 
@@ -90,6 +93,9 @@ Enable an astronaut or mission planner to build, understand, and adapt a Marswal
 | Generated route alternatives | At least 2 |
 | Route recalculation time | No more than 3 seconds for the prepared demo area |
 | Map interaction response | No more than 500 ms for cached layers |
+| MarsWalk transition after assets are cached | No more than 5 seconds |
+| MarsWalk frame rate on the prepared demo machine | Median at least 30 FPS |
+| 3D terrain, route, and waypoint control-point alignment | 5 of 5 checks pass |
 | Waypoints with scientific explanation | 100% |
 | Hazards with source or derivation shown | 100% |
 | Critical demo flow completion | No fatal errors |
@@ -117,6 +123,9 @@ The MVP will not:
 - Process the complete raw CRISM hyperspectral archive.
 - Support the entire surface of Mars.
 - Guarantee that a computed route is physically traversable in the real environment.
+- Provide photorealistic, rock-level reconstruction of the entire study area.
+- Treat orbital DTM resolution as sufficient collision evidence for every small obstacle, ledge, or overhang.
+- Provide unrestricted exploration outside the prepared 3D terrain boundary.
 
 ---
 
@@ -155,9 +164,12 @@ Needs a clear narrative showing how NASA data becomes a useful mission decision.
 3. The planner defines a maximum EVA duration, energy budget, maximum preferred slope, and required return reserve.
 4. ARES Path generates a recommended safe route and at least one alternative.
 5. The planner compares route distance, terrain risk, energy estimate, and science value.
-6. During the simulation, the energy budget is reduced or one route segment is marked unavailable.
-7. The application recalculates the route and, when necessary, drops a lower-priority waypoint.
-8. The astronaut returns to the habitat with the configured safety reserve.
+6. The user enters MarsWalk 3D at the habitat and follows the selected route in guided or free-walk mode.
+7. The MarsWalk HUD shows the next waypoint, remaining resources, route guidance, hazard state, and return reserve.
+8. Reaching a waypoint reveals its surface imagery, geology or mineral evidence, rationale, and source.
+9. During the simulation, the energy budget is reduced or one route segment is marked unavailable.
+10. The application synchronizes the new state with the 2D planner, recalculates the route, and when necessary drops a lower-priority waypoint.
+11. The astronaut follows the revised or emergency route and returns to the habitat with the configured safety reserve.
 
 ---
 
@@ -182,6 +194,9 @@ Priority definitions:
 - Emergency return-route calculation.
 - Waypoint detail cards with imagery and data provenance.
 - One what-if scenario that triggers route recalculation.
+- MarsWalk 3D using terrain derived from the HiRISE DTM and orthomosaic.
+- Guided route traversal, limited free-walk controls, waypoint interaction, and a compact mission HUD.
+- Synchronized astronaut position, mission state, warnings, and route between 2D and 3D modes.
 
 ### 9.2 P1 scope
 
@@ -189,7 +204,7 @@ Priority definitions:
 - Recommended EVA time window based on historical conditions.
 - Multiple route objectives such as safest, shortest, and science-maximizing.
 - Side-by-side route comparison.
-- 3D terrain preview.
+- Enhanced MarsWalk visuals, optional first-person view, and broader free exploration inside the prepared AOI.
 - Mission briefing summary.
 
 ### 9.3 P2 scope
@@ -245,12 +260,15 @@ Data used by the MVP must:
 - Do not serve the entire 1.8 GB source file to the browser.
 - Convert the crop to a compressed or cloud-optimized GeoTIFF when useful.
 - Derive high-resolution slope and local relief.
+- Use the cropped 1 m DTM as the authoritative height source for MarsWalk terrain and camera elevation.
+- Generate web-ready heightmap or mesh tiles with a documented local origin, scale, vertical datum, and level-of-detail scheme.
 - Avoid claiming that every small feature in the DTM is a real obstacle; stereo DTM resolution and artifact limitations must be acknowledged.
 
 #### D-03: Orbital imagery
 
 - Use as the primary visual basemap.
 - Generate web-friendly tiles or a compressed crop.
+- Generate texture tiles aligned exactly to the MarsWalk terrain tiles, including lower-resolution mip levels.
 - Preserve attribution and acquisition metadata.
 
 #### D-04: Geology
@@ -275,6 +293,7 @@ Data used by the MVP must:
 
 - Curate approximately 10-20 images relevant to the demonstration area or mission narrative.
 - Store the sol, camera, product ID, source URL, and associated waypoint when available.
+- Use these images as waypoint evidence or contextual panels, not as continuous terrain textures or panoramic reconstruction unless the required camera geometry is available.
 - Do not attempt to load or classify the complete gallery for the MVP.
 
 #### D-08: MEDA
@@ -305,6 +324,11 @@ The preprocessing pipeline must produce:
 | Combined route cost | Safety, energy, science, constraints | Weighted cost raster |
 | Return-to-safety cost | Combined cost and habitat position | Cost-to-home raster |
 | Web map layers | Analytical rasters and imagery | Tiled or compressed browser-ready assets |
+| MarsWalk terrain | Cropped HiRISE DTM | Tiled heightmap, quantized mesh, or glTF terrain chunks with LOD |
+| MarsWalk texture | Orthorectified imagery | Terrain-aligned texture tiles with mip levels |
+| Terrain normals | MarsWalk terrain | Normal map or runtime-computed vertex normals for lighting |
+| 3D route | Selected route and DTM | Route polyline with sampled elevation and local 3D coordinates |
+| 3D scene manifest | CRS, AOI, terrain, texture, routes, POIs | Versioned JSON containing local origin, scale, bounds, asset URLs, and provenance |
 
 ### 10.5 Common data model
 
@@ -324,6 +348,8 @@ Minimum metadata for each dataset:
 - Final resolution
 - Known limitations
 - Attribution or citation requirement
+- Local 3D origin and coordinate-axis convention, when used by MarsWalk
+- Horizontal and vertical scale, terrain LOD, and any vertical exaggeration
 
 ### 10.6 Data-use and attribution requirements
 
@@ -332,6 +358,45 @@ Minimum metadata for each dataset:
 - Prefer NASA and USGS sources for the MVP.
 - Display a data-source panel in the application.
 - Do not imply NASA endorsement of ARES Path.
+
+### 10.7 MarsWalk asset contract
+
+The preprocessing implementation may choose heightmaps, quantized terrain, or mesh chunks, but it must expose the following logical package:
+
+```text
+data/processed/3d/
+├── scene.json
+├── terrain/
+│   ├── tileset.json
+│   └── <terrain chunks>
+├── textures/
+│   ├── tileset.json
+│   └── <texture tiles and mip levels>
+├── routes/
+│   ├── primary_route_3d.json
+│   ├── alternate_route_3d.json
+│   └── emergency_route_3d.json
+└── overlays/
+    ├── waypoints_3d.json
+    └── hazards_3d.json
+```
+
+`scene.json` must contain:
+
+- Schema and asset-package version.
+- Source dataset product IDs and processing version.
+- Mars analysis CRS in full projection text.
+- Geographic and projected AOI bounds.
+- Local scene origin in Mars projected and geographic coordinates.
+- Coordinate convention: right-handed, `x` east, `y` up, `z` south, all in meters.
+- Elevation offset used to keep local scene values numerically stable.
+- Horizontal scale, vertical scale, and vertical-exaggeration default.
+- Terrain tile bounds, geometric error or LOD range, texture relationship, nodata state, and asset URL.
+- Route and overlay asset URLs.
+- SHA-256 checksum for every generated asset.
+- Attribution and reconstruction limitations shown by the client.
+
+Every 3D route vertex must retain route distance, source Mars coordinates, local `x/y/z`, elevation, slope, and route-segment identifier. Analytical calculations remain in the common Mars CRS; local scene coordinates are a rendering representation only.
 
 ---
 
@@ -346,8 +411,9 @@ Minimum metadata for each dataset:
 5. **Resample:** align analysis layers to a common grid appropriate for routing.
 6. **Derive:** calculate slope, roughness proxy, hazard cost, and science score.
 7. **Normalize:** transform input factors to documented comparable scales.
-8. **Package:** produce browser-ready map assets and a routing grid.
-9. **Verify:** visually compare derived layers with the original imagery and metadata.
+8. **Build 3D assets:** convert the cropped DTM and orthomosaic into aligned terrain, texture, normal, route, and scene-manifest assets.
+9. **Package:** produce browser-ready map and MarsWalk assets plus a routing grid without shipping full source rasters to the browser.
+10. **Verify:** visually compare derived layers with the original imagery and validate 2D-to-3D alignment at control points.
 
 ### 11.2 Data quality checks
 
@@ -358,6 +424,9 @@ Minimum metadata for each dataset:
 - Derived slope is visually consistent with hillshade.
 - Route does not cross nodata or manually excluded cells.
 - Every science waypoint has provenance.
+- MarsWalk terrain, imagery, route, and waypoint coordinates agree at no fewer than five distributed control points.
+- Terrain seams, missing tiles, inverted axes, and unexpected vertical exaggeration are absent in the prepared walkthrough corridor.
+- The camera cannot enter nodata terrain or leave the prepared MarsWalk boundary.
 - Data transformations are reproducible from scripts or documented commands.
 
 ---
@@ -443,6 +512,25 @@ Minimum metadata for each dataset:
 | FR-PRV-03 | The system shall show known limitations of the prototype. | P0 | A limitations panel is accessible from the main interface. |
 | FR-PRV-04 | The system shall provide a mission summary suitable for the competition demonstration. | P1 | Summary includes objectives, route, metrics, selected targets, and data sources. |
 
+### 12.9 MarsWalk 3D
+
+| ID | Requirement | Priority | Acceptance criteria |
+|---|---|---|---|
+| FR-3D-01 | The user shall be able to enter MarsWalk from the selected route in the 2D planner. | P0 | MarsWalk opens at the habitat or current simulated position and displays the same active route. |
+| FR-3D-02 | MarsWalk terrain shall be generated from the cropped HiRISE DTM and textured with aligned orthorectified imagery. | P0 | Five distributed terrain control points match the source DTM and imagery within one rendered terrain cell. |
+| FR-3D-03 | The system shall convert Mars coordinates into a documented local 3D coordinate system with meter-based scale. | P0 | A known one-kilometer source distance measures one kilometer in scene coordinates within preprocessing tolerance. |
+| FR-3D-04 | The system shall support a guided mode that advances along the selected route and a limited free-walk mode inside the prepared boundary. | P0 | Users can switch modes; guided movement remains on the route and free-walk cannot leave valid terrain. |
+| FR-3D-05 | The camera or avatar shall follow terrain elevation and remain above the collision surface. | P0 | The camera does not pass below terrain during the acceptance route and maintains the configured eye-height offset. |
+| FR-3D-06 | The active route, habitat, science waypoints, hazard state, and emergency-return direction shall be visible in 3D. | P0 | Every required mission object appears at the correct terrain position and remains legible from the route. |
+| FR-3D-07 | MarsWalk shall synchronize astronaut position and mission progress with the 2D map, elevation profile, resource estimates, and return reserve. | P0 | Moving in either guided or free-walk mode updates the shared mission state without resetting the plan. |
+| FR-3D-08 | Reaching a waypoint shall expose its title, rationale, priority, available surface images, geology or mineral indicators, and provenance. | P0 | All three demonstration waypoints open complete evidence panels within an explicit interaction radius. |
+| FR-3D-09 | MarsWalk shall show a compact HUD containing next waypoint, distance, route status, remaining energy or time, and return-reserve state. | P0 | Required values remain visible and match the planner state throughout the acceptance route. |
+| FR-3D-10 | Warnings and route changes triggered in either view shall appear in both 2D and 3D modes. | P0 | The energy-loss scenario updates the route and warning state without reloading the application. |
+| FR-3D-11 | The user shall be able to return to the 2D planner without losing camera position, route progress, selected waypoints, or scenario state. | P0 | A round trip between views preserves all shared mission state. |
+| FR-3D-12 | The system shall communicate the resolution and reconstruction limitations of the 3D terrain. | P0 | A visible information panel states that small rocks, overhangs, and sub-meter obstacles may be absent. |
+| FR-3D-13 | Vertical exaggeration shall default to 1× and any non-1× mode shall be visibly labeled. | P0 | The default scene uses true scale; changing scale produces a persistent label and does not alter routing calculations. |
+| FR-3D-14 | Terrain and texture shall load progressively using chunks or levels of detail. | P0 | Entering MarsWalk does not load either full source GeoTIFF into browser memory. |
+
 ---
 
 ## 13. Route and Scoring Model
@@ -525,6 +613,18 @@ Example:
 
 > Continuing to Waypoint C would reduce the estimated return reserve below 20%. Return now or remove Waypoint C.
 
+### 14.4 MarsWalk interaction model
+
+- Default and only P0 view: third-person camera following a stylized astronaut grounded on the rendered collision surface.
+- Guided controls: play or pause, speed selection, jump to next waypoint, and return to current route position.
+- Free-walk controls: keyboard and mouse on desktop, constrained to valid terrain and a configurable distance from the approved route corridor.
+- Navigation aids: route ribbon, next-waypoint marker, habitat bearing, emergency-return bearing, and optional minimap.
+- Mission continuity: 2D and 3D are two views over one mission state, not independent simulations.
+- Waypoint interaction: approaching the configured radius pauses guided motion and exposes the science evidence panel.
+- Safety: nodata, AOI boundaries, and hard exclusions block movement; soft hazards warn but do not silently rewrite the route.
+- Visual scale: true horizontal and vertical scale is the default; atmospheric effects and lighting are illustrative and labeled when assumed.
+- Accessibility: essential movement and waypoint actions must be keyboard-operable, and guided mode must allow the full narrative without precision free-walk control.
+
 ---
 
 ## 15. Non-Functional Requirements
@@ -537,6 +637,10 @@ Example:
 | NFR-PERF-02 | Cached map interactions should respond within 500 ms. |
 | NFR-PERF-03 | Route calculation and recalculation shall complete within 3 seconds for the prepared study area. |
 | NFR-PERF-04 | Large source rasters shall be cropped, tiled, or streamed rather than loaded entirely into browser memory. |
+| NFR-PERF-05 | MarsWalk shall become interactive within 5 seconds after cached core assets are available on the prepared demonstration machine. |
+| NFR-PERF-06 | MarsWalk shall sustain a median of at least 30 FPS and a 1st-percentile frame rate of at least 20 FPS during the prepared route. |
+| NFR-PERF-07 | Terrain and texture memory budgets shall be measured and documented for the prepared demonstration machine. |
+| NFR-PERF-08 | LOD changes shall not create visible terrain gaps or move mission markers away from the surface. |
 
 ### 15.2 Reliability
 
@@ -546,6 +650,8 @@ Example:
 | NFR-REL-02 | Missing optional layers shall not prevent route generation from core terrain data. |
 | NFR-REL-03 | The system shall fail safely when no valid route exists and shall not draw a misleading fallback route. |
 | NFR-REL-04 | Preprocessed demo assets shall be versioned and reproducible. |
+| NFR-REL-05 | If an optional 3D overlay fails, core terrain, active route, mission HUD, and return-to-planner controls shall remain usable. |
+| NFR-REL-06 | MarsWalk core assets shall work without live third-party map or terrain services after preprocessing. |
 
 ### 15.3 Accuracy and scientific integrity
 
@@ -556,6 +662,9 @@ Example:
 | NFR-SCI-03 | The application shall not claim operational validation or NASA endorsement. |
 | NFR-SCI-04 | Environmental measurements shall not be described as live data or forecast unless a real forecasting model is implemented and validated. |
 | NFR-SCI-05 | Mineral indicators shall be described as remote-sensing interpretations, not definitive ground truth. |
+| NFR-SCI-06 | MarsWalk shall identify the terrain as an orbital-data reconstruction and shall not imply rock-level or sub-meter completeness. |
+| NFR-SCI-07 | Rendering effects, avatar motion, lighting, atmospheric appearance, and collision assumptions shall be identified as simulated or illustrative. |
+| NFR-SCI-08 | Visual vertical exaggeration shall never change analytical elevation, slope, distance, energy, or routing results. |
 
 ### 15.4 Usability
 
@@ -565,6 +674,8 @@ Example:
 | NFR-USE-02 | Every major score and warning shall include an explanation or tooltip. |
 | NFR-USE-03 | The user shall be able to reset the demonstration to a known initial state with one action. |
 | NFR-USE-04 | The interface shall use concise language suitable for time-critical decisions. |
+| NFR-USE-05 | A first-time user shall be able to enter MarsWalk, follow the guided route, inspect a waypoint, and return to the planner without documentation. |
+| NFR-USE-06 | MarsWalk shall provide an option to reduce camera motion and disable nonessential head-bob or transition effects. |
 
 ### 15.5 Accessibility
 
@@ -574,6 +685,7 @@ Example:
 | NFR-ACC-02 | All interactive controls shall be reachable by keyboard. |
 | NFR-ACC-03 | Layer and warning states shall not rely on color alone. |
 | NFR-ACC-04 | Charts and icons shall include accessible labels. |
+| NFR-ACC-05 | Guided MarsWalk and all essential waypoint interactions shall be operable without free-look mouse control. |
 
 ### 15.6 Security and privacy
 
@@ -592,6 +704,8 @@ Example:
 | NFR-MNT-02 | Routing and scoring weights shall be configuration values rather than hardcoded throughout the codebase. |
 | NFR-MNT-03 | Core calculations shall have automated tests using small deterministic fixtures. |
 | NFR-MNT-04 | Code comments shall be used only where logic or assumptions are not self-explanatory. |
+| NFR-MNT-05 | 3D asset generation, coordinate conversion, route draping, and scene-manifest creation shall be scripted and deterministic. |
+| NFR-MNT-06 | The local 3D coordinate convention, axis orientation, scale, origin, terrain format, and LOD policy shall be documented. |
 
 ---
 
@@ -607,6 +721,12 @@ The MVP should record or display the following for development and demonstration
 - Number of selected and completed waypoints
 - Reason for infeasibility
 - Route changes after scenario updates
+- Time to enter MarsWalk
+- MarsWalk median and 1st-percentile FPS during the prepared route
+- Peak terrain and texture memory usage
+- 2D-to-3D alignment check result
+- Waypoint interactions completed in MarsWalk
+- Whether the user completed the guided route or exited early
 
 No personally identifiable information is required.
 
@@ -624,10 +744,17 @@ The MVP is accepted when the following scenario succeeds:
 6. Each route displays distance, duration, elevation, energy estimate, safety score, and science score.
 7. The recommendation explains at least one avoided hazard and one scientific benefit.
 8. The Dynamic Return-to-Safety Envelope is visible.
-9. The user reduces the remaining energy by 20%.
-10. The system recalculates the route or removes a lower-priority target.
-11. The system generates a valid emergency return route.
-12. All displayed layers and waypoint evidence expose their sources.
+9. The user enters MarsWalk at the habitat within 5 seconds after core assets are cached.
+10. The 3D terrain uses true-scale HiRISE-derived elevation and aligned orbital imagery; all five alignment controls pass.
+11. The user follows the guided route while the HUD, 2D map, elevation profile, and resource state remain synchronized.
+12. The user switches briefly to free-walk mode, remains inside valid terrain, and returns to guided mode.
+13. At a science waypoint, the user opens surface imagery, scientific rationale, geology or mineral context, and provenance.
+14. The user reduces the remaining energy by 20% while in MarsWalk.
+15. The system recalculates the route or removes a lower-priority target and updates both 2D and 3D views without a page reload.
+16. The system generates and displays a valid emergency return route.
+17. The user returns to the 2D planner without losing route progress or mission state.
+18. All displayed layers and waypoint evidence expose their sources and distinguish measured, derived, and simulated content.
+19. MarsWalk meets the prepared-device targets of median 30 FPS, 1st-percentile 20 FPS, and no fatal errors during the route.
 
 ---
 
@@ -645,6 +772,13 @@ The MVP is accepted when the following scenario succeeds:
 | Too many features | Unfinished competition demo | Complete P0 flow before P1/P2 features |
 | Dependence on internet access | Demo failure | Prepare local demo assets and cache required metadata |
 | Route weights appear arbitrary | Low credibility | Expose weights, assumptions, and sensitivity comparison |
+| Terrain mesh or texture is too heavy | Slow load, low FPS, or browser crash | Tile assets, use LOD and mipmaps, compress textures, and define a measured memory budget |
+| 2D and 3D coordinate mismatch | Route, waypoint, or hazard floats away from terrain | Use one documented local origin and meter scale; validate five distributed control points |
+| Floating-point precision at Mars coordinates | Camera jitter and unstable markers | Render relative to a local origin rather than full planetary coordinates |
+| DTM resolution implies false obstacle confidence | Misleading walking experience | Label reconstruction limits; use DTM collision only at its defensible scale; do not invent rock-level safety |
+| Terrain seams or nodata holes | Camera fall-through or broken walkthrough | Build skirts or seamless tile borders; block nodata; test the entire prepared corridor |
+| Third-person camera motion causes discomfort | Users cannot complete the demo | Provide guided mode, reduced-motion settings, camera damping, and speed control |
+| 3D work delays routing and safety features | Incomplete core value proposition | Implement one fixed, optimized walkthrough corridor over the proven route before broader exploration |
 
 ---
 
@@ -664,24 +798,35 @@ The MVP is accepted when the following scenario succeeds:
 - Generate route metrics.
 - Validate that exclusions and slope penalties affect routing.
 
-### Milestone 3: Science integration
+### Milestone 3: MarsWalk terrain proof of concept
+
+- Generate deterministic heightmap or mesh and texture assets from the cropped DTM and orthomosaic.
+- Define the local origin, axes, meter scale, boundary, and LOD policy.
+- Render the selected route and five alignment control points on the terrain.
+- Implement stylized astronaut grounding, third-person follow camera, guided movement, and nodata or boundary blocking.
+- Measure initial load time, FPS, and memory on the prepared demonstration machine.
+
+### Milestone 4: Science integration
 
 - Add geology or CRISM layer.
 - Define three science waypoints.
 - Add waypoint evidence and source metadata.
 - Implement science scoring.
 
-### Milestone 4: Safety experience
+### Milestone 5: Safety experience
 
 - Implement return-cost calculation.
 - Implement Dynamic Return-to-Safety Envelope.
 - Add warnings and emergency return route.
+- Synchronize mission position, warnings, route changes, and return reserve between 2D and MarsWalk.
 
-### Milestone 5: Competition-ready product
+### Milestone 6: Competition-ready product
 
 - Add alternative route and what-if scenario.
 - Optimize performance.
 - Prepare cached/offline demo assets.
+- Complete the guided MarsWalk route, waypoint interactions, reduced-motion option, and limitations panel.
+- Validate five 2D-to-3D control points and rehearse the energy-loss scenario from inside MarsWalk.
 - Validate scientific language and attribution.
 - Rehearse the end-to-end demonstration.
 
@@ -699,6 +844,11 @@ The following decisions should be resolved during data feasibility work:
 6. Which route weights create meaningful alternatives without appearing arbitrary?
 7. Should the habitat be fixed for a controlled demo or user-placeable within an approved zone?
 8. Can relevant Perseverance images be reliably connected to the selected waypoints?
+9. Which browser rendering stack will be used for MarsWalk, and what asset formats does it require?
+10. What route-corridor width provides useful free-walk exploration without forcing the complete AOI to load at full detail?
+11. What terrain chunk size and LOD policy meet the 30 FPS target on the prepared demonstration machine?
+12. Which P1 first-person camera settings can be added without compromising the stable third-person P0 experience?
+13. Which hazard overlays remain understandable in 3D without obscuring the orbital texture?
 
 ---
 
@@ -713,5 +863,6 @@ Proceed with a fixed, carefully prepared Jezero demonstration area and the follo
 5. Rover PLACES for traverse and location context.
 6. A curated set of Perseverance images.
 7. MEDA as a P1 historical environmental feature.
+8. Deterministic MarsWalk heightmap or mesh tiles, aligned orthomosaic textures, a 3D route, and a versioned scene manifest.
 
-The first implementation should prove one complete story: **select valuable science targets, generate a safe route, simulate a resource loss, and return safely to the habitat.**
+The first implementation should prove one complete story: **select valuable science targets, generate a safe route, enter MarsWalk, encounter the scientific evidence on the surface, simulate a resource loss, replan, and return safely to the habitat.**
