@@ -1,18 +1,20 @@
 # Implementation status against ARES Path PRD
 
+The active requirements are [Revision Dicky](../PRD_ARES_PATH_REVISION_DICKY.md), which supersedes v1.0. Baseline commit: `ae95090`.
+
 The local measured-data demonstration implements the P0 planning workflow and the scripted end-to-end acceptance scenario. Automated validation covers the data alignment and critical application flow. This is a prototype; no field or NASA operational validation is claimed.
 
-| PRD area | Implemented |
-|---|---|
+| PRD area       | Implemented                                                                                                                                                                                                                                                     |
+| -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Map and layers | Measured HiRISE basemap, 5 m elevation and slope, manual exclusions, interpreted USGS geology, three CRISM parameters, segmented PLACES traverse, proposed science visits, dynamic return envelope; independent visibility, opacity, legends, point coordinates |
-| Configuration | Hypothetical habitat placement, three selectable/reorderable stops, time/energy/slope/reserve validation, balanced/safest/shortest objectives |
-| Routing | Deterministic 8-connected least-cost round trip, no diagonal corner cutting, hard exclusions, separate alternative, metrics and elevation profile, no fabricated fallback path |
-| Safety | Directed minimum-energy return field, current-resource continuation envelope, warnings, emergency route, lower-priority stop removal |
-| Science | Twelve downloaded surface images at three exact camera site/drive localizations, product IDs/dates/credits, regional geology and raw CRISM values; proposed activity, priority and duration |
-| Environment | Seven recomputed historical MEDA sols, mean air-temperature chart and table, units and source, explicit temporal/spatial limitations |
-| Simulation | Playback/scrubbing, observation accounting, 20% remaining-energy loss, committed-position replanning, before/after metrics, closures |
-| Communication | Measured/derived/interpreted/assumed distinctions, source catalog, limitations, model formulas, JSON briefing with geographic coordinates |
-| 3D and offline | Same measured grid/routes as 2D, datum-normalized rendering, orbital texture, habitat/astronaut, orbit/zoom; single offline HTML |
+| Configuration  | Hypothetical habitat placement, three selectable/reorderable stops, time/energy/slope/reserve validation, balanced/safest/shortest objectives                                                                                                                   |
+| Routing        | Deterministic 8-connected least-cost round trip, no diagonal corner cutting, hard exclusions, separate alternative, metrics and elevation profile, no fabricated fallback path                                                                                  |
+| Safety         | Directed minimum-energy return field, current-resource continuation envelope, warnings, emergency route, lower-priority stop removal                                                                                                                            |
+| Science        | Twelve downloaded surface images at three exact camera site/drive localizations, product IDs/dates/credits, regional geology and raw CRISM values; proposed activity, priority and duration                                                                     |
+| Environment    | Seven recomputed historical MEDA sols, mean air-temperature chart and table, units and source, explicit temporal/spatial limitations                                                                                                                            |
+| Simulation     | Playback/scrubbing, observation accounting, 20% remaining-energy loss, committed-position replanning, before/after metrics, closures                                                                                                                            |
+| Communication  | Measured/derived/interpreted/assumed distinctions, source catalog, limitations, model formulas, JSON briefing with geographic coordinates                                                                                                                       |
+| 3D and offline | Same measured grid/routes as 2D, datum-normalized rendering, orbital texture, habitat/astronaut, orbit/zoom; single offline HTML                                                                                                                                |
 
 ## Data geometry
 
@@ -46,3 +48,24 @@ Terrain score is `100 − distance-weighted mean(slope/30×0.7 + roughness×0.3)
 - Automated checks are not independent scientific peer review or a physical traversability assessment. Accessibility contrast and performance on other hardware have not been comprehensively audited.
 - No recommended EVA time window: these seven MEDA sols are earlier and at historical rover positions; no local-time weather model is justified. No radiation, environmental multiplier, physiology, Pareto frontier, automatic waypoint selection or obstacle recognition is implemented.
 - Priorities and target values are curated assumptions. Mineral confidence is not quantified. Habitat is hypothetical. The three stops represent rover camera locations, not confirmed sampling sites or image footprints.
+
+## Revision Dicky: playable Marswalk
+
+Phase 5 now has a playable implementation. Phase 6 competition readiness remains open pending target-machine rehearsal, accessibility review and independent scientific review.
+
+| Requirements  | Implementation and verification                                                                                                                                                                                             |
+| ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| FR-WALK-01/02 | Camera-relative keyboard/touch movement; exact mesh-triangle height interpolation; 0.25 m movement substeps; conservative square-node slope/nodata/closure tests; capped frame time; unit tests cover barriers and boundary |
+| FR-WALK-03/04 | Third-person following, first-person, orbit overview; near-ground camera clearance; first-person hides astronaut mesh; browser camera-switch coverage                                                                       |
+| FR-WALK-05    | Immersive scene, live energy/time/return reserve, next stop and habitat distance, coordinates/slope, local minimap                                                                                                          |
+| FR-WALK-06    | Selected unvisited stop within 8 m; explicit Observe/E; visit duration charged once only when return reserve permits; photos and provenance remain accessible                                                               |
+| FR-WALK-07/08 | One persistent continuous session across views, replanning, energy loss and camera changes; pause/dialog/focus-loss stops input; reset clears session                                                                       |
+| FR-WALK-09    | Visible touch directions and camera/pause/observe controls; movement buttons capture pointers and clear on cancel                                                                                                           |
+| FR-WALK-10/11 | Actual traveled energy/time, including off-grid return connector; reserve check before every step; explicit automatic playback; emergency route cancels remaining stops                                                     |
+| FR-WALK-12/13 | Procedural arm/leg animation, idle pose; locally bundled textures/assets; existing WebGL failure fallback keeps planner usable                                                                                              |
+
+Six additional movement tests cover continuous travel/accounting, triangle sampling, swept barriers, reserve refusal, single-count observation and directed off-grid costs. The Marswalk browser suite checks movement, consumption, cameras, pause, blur, persistent view changes, observation/photos, energy loss, emergency return/completion, touch and no runtime requests. The original planner browser suite remains separate. Repeated short returns specifically check that mission-complete status is rendered immediately when automatic playback stops, including between throttled HUD refreshes.
+
+Manual simulation is accelerated to 8 m/s on screen. Model minutes continue to derive from distance and terrain at 32 m/min before penalties. Costs are estimates; idle consumption, suit physiology and collision with unmeasured small rocks are absent. Decorative habitat is beside its anchor; collision enforcement concerns measured terrain/exclusions, not invented habitat physics. Conservative square-node collision and nearest-grid-anchor return may reject a path accepted by the node-only planner; no physical traversability guarantee is made.
+
+The atmosphere, lighting, avatar and habitat are illustrative. No synthetic boulders or mineral-rich outcrops are presented as measured evidence. Ground-level imagery reflects the actual orbital source resolution; it does not contain photogrammetric reconstruction of small rocks. Camera clearance keeps its origin above terrain, but complex occlusion is not a complete character-camera physics system.

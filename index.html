@@ -167,8 +167,8 @@
           ><input id="opacity" type="range" min="0" max="80" value="40"
         /></label>
         <p class="tiny">
-          M · measured &nbsp; D · derived &nbsp; I · interpreted &nbsp; A · assumed<br />Historical
-          observations; EVA resources assumed.
+          M · measured &nbsp; D · derived &nbsp; I · interpreted &nbsp; A ·
+          assumed<br />Historical observations; EVA resources assumed.
         </p>
         <button id="briefing" class="secondary">
           ↓ Export mission briefing
@@ -181,6 +181,7 @@
             <h2>Jezero scenario <span>/ 400 × 400 m</span></h2>
           </div>
           <div class="view-switch" aria-label="Map view">
+            <button id="view-walk">Marswalk 3D</button>
             <button id="view-map" class="active" aria-pressed="true">
               2D Map</button
             ><button id="view-3d" aria-pressed="false">3D Preview</button>
@@ -194,9 +195,68 @@
           ></canvas>
           <canvas
             id="scene"
+            tabindex="0"
             hidden
             aria-label="3D terrain preview. Drag to orbit and scroll to zoom."
           ></canvas>
+          <section
+            id="walk-hud"
+            hidden
+            aria-label="Marswalk controls and mission status"
+          >
+            <div class="walk-top">
+              <div>
+                <div class="eyebrow">ARES / JEZERO SURFACE EVA</div>
+                <strong id="walk-state" aria-live="polite"
+                  >MANUAL EXPLORATION</strong
+                >
+              </div>
+              <button id="walk-exit">← Mission planner</button>
+            </div>
+            <div class="walk-readouts">
+              <div><small>ENERGY · MODEL</small><b id="walk-energy"></b></div>
+              <div><small>ELAPSED · MODEL</small><b id="walk-time"></b></div>
+              <div>
+                <small>RESERVE · DERIVED</small><b id="walk-reserve"></b>
+              </div>
+            </div>
+            <div class="walk-navigation">
+              <strong id="walk-next"></strong><span id="walk-home"></span
+              ><small id="walk-position"></small>
+            </div>
+            <canvas
+              id="walk-minimap"
+              width="200"
+              height="200"
+              aria-label="Jezero minimap showing astronaut, route, science stops and habitat"
+            ></canvas>
+            <div class="walk-actions">
+              <button id="walk-pause">Pause [Esc]</button
+              ><button id="walk-camera">Camera: third</button
+              ><button id="walk-guide">Automatic route playback</button
+              ><button id="walk-replan">Replan remaining stops</button
+              ><button id="walk-loss">−20% energy</button
+              ><button id="walk-return">↩ Return route</button>
+            </div>
+            <div class="walk-observation">
+              <button id="walk-observe" class="primary" disabled>
+                Approach a science stop [E]
+              </button>
+              <p id="walk-message" role="status"></p>
+            </div>
+            <div class="walk-directions" aria-label="Touch movement controls">
+              <button data-walk-key="w" aria-label="Walk forward">↑</button>
+              <div>
+                <button data-walk-key="a" aria-label="Walk left">←</button
+                ><button data-walk-key="s" aria-label="Walk backward">↓</button
+                ><button data-walk-key="d" aria-label="Walk right">→</button>
+              </div>
+            </div>
+            <div class="walk-help">
+              WASD / arrows: walk · Drag: look · E: observe · C: camera · Esc:
+              pause
+            </div>
+          </section>
           <div class="map-heading">
             <span class="crosshair">⌖</span
             ><span>LOCAL GRID <small>5 m / cell · HiRISE DTM</small></span>

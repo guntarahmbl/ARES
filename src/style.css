@@ -1352,3 +1352,275 @@ dialog::backdrop {
     grid-template-columns: 1fr;
   }
 }
+
+#scene {
+  touch-action: none;
+  outline-offset: -4px;
+}
+#walk-hud {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  pointer-events: none;
+  color: #f1ead9;
+  background: linear-gradient(
+    180deg,
+    #20190c66,
+    transparent 30%,
+    transparent 60%,
+    #20190c55
+  );
+}
+#walk-hud button {
+  pointer-events: auto;
+  background: #17221ee8;
+  border: 1px solid #dce5c94a;
+  border-radius: 7px;
+  padding: 10px 14px;
+  color: #eee9dc;
+  font-size: 12px;
+  min-height: 40px;
+}
+#walk-hud button:hover {
+  background: #3a4d35;
+}
+#walk-hud button:disabled {
+  opacity: 0.5;
+}
+.walk-top {
+  position: absolute;
+  top: 24px;
+  left: 28px;
+  right: 28px;
+  display: flex;
+  justify-content: space-between;
+  gap: 15px;
+  align-items: center;
+}
+.walk-top strong {
+  font-size: 15px;
+  letter-spacing: 1px;
+  text-shadow: 0 2px 8px #000;
+}
+.walk-top .eyebrow {
+  color: #ede2c7;
+  margin-bottom: 7px;
+}
+.walk-readouts {
+  position: absolute;
+  top: 95px;
+  left: 28px;
+  display: flex;
+  gap: 28px;
+  padding: 16px 20px;
+  background: #17221ee0;
+  border: 1px solid #e0d7b833;
+  border-radius: 9px;
+}
+.walk-readouts div {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.walk-readouts small {
+  font-size: 9px;
+  color: #c8ccb1;
+  letter-spacing: 1px;
+}
+.walk-readouts b {
+  font-size: 19px;
+  font-weight: 500;
+}
+.walk-navigation {
+  position: absolute;
+  top: 100px;
+  right: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-align: right;
+  text-shadow: 0 2px 6px #000;
+}
+.walk-navigation strong {
+  color: #f3d9a2;
+}
+.walk-navigation small {
+  color: #e1dec9;
+}
+#walk-minimap {
+  position: absolute;
+  right: 28px;
+  bottom: 110px;
+  width: 180px;
+  height: 180px;
+  border: 1px solid #f1e1b84d;
+  border-radius: 9px;
+  background: #192219;
+}
+.walk-actions {
+  position: absolute;
+  bottom: 20px;
+  left: 28px;
+  right: 28px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.walk-observation {
+  position: absolute;
+  bottom: 125px;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+  max-width: 440px;
+  width: 45%;
+}
+#walk-hud #walk-observe {
+  background: #d1dfb7;
+  color: #1a291c;
+  border-color: #e8f7d0;
+}
+.walk-observation p {
+  font-size: 11px;
+  line-height: 1.6;
+  background: #15201bdb;
+  border-radius: 7px;
+  padding: 9px;
+  min-height: 35px;
+  color: #ece5ce;
+}
+.walk-directions {
+  position: absolute;
+  bottom: 115px;
+  left: 28px;
+  pointer-events: auto;
+  text-align: center;
+  touch-action: none;
+  user-select: none;
+}
+.walk-directions > button {
+  margin-bottom: 5px;
+}
+.walk-directions div {
+  display: flex;
+  gap: 5px;
+}
+#walk-hud .walk-directions button {
+  width: 44px;
+  height: 44px;
+  touch-action: none;
+}
+.walk-help {
+  position: absolute;
+  bottom: 85px;
+  width: 100%;
+  text-align: center;
+  font-size: 10px;
+  color: #efeadb;
+  text-shadow: 0 1px 3px #000;
+}
+body.marswalk .left-panel,
+body.marswalk .right-panel,
+body.marswalk .simulation-bar,
+body.marswalk .profile-panel,
+body.marswalk footer,
+body.marswalk .map-toolbar {
+  display: none;
+}
+body.marswalk .workspace {
+  display: block;
+  min-height: 0;
+}
+body.marswalk .center-panel {
+  width: 100%;
+  min-height: 0;
+}
+body.marswalk .map-stage {
+  flex: none;
+  height: calc(100dvh - 88px);
+  min-height: 550px;
+  border: 0;
+}
+body.marswalk .map-heading,
+body.marswalk .map-tools,
+body.marswalk .north,
+body.marswalk .map-hint,
+body.marswalk .map-controls,
+body.marswalk .map-legend,
+body.marswalk .point-info {
+  display: none;
+}
+body.marswalk #toast {
+  z-index: 20;
+  bottom: 110px;
+}
+@media (max-width: 700px) {
+  body.marswalk .map-stage {
+    height: calc(100dvh - 78px);
+    min-height: 650px;
+  }
+  .walk-top {
+    left: 12px;
+    right: 12px;
+    top: 15px;
+  }
+  .walk-top strong {
+    font-size: 11px;
+  }
+  .walk-readouts {
+    top: 85px;
+    left: 12px;
+    right: 12px;
+    gap: 18px;
+    justify-content: space-between;
+    padding: 10px;
+  }
+  .walk-readouts b {
+    font-size: 14px;
+  }
+  .walk-readouts small {
+    font-size: 8px;
+  }
+  .walk-navigation {
+    top: 157px;
+    right: 12px;
+    font-size: 11px;
+  }
+  .walk-actions {
+    bottom: 12px;
+    left: 10px;
+    right: 10px;
+    gap: 4px;
+  }
+  #walk-hud .walk-actions button {
+    padding: 7px;
+    font-size: 10px;
+    min-height: 36px;
+  }
+  .walk-observation {
+    bottom: 185px;
+    width: 90%;
+    max-width: 360px;
+  }
+  .walk-directions {
+    bottom: 100px;
+    left: 12px;
+  }
+  #walk-minimap {
+    width: 100px;
+    height: 100px;
+    right: 12px;
+    bottom: 95px;
+  }
+  .walk-help {
+    bottom: 78px;
+    font-size: 8px;
+  }
+  .view-switch {
+    flex-wrap: wrap;
+  }
+  .map-toolbar {
+    gap: 10px;
+  }
+}

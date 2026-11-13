@@ -75,6 +75,9 @@ export function neighbors(grid, i, config, closed) {
 export function edge(grid, a, b) {
   const from = grid.cells[a],
     to = grid.cells[b];
+  return stepCost(from, to);
+}
+export function stepCost(from, to) {
   const horizontal = Math.hypot(from.x - to.x, from.z - to.z),
     dh = to.height - from.height;
   const distance = Math.hypot(horizontal, dh),

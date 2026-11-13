@@ -328,7 +328,7 @@ export class MapView {
           selected ? "#ebd8a5" : "#b2bc9e",
         );
       }
-    const p = this.toScreen(grid.cells[position]);
+    const p = this.toScreen(state.pose ?? grid.cells[position]);
     ctx.beginPath();
     ctx.arc(p.x, p.y, 13, 0, Math.PI * 2);
     ctx.fillStyle = "#94cceb22";

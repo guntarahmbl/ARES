@@ -22,6 +22,7 @@ import {
   traversable,
 } from "./planner.js";
 import { MapView, drawProfile } from "./map.js";
+import { WalkSession, sampleTerrain, WALK_SPEED } from "./walk.js";
 import { TerrainScene } from "./scene.js";
 const $ = (id) => document.getElementById(id);
 const grid = makeGrid();
@@ -61,6 +62,12 @@ $("mineral-band").onchange = (e) => {
   mineralBand = e.target.value;
   renderMap();
 };
+let walk = null,
+  immersive = false,
+  walkPaused = true,
+  guided = false,
+  guideIndex = 0,
+  lastWalkRender = 0;
 const map = new MapView($("map"), selectPoint);
 let toastTimer;
 function toast(text) {
@@ -70,6 +77,7 @@ function toast(text) {
   toastTimer = setTimeout(() => ($("toast").className = ""), 4500);
 }
 function current() {
+  if (walk) return walk.snapshot();
   if (!route?.path)
     return {
       index: start,
@@ -87,6 +95,7 @@ function current() {
   };
 }
 function stop() {
+  guided = false;
   clearInterval(playTimer);
   playTimer = null;
   $("play").textContent = "▶ Preview EVA";
@@ -100,10 +109,45 @@ function commitPosition() {
   offset = 0;
   stop();
 }
+function withConnection(resources) {
+  const c = walk?.connector();
+  return c
+    ? {
+        energy: resources.energy + c.energy,
+        minutes: resources.minutes + c.minutes,
+      }
+    : resources;
+}
+function decorate(candidate) {
+  if (!walk || !candidate.metrics) return candidate;
+  const c = walk.connector(),
+    m = candidate.metrics;
+  return {
+    ...candidate,
+    connector: { ...c, from: { ...walk.pose } },
+    metrics: {
+      ...m,
+      energy: m.energy + c.energy,
+      minutes: m.minutes + c.minutes,
+      travelMinutes: m.travelMinutes + c.minutes,
+      distance: m.distance + c.distance,
+      maxSlope: Math.max(m.maxSlope, sampleTerrain(grid, walk.pose).slope),
+      gain: m.gain + c.gain,
+      loss: m.loss + c.loss,
+    },
+  };
+}
 function options() {
-  return { closed, consumed, energyLoss };
+  return { closed, consumed: withConnection(consumed), energyLoss };
 }
 function calculate({ adapt = false } = {}) {
+  if (walk) {
+    const p = walk.snapshot();
+    start = p.index;
+    consumed = { energy: p.energy, minutes: p.minutes };
+    completed = p.visited;
+    ids = ids.filter((id) => !completed.includes(id));
+  }
   const began = performance.now();
   candidates = planMission(grid, home, start, ids, config, options());
   if (adapt && !candidates.primary.feasible) {
@@ -114,9 +158,28 @@ function calculate({ adapt = false } = {}) {
       candidates = planMission(grid, home, start, ids, config, options());
     }
   }
+  candidates = {
+    primary: decorate(candidates.primary),
+    alternative: decorate(candidates.alternative),
+  };
   route = candidates.primary;
   offset = 0;
   homeField = returnField(grid, home, config, closed);
+  if (walk?.returning) {
+    route = decorate(
+      emergencyRoute(
+        grid,
+        homeField,
+        start,
+        home,
+        config,
+        withConnection(consumed),
+        energyLoss,
+      ),
+    );
+    route.emergency = true;
+  }
+  guideIndex = 0;
   calculationMs = performance.now() - began;
   render();
 }
@@ -213,20 +276,22 @@ function renderTargets() {
 }
 function render() {
   const p = current(),
-    resources = { energy: p.energy, minutes: p.minutes };
+    resources = withConnection({ energy: p.energy, minutes: p.minutes });
   envelope = safetyEnvelope(grid, homeField, p.index, config, {
     closed,
     consumed: resources,
     energyLoss,
   });
-  const emergency = emergencyRoute(
-    grid,
-    homeField,
-    p.index,
-    home,
-    config,
-    resources,
-    energyLoss,
+  const emergency = decorate(
+    emergencyRoute(
+      grid,
+      homeField,
+      p.index,
+      home,
+      config,
+      resources,
+      energyLoss,
+    ),
   );
   const safe = route.feasible && emergency.feasible;
   $("plan-state").textContent = safe ? "FEASIBLE" : "INFEASIBLE";
@@ -313,7 +378,7 @@ function render() {
       : 0;
   $("progress").value = progress;
   $("progress-label").textContent = `${progress}%`;
-  $("progress").disabled = !route.path;
+  $("progress").disabled = !!walk || !route.path;
   const finished =
     route.path &&
     offset === route.path.length - 1 &&
@@ -328,6 +393,7 @@ function render() {
   $("energy-loss").disabled = remaining <= 0;
   $("calculation-time").textContent =
     `${grid.cells.length.toLocaleString()} CELLS · ROUTING ${calculationMs.toFixed(0)} ms`;
+  renderWalkHUD(emergency);
   renderMap(false);
   drawProfile($("profile"), route, offset, grid);
 }
@@ -339,6 +405,7 @@ function mapState() {
     config,
     home,
     position: p.index,
+    pose: p.pose,
     route,
     alternative: route.emergency ? null : candidates.alternative,
     closed,
@@ -406,6 +473,7 @@ $("targets").onchange = (e) => {
   if (!id) return;
   commitPosition();
   ids = e.target.checked ? [...ids, id] : ids.filter((v) => v !== id);
+  if (walk && ids.length) walk.returning = false;
   notice = "";
   calculate();
 };
@@ -426,6 +494,7 @@ $("targets").onclick = (e) => {
   calculate();
 };
 function showTarget(id) {
+  pauseWalking();
   stop();
   const t = TARGETS.find((t) => t.id === id);
   $("detail-title").textContent = `${t.id} / ${t.title}`;
@@ -459,7 +528,12 @@ function selectPoint(point) {
     cell = grid.cells[i];
   if (!cell) return;
   if (mode === "home") {
-    if (current().index !== home || consumed.energy > 0 || offset > 0) {
+    if (
+      walk?.departed ||
+      current().index !== home ||
+      consumed.energy > 0 ||
+      offset > 0
+    ) {
       toast("Reset the simulation before moving the habitat.");
       return;
     }
@@ -522,12 +596,17 @@ $("clear-closures").onclick = () => {
   calculate();
 };
 $("progress").oninput = (e) => {
+  if (walk) return;
   stop();
   if (!route.path) return;
   offset = Math.round((Number(e.target.value) / 100) * (route.path.length - 1));
   render();
 };
 $("play").onclick = () => {
+  if (walk) {
+    startGuidance();
+    return;
+  }
   if (playTimer) {
     stop();
     return;
@@ -551,7 +630,9 @@ $("energy-loss").onclick = () => {
   const p = current(),
     lost = Math.max(0, config.energy - p.energy - energyLoss) * 0.2;
   commitPosition();
-  const previous = makeRoute(grid, home, start, ids, config, options());
+  const previous = decorate(
+    makeRoute(grid, home, start, ids, config, options()),
+  );
   before = previous.metrics ? { ...previous.metrics } : null;
   energyLoss += lost;
   notice = `Scenario: ${lost.toFixed(1)} energy units lost (20% of remaining energy).`;
@@ -561,16 +642,20 @@ $("energy-loss").onclick = () => {
   );
 };
 $("emergency").onclick = () => {
+  if (walk) walk.returning = true;
   commitPosition();
-  route = emergencyRoute(
-    grid,
-    homeField,
-    start,
-    home,
-    config,
-    consumed,
-    energyLoss,
+  route = decorate(
+    emergencyRoute(
+      grid,
+      homeField,
+      start,
+      home,
+      config,
+      withConnection(consumed),
+      energyLoss,
+    ),
   );
+  guideIndex = 0;
   route.emergency = true;
   notice = route.feasible
     ? "Emergency return selected. Remaining science stops are canceled."
@@ -585,6 +670,14 @@ $("emergency").onclick = () => {
   );
 };
 function setView(next) {
+  if (immersive) {
+    immersive = false;
+    walkPaused = true;
+    guided = false;
+    document.body.classList.remove("marswalk");
+    $("walk-hud").hidden = true;
+    scene?.setWalkMode(false);
+  }
   view = next;
   $("map").hidden = view !== "map";
   $("scene").hidden = view !== "3d";
@@ -599,7 +692,22 @@ function setView(next) {
       : "Drag to pan · scroll to zoom · click to inspect";
   if (view === "3d") {
     try {
-      if (!scene) scene = new TerrainScene($("scene"), grid);
+      if (!scene)
+        scene = new TerrainScene($("scene"), grid, {
+          tick: walkTick,
+          observe: observeStop,
+          pause: toggleWalkPause,
+          blur: () => {
+            if (immersive) {
+              walkPaused = true;
+              guided = false;
+              render();
+            }
+          },
+          camera: (mode) => {
+            $("walk-camera").textContent = `Camera: ${mode}`;
+          },
+        });
       scene.setState(mapState());
       $("webgl-error").hidden = true;
     } catch (error) {
@@ -620,6 +728,7 @@ $("zoom-out").onclick = () =>
   view === "map" ? map.changeZoom(0.8) : scene?.zoom(0.8);
 $("fit").onclick = () => (view === "map" ? map.fit() : scene?.fit());
 function openSources() {
+  pauseWalking();
   stop();
   $("sources").showModal();
 }
@@ -639,6 +748,9 @@ $("model-details").innerHTML =
       "; ",
     )}\nTerrain score = 100 − distance-weighted mean(slope/30×0.7 + roughness×0.3) × 100.\nScience = target values (diminishing within a category) + 5 per extra category. Scores are heuristic, not measured.</code>`;
 $("reset").onclick = () => {
+  walk = null;
+  walkPaused = true;
+  guided = false;
   stop();
   config = { ...DEFAULTS };
   home = start = cellIndex(grid, HOME);
@@ -689,7 +801,14 @@ $("briefing").onclick = () => {
       config,
       model: MODEL,
       habitat: grid.cells[home],
-      astronaut: grid.cells[p.index],
+      astronaut: {
+        ...grid.cells[p.index],
+        ...(p.pose ?? {}),
+        ...coordinates(p.pose ?? grid.cells[p.index]),
+        height: sampleTerrain(grid, p.pose ?? grid.cells[p.index]).height,
+      },
+      simulationMode: walk ? "continuous Marswalk" : "route playback",
+      walkedDistanceMeters: walk?.distance,
       consumed: { energy: p.energy, minutes: p.minutes },
       energyLoss,
       completed: p.visited,
@@ -698,6 +817,7 @@ $("briefing").onclick = () => {
         return { ...t, images: images.map(({ dataUri, ...img }) => img) };
       }),
       route: {
+        offGridConnection: route.connector,
         objective: route.objective,
         feasible: route.feasible,
         reasons: route.reasons,
@@ -739,3 +859,273 @@ for (const dialog of [$("sources"), $("target-detail")])
   dialog.addEventListener("close", () => stop());
 updateOutputs();
 calculate();
+
+function pauseWalking() {
+  if (immersive) {
+    walkPaused = true;
+    guided = false;
+    scene?.clearInput();
+    render();
+  }
+}
+function enterMarswalk() {
+  stop();
+  const previous = current();
+  setView("3d");
+  if (!scene || !$("webgl-error").hidden) {
+    setView("map");
+    toast(
+      "WebGL is unavailable. Continue with the 2D mission planner and route preview.",
+    );
+    return;
+  }
+  if (!walk)
+    walk = new WalkSession(
+      grid,
+      grid.cells[previous.index],
+      previous,
+      previous.visited,
+    );
+  immersive = true;
+  walkPaused = false;
+  guided = false;
+  document.body.classList.add("marswalk");
+  $("walk-hud").hidden = false;
+  scene.setWalkMode(true);
+  calculate();
+  scene.setPose(walk.pose);
+  $("scene").focus();
+  toast(
+    "WASD / arrows to walk · drag to look · E observe · C camera · Esc pause",
+  );
+}
+function toggleWalkPause() {
+  if (!immersive) return;
+  walkPaused = !walkPaused;
+  guided = false;
+  scene.clearInput();
+  render();
+  $("scene").focus();
+}
+function observeStop() {
+  if (!immersive || walkPaused || document.querySelector("dialog[open]"))
+    return;
+  const result = walk.observe(ids, { config, field: homeField, energyLoss });
+  if (!result.ok) {
+    toast(result.message);
+    return;
+  }
+  completed = [...walk.visited];
+  ids = ids.filter((id) => !completed.includes(id));
+  calculate();
+  showTarget(result.target.id);
+  toast(
+    `Observation ${result.target.id} recorded · ${result.target.minutes} modeled minutes. Resume when ready.`,
+  );
+}
+function startGuidance() {
+  if (!immersive) {
+    enterMarswalk();
+    if (!immersive) return;
+  }
+  if (guided) {
+    guided = false;
+    walkPaused = true;
+    render();
+    return;
+  }
+  calculate();
+  if (!route.feasible || !route.path) {
+    toast("Replan a feasible route before starting guidance.");
+    return;
+  }
+  guided = true;
+  walkPaused = false;
+  guideIndex = 0;
+  scene.clearInput();
+  $("scene").focus();
+  render();
+}
+function walkTick(dx, dz, dt) {
+  if (!immersive || !walk) return;
+  if (walkPaused || document.querySelector("dialog[open]")) {
+    scene.setPose(walk.pose);
+    return;
+  }
+  if (dx || dz) guided = false;
+  if (guided) {
+    const near = walk.nearby(ids);
+    if (near) {
+      guided = false;
+      scene.clearInput();
+      render();
+      toast(`Stop ${near.id} reached. Press E or Observe to record the visit.`);
+    } else {
+      const path = route.path ?? [];
+      while (
+        guideIndex < path.length &&
+        Math.hypot(
+          grid.cells[path[guideIndex]].x - walk.pose.x,
+          grid.cells[path[guideIndex]].z - walk.pose.z,
+        ) < 0.08
+      )
+        guideIndex++;
+      const destination = grid.cells[path[guideIndex]];
+      if (destination) {
+        dx = destination.x - walk.pose.x;
+        dz = destination.z - walk.pose.z;
+        dt = Math.min(dt, Math.hypot(dx, dz) / WALK_SPEED);
+      } else {
+        guided = false;
+        walkPaused = true;
+        render();
+        return;
+      }
+    }
+  }
+  const previous = walk.snapshot().index;
+  const moved = walk.move(dx, dz, dt, {
+    config,
+    closed,
+    field: homeField,
+    energyLoss,
+  });
+  scene.setPose(walk.pose, moved);
+  if (walk.message && (dx || dz)) {
+    guided = false;
+    $("walk-message").textContent = walk.message;
+  }
+  if (moved && previous !== walk.snapshot().index && !guided) {
+    calculate();
+  } else if (performance.now() - lastWalkRender > 250) {
+    render();
+    lastWalkRender = performance.now();
+  }
+}
+function renderWalkHUD(emergency) {
+  if (!walk || !immersive) return;
+  const p = walk.pose,
+    h = grid.cells[home],
+    t = walk.nearby(ids),
+    next = TARGETS.find((t) => ids.includes(t.id));
+  const done =
+    walk.departed &&
+    (walk.returning || !ids.length) &&
+    Math.hypot(p.x - h.x, p.z - h.z) < 0.1;
+  if (done) {
+    walkPaused = true;
+    guided = false;
+    scene?.clearInput();
+  }
+  $("walk-state").textContent = done
+    ? "MISSION COMPLETE · BACK AT HABITAT"
+    : walkPaused
+      ? "PAUSED"
+      : guided
+        ? "AUTOMATIC ROUTE PLAYBACK"
+        : "MANUAL EXPLORATION";
+  $("walk-state").classList.toggle("unsafe", !emergency.feasible);
+  $("walk-energy").textContent =
+    `${Math.max(0, config.energy - walk.energy - energyLoss).toFixed(1)} u`;
+  $("walk-time").textContent = `${walk.minutes.toFixed(1)} min`;
+  $("walk-reserve").textContent =
+    `${emergency.reservePercent?.toFixed(1) ?? "—"}% on return`;
+  $("walk-home").textContent =
+    `${Math.hypot(p.x - h.x, p.z - h.z).toFixed(0)} m to habitat`;
+  $("walk-position").textContent =
+    `x ${p.x.toFixed(1)} · z ${p.z.toFixed(1)} m / ${sampleTerrain(grid, p).slope.toFixed(1)}°`;
+  $("walk-next").textContent = next
+    ? `NEXT ${next.id} · ${Math.hypot(p.x - next.x, p.z - next.z).toFixed(0)} m`
+    : done
+      ? "EXCURSION COMPLETE"
+      : "RETURN TO HABITAT";
+  $("walk-observe").disabled = !t || walkPaused || done;
+  $("walk-observe").textContent = t
+    ? `Observe ${t.id} · ${t.minutes} min [E]`
+    : "Approach a science stop [E]";
+  $("walk-pause").textContent = walkPaused ? "Resume [Esc]" : "Pause [Esc]";
+  $("walk-guide").textContent = guided
+    ? "Pause playback"
+    : "Automatic route playback";
+  $("walk-message").textContent = done
+    ? "Your recorded observations and mission resources are available in the planner."
+    : walk.message ||
+      (!emergency.feasible
+        ? "Return reserve violated. Pause and adjust resources or exclusions in the planner."
+        : walkPaused
+          ? "Movement paused. Resume to continue; no idle consumption is modeled."
+          : `Measured HiRISE terrain · hypothetical EVA · ${((WALK_SPEED * 60) / MODEL.speed).toFixed(0)}× base speed (${WALK_SPEED} m/s); modeled time from terrain.`);
+  const c = $("walk-minimap"),
+    ctx = c.getContext("2d"),
+    point = (q) => ({
+      x: 12 + ((q.x + 200) / 400) * 176,
+      y: 12 + ((q.z + 200) / 400) * 176,
+    });
+  ctx.fillStyle = "#293225";
+  ctx.fillRect(0, 0, 200, 200);
+  if (map.basemap.complete && map.basemap.naturalWidth)
+    ctx.drawImage(map.basemap, 12, 12, 176, 176);
+  if (route.path) {
+    ctx.beginPath();
+    route.path.forEach((i, n) => {
+      const q = point(grid.cells[i]);
+      n ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y);
+    });
+    ctx.strokeStyle = "#96d9ff";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  }
+  for (const target of TARGETS) {
+    const q = point(target);
+    ctx.fillStyle = walk.visited.includes(target.id) ? "#a5d6a0" : "#ffe09b";
+    ctx.fillRect(q.x - 3, q.y - 3, 6, 6);
+    ctx.font = "10px sans-serif";
+    ctx.fillText(target.id, q.x + 5, q.y);
+  }
+  const base = point(h);
+  ctx.strokeStyle = "#d9f5c4";
+  ctx.strokeRect(base.x - 5, base.y - 5, 10, 10);
+  const q = point(p);
+  ctx.beginPath();
+  ctx.arc(q.x, q.y, 4, 0, Math.PI * 2);
+  ctx.fillStyle = "#fff";
+  ctx.fill();
+  ctx.fillStyle = "#fff";
+  ctx.font = "10px sans-serif";
+  ctx.fillText("N ↑ / 400 m", 12, 10);
+}
+$("view-walk").onclick = enterMarswalk;
+$("walk-exit").onclick = () => {
+  setView("map");
+  calculate();
+};
+$("walk-pause").onclick = toggleWalkPause;
+$("walk-camera").onclick = () => {
+  scene.cycleCamera();
+  $("scene").focus();
+};
+$("walk-observe").onclick = observeStop;
+$("walk-guide").onclick = startGuidance;
+$("walk-return").onclick = () => {
+  $("emergency").click();
+  $("scene").focus();
+};
+$("walk-loss").onclick = () => {
+  $("energy-loss").click();
+  $("scene").focus();
+};
+$("walk-replan").onclick = () => {
+  calculate({ adapt: true });
+  $("scene").focus();
+};
+for (const button of document.querySelectorAll("[data-walk-key]")) {
+  button.onpointerdown = (e) => {
+    e.preventDefault();
+    button.setPointerCapture(e.pointerId);
+    scene?.keys.add(button.dataset.walkKey);
+  };
+  for (const name of ["pointerup", "pointercancel", "lostpointercapture"])
+    button.addEventListener(name, () =>
+      scene?.keys.delete(button.dataset.walkKey),
+    );
+}
