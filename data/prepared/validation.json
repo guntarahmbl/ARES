@@ -1,0 +1,316 @@
+{
+  "passed": true,
+  "study": "Jezero delta-front EVA",
+  "checks": [
+    {
+      "name": "grid.arrays",
+      "passed": true,
+      "details": "6561 common-grid cells"
+    },
+    {
+      "name": "grid.coverage",
+      "passed": true,
+      "details": "100% HiRISE elevation coverage"
+    },
+    {
+      "name": "alignment.slope_5m.tif",
+      "passed": true,
+      "details": "identical CRS, transform and dimensions"
+    },
+    {
+      "name": "coverage.slope_5m.tif",
+      "passed": true,
+      "details": "all analysis cells have source support"
+    },
+    {
+      "name": "alignment.roughness_5m.tif",
+      "passed": true,
+      "details": "identical CRS, transform and dimensions"
+    },
+    {
+      "name": "coverage.roughness_5m.tif",
+      "passed": true,
+      "details": "all analysis cells have source support"
+    },
+    {
+      "name": "alignment.ctx_dem_context.tif",
+      "passed": true,
+      "details": "identical CRS, transform and dimensions"
+    },
+    {
+      "name": "coverage.ctx_dem_context.tif",
+      "passed": true,
+      "details": "all analysis cells have source support"
+    },
+    {
+      "name": "alignment.crism_olindex3_5m.tif",
+      "passed": true,
+      "details": "identical CRS, transform and dimensions"
+    },
+    {
+      "name": "coverage.crism_olindex3_5m.tif",
+      "passed": true,
+      "details": "all analysis cells have source support"
+    },
+    {
+      "name": "alignment.crism_d2300_5m.tif",
+      "passed": true,
+      "details": "identical CRS, transform and dimensions"
+    },
+    {
+      "name": "coverage.crism_d2300_5m.tif",
+      "passed": true,
+      "details": "all analysis cells have source support"
+    },
+    {
+      "name": "alignment.crism_min2295_2480_5m.tif",
+      "passed": true,
+      "details": "identical CRS, transform and dimensions"
+    },
+    {
+      "name": "coverage.crism_min2295_2480_5m.tif",
+      "passed": true,
+      "details": "all analysis cells have source support"
+    },
+    {
+      "name": "terrain.slope",
+      "passed": true,
+      "details": "central-difference slope matches the elevation grid"
+    },
+    {
+      "name": "alignment.center",
+      "passed": true,
+      "details": "center pixel agrees with projected center to <1 mm"
+    },
+    {
+      "name": "crism.olindex3",
+      "passed": true,
+      "details": "measured 18 m parameters, no artificial interpolation detail"
+    },
+    {
+      "name": "crism.d2300",
+      "passed": true,
+      "details": "measured 18 m parameters, no artificial interpolation detail"
+    },
+    {
+      "name": "crism.min2295_2480",
+      "passed": true,
+      "details": "measured 18 m parameters, no artificial interpolation detail"
+    },
+    {
+      "name": "checksum.ctx_dem",
+      "passed": true,
+      "details": "native source-window checksum"
+    },
+    {
+      "name": "checksum.ctx_ortho",
+      "passed": true,
+      "details": "native source-window checksum"
+    },
+    {
+      "name": "checksum.hirise_dtm",
+      "passed": true,
+      "details": "native source-window checksum"
+    },
+    {
+      "name": "checksum.hirise_ortho",
+      "passed": true,
+      "details": "native source-window checksum"
+    },
+    {
+      "name": "target.A",
+      "passed": true,
+      "details": "coordinate verified against exact Rover PLACES site/drive"
+    },
+    {
+      "name": "target.images.A",
+      "passed": true,
+      "details": "4 localized camera observations"
+    },
+    {
+      "name": "target.snapping.A",
+      "passed": true,
+      "details": "routing snap offset 0.39 m, recorded separately from measured position"
+    },
+    {
+      "name": "target.B",
+      "passed": true,
+      "details": "coordinate verified against exact Rover PLACES site/drive"
+    },
+    {
+      "name": "target.images.B",
+      "passed": true,
+      "details": "4 localized camera observations"
+    },
+    {
+      "name": "target.snapping.B",
+      "passed": true,
+      "details": "routing snap offset 0.0 m, recorded separately from measured position"
+    },
+    {
+      "name": "target.C",
+      "passed": true,
+      "details": "coordinate verified against exact Rover PLACES site/drive"
+    },
+    {
+      "name": "target.images.C",
+      "passed": true,
+      "details": "4 localized camera observations"
+    },
+    {
+      "name": "target.snapping.C",
+      "passed": true,
+      "details": "routing snap offset 3.02 m, recorded separately from measured position"
+    },
+    {
+      "name": "meda.originals",
+      "passed": true,
+      "details": "all 28 CSV originals and 28 XML labels verified; summary recomputed"
+    },
+    {
+      "name": "sources.categories",
+      "passed": true,
+      "details": "CTX, HiRISE elevation/imagery, geology, CRISM, rover positions, surface images and MEDA"
+    },
+    {
+      "name": "upstream.jezero_delta_traverse.geojson",
+      "passed": true,
+      "details": "exact bytes"
+    },
+    {
+      "name": "upstream.geology_units.geojson",
+      "passed": true,
+      "details": "verified CRLF/LF-only normalization"
+    },
+    {
+      "name": "upstream.meda_7sol_summary.csv",
+      "passed": true,
+      "details": "verified CRLF/LF-only normalization"
+    },
+    {
+      "name": "upstream.raster_stats.json",
+      "passed": true,
+      "details": "verified CRLF/LF-only normalization"
+    },
+    {
+      "name": "upstream.rover_traverse_simplified.geojson",
+      "passed": true,
+      "details": "verified CRLF/LF-only normalization"
+    },
+    {
+      "name": "upstream.science_waypoints.geojson",
+      "passed": true,
+      "details": "exact bytes"
+    },
+    {
+      "name": "upstream.surface_images.csv",
+      "passed": true,
+      "details": "verified CRLF/LF-only normalization"
+    },
+    {
+      "name": "upstream.crism_d2300.png",
+      "passed": true,
+      "details": "exact bytes"
+    },
+    {
+      "name": "upstream.crism_min2295_2480.png",
+      "passed": true,
+      "details": "exact bytes"
+    },
+    {
+      "name": "upstream.crism_olindex3.png",
+      "passed": true,
+      "details": "exact bytes"
+    },
+    {
+      "name": "upstream.ctx_dem.png",
+      "passed": true,
+      "details": "exact bytes"
+    },
+    {
+      "name": "upstream.geology.png",
+      "passed": true,
+      "details": "exact bytes"
+    },
+    {
+      "name": "upstream.hirise_dtm.png",
+      "passed": true,
+      "details": "exact bytes"
+    },
+    {
+      "name": "upstream.hirise_ortho.png",
+      "passed": true,
+      "details": "exact bytes"
+    },
+    {
+      "name": "upstream.roughness.png",
+      "passed": true,
+      "details": "exact bytes"
+    },
+    {
+      "name": "upstream.slope.png",
+      "passed": true,
+      "details": "exact bytes"
+    },
+    {
+      "name": "upstream.NLE_0399_0702370208_597ECM_N0182774SAPP00601_00_0LLJ.jpg",
+      "passed": true,
+      "details": "exact bytes"
+    },
+    {
+      "name": "upstream.NLE_0647_0724391279_862ECM_N0312154SCAM15011_00_0LLJ.jpg",
+      "passed": true,
+      "details": "exact bytes"
+    },
+    {
+      "name": "upstream.NLE_0868_0744011512_411ECM_N0421460SCAM02868_00_0LLJ.jpg",
+      "passed": true,
+      "details": "exact bytes"
+    },
+    {
+      "name": "upstream.NRF_0399_0702370551_290ECM_N0190000NCAM03399_01_185J.jpg",
+      "passed": true,
+      "details": "exact bytes"
+    },
+    {
+      "name": "upstream.NRF_0647_0724384883_630ECM_N0312154NCAM03647_01_195J.jpg",
+      "passed": true,
+      "details": "exact bytes"
+    },
+    {
+      "name": "upstream.NRF_0868_0744001023_661ECM_N0421460NCAM03868_01_095J.jpg",
+      "passed": true,
+      "details": "exact bytes"
+    },
+    {
+      "name": "upstream.ZL0_0399_0702374156_525EBY_N0190000ZCAM07114_0340LMJ.jpg",
+      "passed": true,
+      "details": "exact bytes"
+    },
+    {
+      "name": "upstream.ZL0_0647_0724373593_522EBY_N0311710ZCAM08646_1100LMJ.jpg",
+      "passed": true,
+      "details": "exact bytes"
+    },
+    {
+      "name": "upstream.ZL0_0868_0744003129_956EBY_N0421460ZCAM08873_0630LMJ.jpg",
+      "passed": true,
+      "details": "exact bytes"
+    },
+    {
+      "name": "upstream.ZR0_0399_0702374156_525EBY_N0190000ZCAM07114_0340LMJ.jpg",
+      "passed": true,
+      "details": "exact bytes"
+    },
+    {
+      "name": "upstream.ZR0_0647_0724373593_522EBY_N0311710ZCAM08646_1100LMJ.jpg",
+      "passed": true,
+      "details": "exact bytes"
+    },
+    {
+      "name": "upstream.ZR0_0868_0744003129_956EBY_N0421460ZCAM08873_0630LMJ.jpg",
+      "passed": true,
+      "details": "exact bytes"
+    }
+  ]
+}

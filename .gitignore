@@ -160,3 +160,7 @@ data/manifests/runtime_checksums.sha256
 # Python cache
 __pycache__/
 *.py[cod]
+
+# Local scientific processing environment
+.venv-data/
+data/catalog/

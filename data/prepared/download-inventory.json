@@ -1,0 +1,1060 @@
+{
+  "scope": "Originals/native windows retained for the local Jezero EVA",
+  "files": [
+    {
+      "path": "data/raw/.gitkeep",
+      "bytes": 1,
+      "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+    },
+    {
+      "path": "data/raw/best_interp-early.csv",
+      "bytes": 149985,
+      "sha256": "703c7168db2824c818c49aba3c0140d64a866ff8e6a5904d15e230762b26789d"
+    },
+    {
+      "path": "data/raw/best_interp.csv",
+      "bytes": 8684070,
+      "sha256": "58fbc62f2676195a00b40b2da53a797a70284a8d2344b288c999d325b7ccb4cc"
+    },
+    {
+      "path": "data/raw/best_interp.csv.xml",
+      "bytes": 15890,
+      "sha256": "03a382042c73d7a7eaced1c32f64108ed42c07f2139bbcc815cb4ab882eac70b"
+    },
+    {
+      "path": "data/raw/crism/d2300.tif",
+      "bytes": 2689,
+      "sha256": "5d1b97fd972ca28c8422c0a34a6e747fc5a11c2ea0b3b67074bda8e534db66d2"
+    },
+    {
+      "path": "data/raw/crism/frt00005c5e_07_su166j_mtr3.hdr",
+      "bytes": 1802,
+      "sha256": "88d8767b31372fb814b1325a4cb53da8f280339a96b647e8d8937d3f417a89a4"
+    },
+    {
+      "path": "data/raw/crism/frt00005c5e_07_su166j_mtr3.lbl",
+      "bytes": 8386,
+      "sha256": "aa222c450237672582bfc11de85820d7b4fed72c3fd472591d51fffbfe88a2ed"
+    },
+    {
+      "path": "data/raw/crism/frt00005c5e_07_su166j_mtr3.xml",
+      "bytes": 66723,
+      "sha256": "41b69c98dcd08d9b2e20f02eccf00274cbcb57131ce93ef41ae4951462ba0f84"
+    },
+    {
+      "path": "data/raw/crism/local-extraction.json",
+      "bytes": 1868,
+      "sha256": "e6596362151b6f6a29cef622cd707a933641119048b10dd071797f394a436466"
+    },
+    {
+      "path": "data/raw/crism/min2295_2480.tif",
+      "bytes": 2630,
+      "sha256": "8e720d524f30b3aca05fc77ea9105e01928953ad4d07c90b4e480377ed65156a"
+    },
+    {
+      "path": "data/raw/crism/olindex3.tif",
+      "bytes": 2792,
+      "sha256": "4b05cee7d71b768991d6092e5eaea0733055f8ce40635f1d6c0354a03bbad31e"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000001.TablesByName.atx",
+      "bytes": 16406,
+      "sha256": "9754dc04029ffd97fe729fe10ed0ea3d3ffbf505cf3ae9e5ec7a8a426f9478cf"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000001.freelist",
+      "bytes": 8536,
+      "sha256": "ebb8cb1b11f68f786f0bc9931b77c73f788bec7acec6c5fa19711836ec2dc74e"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000001.gdbindexes",
+      "bytes": 110,
+      "sha256": "80ba95b873e151074244f7655f9e29ce8967aab1bd57ff4c06a329b723a3d46c"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000001.gdbtable",
+      "bytes": 1154,
+      "sha256": "8a4951ecc611727bd77f40839761935aeda985bc761ec01ab1efa6d26a47d78e"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000001.gdbtablx",
+      "bytes": 5152,
+      "sha256": "494330e77e24f0358d63ee1d358796fec0dad83bfe0d3cb7fbd8170e77338b96"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000002.gdbtable",
+      "bytes": 2055,
+      "sha256": "9efa50dc62a40e109a546054943ae5ad4b3d41aa81ece0dfa026b7b23cb09da8"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000002.gdbtablx",
+      "bytes": 5152,
+      "sha256": "f3ac9865dec6ab40e73d91dd1f5c2eef0248e66e359d4abb1d97edba92b5df88"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000003.gdbindexes",
+      "bytes": 42,
+      "sha256": "de0911d18e2f304380c04ae123ea18057d262d788301f7cc3148298231c7c618"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000003.gdbtable",
+      "bytes": 1021,
+      "sha256": "68179b2a32963856bd07ea3ad450c7a3fa9f03ba9faf830dd3d2f03f0ebd1778"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000003.gdbtablx",
+      "bytes": 5152,
+      "sha256": "d63fd5f8a490aa6aeffde1336e80ce35b5399af5752a72b316570a670b09d167"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000004.CatItemsByPhysicalName.atx",
+      "bytes": 16406,
+      "sha256": "34772d6eee066d42265baa19dddc305c2fd43a97964ad827e01efca1af06ea39"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000004.CatItemsByType.atx",
+      "bytes": 4118,
+      "sha256": "5c1b54a45116baedf71cc432bff2a5b340bd0f0e1e63a42ede60babe6c351a8f"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000004.FDO_UUID.atx",
+      "bytes": 4118,
+      "sha256": "e54531f6ca8724afd08367b9f87701c39c7c57d05ffabb16230e4d2ddd91991e"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000004.freelist",
+      "bytes": 69976,
+      "sha256": "e5a445d2d37d65bf7e0eda0480f104bbc2a677fa6b20eae3aef3b251944d1452"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000004.gdbindexes",
+      "bytes": 310,
+      "sha256": "f29887c93b126a3feb0e20958cd73cc774f76ab79284b9c7286dc12eb05db858"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000004.gdbtable",
+      "bytes": 770078,
+      "sha256": "71fe13fd6d39930b35a061e1420230638a925c8a6a1901d6eabd61a053539a0e"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000004.gdbtablx",
+      "bytes": 5152,
+      "sha256": "71e3730956b3cb8f3a7cbd3874502795d6e5db64cb5df9482f95ab265eaceada"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000004.spx",
+      "bytes": 1138710,
+      "sha256": "2e660cb740e8b5e2e1fdf358cc62847d4d2a3d121d7539726ddad94733ef7231"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000005.CatItemTypesByName.atx",
+      "bytes": 12310,
+      "sha256": "28e80863dc417483add2244500839505879fe0a3ac0aa1e253fc920e6fd49bc5"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000005.CatItemTypesByParentTypeID.atx",
+      "bytes": 4118,
+      "sha256": "a013449e1f84b85c5b5c8428cfdbfe3d4bc214c374541be60e1714c1b85ea849"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000005.CatItemTypesByUUID.atx",
+      "bytes": 4118,
+      "sha256": "610e198ef32da28e04ac17c6a811d0134b5294a66748ab5c609aa13faff0a765"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000005.gdbindexes",
+      "bytes": 296,
+      "sha256": "c21e650994b48cc72d174b3caf2ac1bd19e2d7305c8087aaae97e24caecf98a5"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000005.gdbtable",
+      "bytes": 1906,
+      "sha256": "898c1b5e925c70bb037c60289b49fd2e22c149aeac6fe3931a6fec85fef6f683"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000005.gdbtablx",
+      "bytes": 5152,
+      "sha256": "b6c82c8e01c5ef65d2b60ab8843085fe7d3d769d07d2a83683c4fdb0bcb4073f"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000006.CatRelsByDestinationID.atx",
+      "bytes": 4118,
+      "sha256": "e5f6f235665429b3dabf884c75cc64160d26219f4299c11b43fa9fd7d22c3b1b"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000006.CatRelsByOriginID.atx",
+      "bytes": 4118,
+      "sha256": "d75429b4da5c11f9366e85d1fe7bc4468c035c59b42b54f26c128e4ff3598d7b"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000006.CatRelsByType.atx",
+      "bytes": 4118,
+      "sha256": "50d20ca4722dd66603f57d721e2509e3c07989b64068a0f0e6adf3678dd44f03"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000006.FDO_UUID.atx",
+      "bytes": 4118,
+      "sha256": "a868a2ca1fb520c6ff159ec193af11b5b86c9a6ce6566daeeeec3d9435e94d1c"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000006.freelist",
+      "bytes": 12632,
+      "sha256": "f26cc28440114d65d86b8703e3c155d358db52e86961013c6d0d69a1b26e46ba"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000006.gdbindexes",
+      "bytes": 318,
+      "sha256": "1919a00326f198a90dc97545ec448c10b2b90d367020222212f7b00433fe09b5"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000006.gdbtable",
+      "bytes": 10871,
+      "sha256": "43b795bb6ad914a4d35a19cb251d83abf824039ea1bf94cdc5f5c9544ca23c92"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000006.gdbtablx",
+      "bytes": 5152,
+      "sha256": "17b4451c7c730dc9022dcc916b9cdcb0c2cb67e06b758a4b0fd35ecac4c926cc"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000007.CatRelTypesByBackwardLabel.atx",
+      "bytes": 4118,
+      "sha256": "1888ba03af7c8e9789f90dfa7d5de62c4ca21e62c5e4b56405a5989610238107"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000007.CatRelTypesByDestItemTypeID.atx",
+      "bytes": 4118,
+      "sha256": "6a2a75083f3b91da1a8742720d9530c184b2cd98e56941bae28db7df69c477ff"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000007.CatRelTypesByForwardLabel.atx",
+      "bytes": 4118,
+      "sha256": "8996a0e42b1391cb821c33f854794147e2983e8aa6a8b69bf2a863c068df7cbf"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000007.CatRelTypesByName.atx",
+      "bytes": 4118,
+      "sha256": "8aa40b28156495870bf8d125221d59cf38f79044e28c1506dbf694b6830537a9"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000007.CatRelTypesByOriginItemTypeID.atx",
+      "bytes": 4118,
+      "sha256": "a2630c198b560b54e807310fe231e5d3168e0035c16e5b32ecf1271873f6dd07"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000007.CatRelTypesByUUID.atx",
+      "bytes": 4118,
+      "sha256": "44367f6ab4f20c8ec4eba8186db5e1699c94f06edcbba324ec64f84a8da6d7ea"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000007.gdbindexes",
+      "bytes": 602,
+      "sha256": "dc98e24d04eddd7f38905d176c1ea43c547a3a2daa0c80091a20d3443c726621"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000007.gdbtable",
+      "bytes": 3042,
+      "sha256": "75d54ad13fefe693d6e3c106fd61ca3a0978bcb9727d476c7cbdd543b9566108"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000007.gdbtablx",
+      "bytes": 5152,
+      "sha256": "dac6dbc426b8f32367d5ed0872ce45253e7ea830a9a8ad0533b63e71f2d21d37"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a0000000c.gdbindexes",
+      "bytes": 116,
+      "sha256": "760bd4864717c60d5e7c0c6461a622062680e6f79f51250f49456aa609b43774"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a0000000c.gdbtable",
+      "bytes": 5462,
+      "sha256": "9192f88a3f24c90d9c03e82e93b043c4f7ea6491c544828cb8f9b84b2dbad165"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a0000000c.gdbtablx",
+      "bytes": 5152,
+      "sha256": "85d0455a958a7411e7030ad0b29588546b53db85388ccf665f403cf62ff7c5e3"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a0000000c.spx",
+      "bytes": 4118,
+      "sha256": "09c8d6973f551d3243cf5eb0bca68ed868a50bbbc849284e5f4783bbab8111f2"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000035.AnnoClassID_Index_66.atx",
+      "bytes": 4118,
+      "sha256": "0a4180bd20fb59d6efad8273f43d9bb4d69b5615a989c5521202dfc25758fee6"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000035.Status_Index_66.atx",
+      "bytes": 4118,
+      "sha256": "eccca4154a67521170a81d881731ca01e876670d851221e09c91434f99624afd"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000035.freelist",
+      "bytes": 16728,
+      "sha256": "8ff7149f7994ad8723cf6d38afbcf12e36b5b8d0458ffcb8748ab33c95087dd8"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000035.gdbindexes",
+      "bytes": 276,
+      "sha256": "b8163b04dc7f6a7d8f45d7fb548d4638766c3ddc3288951d37460ebfd12c4b8b"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000035.gdbtable",
+      "bytes": 9088,
+      "sha256": "c1022ea85a9b56681eda21180fe0edc7f1b4b7ad759b9b8907dae5cd2f776bb3"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000035.gdbtablx",
+      "bytes": 5152,
+      "sha256": "fa50f6795fcb3e743b4464fb553a27e4a65245aea4fad65da5de7402b0ded05f"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000035.spx",
+      "bytes": 4118,
+      "sha256": "ce9b468ae224f33c5924897f4c5fce062cab4066925f98f82240483638601770"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000036.freelist",
+      "bytes": 8536,
+      "sha256": "0114e3ca9534af3fdb299e72e56fc5c009dd80e36f67883157271e8760cc6a86"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000036.gdbindexes",
+      "bytes": 116,
+      "sha256": "c12bbe6b47cd58d64a4d9b93ce7a015938308b01a7483f5b8680064ca552eeef"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000036.gdbtable",
+      "bytes": 2257,
+      "sha256": "1230365df85409a21196b6103a2dab63fc35e571da4dec3c6691823c2cede36f"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000036.gdbtablx",
+      "bytes": 5152,
+      "sha256": "706ee27f633252377a0efda53b0b2a2c619ad3467c9090ead23179f3dbc41a15"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000036.spx",
+      "bytes": 4118,
+      "sha256": "f3dfd9c980f6795a4e9c98838f7ece58c27cbeeb302e0772fdfc5e93d1cb7b34"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000037.freelist",
+      "bytes": 12632,
+      "sha256": "295b17709814bd14ff5590600cc527de18b761687544c996618d8165ab8b0219"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000037.gdbindexes",
+      "bytes": 116,
+      "sha256": "c12bbe6b47cd58d64a4d9b93ce7a015938308b01a7483f5b8680064ca552eeef"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000037.gdbtable",
+      "bytes": 5176,
+      "sha256": "9f97781ab4f8a85e254665cdaca0b5422b89d0b71e9d552a844da7887b3715ee"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000037.gdbtablx",
+      "bytes": 5152,
+      "sha256": "253dc39103f6d57c4590374227a598b31aa80a31b0664afad948b91f313fae20"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000037.spx",
+      "bytes": 4118,
+      "sha256": "1cda623062e59f4195a540173840eb8710890c423ebafc74e34c9fd3a6625de2"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000038.AnnoClassID_Index_69.atx",
+      "bytes": 4118,
+      "sha256": "f635a4de17fc76d9fab63e984665d61b4a0591b5df5d9b573773030f9844ef83"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000038.GDB_69_FeatureID.atx",
+      "bytes": 4118,
+      "sha256": "82b52409cce1389ebe1758eb28b5caa4e5f7f45ebbcb923c42f80c3309157bac"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000038.Status_Index_69.atx",
+      "bytes": 4118,
+      "sha256": "06849505b863dfcf9898ba21afef18953e5d59607146a74c75a59bd3e2a46648"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000038.freelist",
+      "bytes": 41304,
+      "sha256": "3a70e57559fb3b540891a4bb6099aded45b4f7b6f94dc2a7414998152d3de628"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000038.gdbindexes",
+      "bytes": 348,
+      "sha256": "3c8eb383ff594978552e62eedb72f958705f80aab2b59c0fb9f861eab531f467"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000038.gdbtable",
+      "bytes": 50234,
+      "sha256": "8bcceb9f23bd1762f0cb8489d8c4af16b317d497006b2db144150c214e8ce96a"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000038.gdbtablx",
+      "bytes": 5152,
+      "sha256": "5191e22f05cc4e4549baba4ee7d76aad3515624d9efa097190bf61709db9ee6d"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000038.spx",
+      "bytes": 4118,
+      "sha256": "1626adbc57e384d4f10ac29c0565e7428d68101eb92c544a520ec96eeead9c22"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a0000003a.freelist",
+      "bytes": 8536,
+      "sha256": "56ec0a44e195949d1652e4b52446d06d25411a871d73814b1b7d5862b7b8ba58"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a0000003a.gdbindexes",
+      "bytes": 116,
+      "sha256": "c12bbe6b47cd58d64a4d9b93ce7a015938308b01a7483f5b8680064ca552eeef"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a0000003a.gdbtable",
+      "bytes": 6580024,
+      "sha256": "1f8146cea680616d3f9bc0f050572fa0340f841d186ebd324833f4fa0a1b3487"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a0000003a.gdbtablx",
+      "bytes": 15520,
+      "sha256": "45f221db56c5bee234cfc6da12c3e83611bb3946fb2fe482cda4cfda63641f68"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a0000003a.spx",
+      "bytes": 65558,
+      "sha256": "0dee2383064e2837f1c3225d22ddc084c50ec07a0f3501a50f57898031a7d1e3"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000040.freelist",
+      "bytes": 8536,
+      "sha256": "0b0bce8cc0de87d6466c6f6304947819fcdd3270aff2e469417f08dd98416ccf"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000040.gdbindexes",
+      "bytes": 116,
+      "sha256": "c12bbe6b47cd58d64a4d9b93ce7a015938308b01a7483f5b8680064ca552eeef"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000040.gdbtable",
+      "bytes": 2000071,
+      "sha256": "f9c2d68b94ce26b1ea8d0746bd093bfb109bf87fc558c98938cefe6846fcf6e2"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000040.gdbtablx",
+      "bytes": 5152,
+      "sha256": "46ad63284fc7b3b05025386106230f4138c8a89b22ed9d0614998ee1a8a54790"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000040.spx",
+      "bytes": 12310,
+      "sha256": "690cf0c09700e47933c3ac5fe199c00d8dd52a89500cee6d7fcfa565f142486b"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000041.freelist",
+      "bytes": 33112,
+      "sha256": "1621e0c804bc7ff115b5e9ee13e333adb29250bb2dc5afe8f219f8dfc6d650bd"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000041.gdbindexes",
+      "bytes": 116,
+      "sha256": "c12bbe6b47cd58d64a4d9b93ce7a015938308b01a7483f5b8680064ca552eeef"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000041.gdbtable",
+      "bytes": 81659,
+      "sha256": "470b99cd0daea6b932ec17377ed139d381ecee20c7be84c001a8fca11092c662"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000041.gdbtablx",
+      "bytes": 5152,
+      "sha256": "c66c378969eedfc0acaf99182785d4b74768f5929d330165fcbba278107ed771"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000041.spx",
+      "bytes": 12310,
+      "sha256": "6142450901212baf8cd9e9de45366d6ec9a5c73f0f634779b00dfe83cade2805"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000042.freelist",
+      "bytes": 4440,
+      "sha256": "b46a1e569464ad9cea30b1cb94b4bdc904061907cdff28ba77b57e9e877f8326"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000042.gdbindexes",
+      "bytes": 116,
+      "sha256": "c12bbe6b47cd58d64a4d9b93ce7a015938308b01a7483f5b8680064ca552eeef"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000042.gdbtable",
+      "bytes": 25647,
+      "sha256": "fdd5e03ff9a65835479dc5b5acf0b3861f6d84a07b49557547d238a6dc2b3833"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000042.gdbtablx",
+      "bytes": 5152,
+      "sha256": "5b8e65a8865e134061ebf0fc967a6b2692a6aba8ab3bf58e03ea0c89926677cd"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000042.spx",
+      "bytes": 16406,
+      "sha256": "d2767734fa134971c7fd2828ffbd4b0ad2564357f4b6f36b7ed0dd18bf878098"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000045.AnnoClassID_Index_84.atx",
+      "bytes": 16406,
+      "sha256": "c132a6be7011d790e195673770b0d5f84035990f256f8018196ebc6d3ee19c7e"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000045.GDB_84_FeatureID.atx",
+      "bytes": 16406,
+      "sha256": "d7684f4878ed03545b1a6020c0c16a71f3e367898907e3025d146480282b7569"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000045.Status_Index_84.atx",
+      "bytes": 16406,
+      "sha256": "c89a68c14dd004a57dbc67d29af87d19a2904e8383be92b5baecac22d36729b7"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000045.freelist",
+      "bytes": 65880,
+      "sha256": "d1f69c671104c329f22836ba83f13c3c22710220c35255d4ae83d1db6f373f10"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000045.gdbindexes",
+      "bytes": 348,
+      "sha256": "52251faf43018214e0cb326660932a2cf2388f2b254435461d9bf43922928c1e"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000045.gdbtable",
+      "bytes": 3568864,
+      "sha256": "470c7425658bee2e92705286fe6e64a292075207c302632bf4e8633a1356347d"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000045.gdbtablx",
+      "bytes": 10272,
+      "sha256": "9b334d759343193b3a486dd7bfaeaaea608575e31a7266ddfd71d0049aa89cff"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000045.spx",
+      "bytes": 65558,
+      "sha256": "0404ed5456043265add65c0282c32e89ba3e128f3b60cf6cc2636fcb475c274c"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000046.gdbindexes",
+      "bytes": 116,
+      "sha256": "c12bbe6b47cd58d64a4d9b93ce7a015938308b01a7483f5b8680064ca552eeef"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000046.gdbtable",
+      "bytes": 8746,
+      "sha256": "f8feeb4c140a8d831a8cd2d0890a49398a9eaa59435f92c09a6161ba6ff3be82"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000046.gdbtablx",
+      "bytes": 5152,
+      "sha256": "57158019ed090ea61e0ec8747506b732db9732ff7b6c7d65be5b6cd5a18b486c"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000046.spx",
+      "bytes": 4118,
+      "sha256": "ff36fa8f99b5cfd3aef19da5f2085b00b5eb4a75fa9ba7ec9ae12d5e21f98afb"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000049.gdbindexes",
+      "bytes": 116,
+      "sha256": "c12bbe6b47cd58d64a4d9b93ce7a015938308b01a7483f5b8680064ca552eeef"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000049.gdbtable",
+      "bytes": 13686,
+      "sha256": "cf5c0134058c0df023ab589cb9b39dfdab66a76fe35cbc73846e3a79cd70ecf1"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000049.gdbtablx",
+      "bytes": 5152,
+      "sha256": "3cadcf7263c8bf8e568b6456e937d9ddfaf2b127c25fb37e05dd4e0096aa0c77"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000049.spx",
+      "bytes": 12310,
+      "sha256": "8b43b04a21aa5a10f74896a7166ed39c139aa574f2201262eb08531d0388e14e"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000058.freelist",
+      "bytes": 90456,
+      "sha256": "37df56938b48db93bb71421daed62e2ae4eadb9dc386d33ddc72bf210cdda7eb"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000058.gdbindexes",
+      "bytes": 116,
+      "sha256": "c12bbe6b47cd58d64a4d9b93ce7a015938308b01a7483f5b8680064ca552eeef"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000058.gdbtable",
+      "bytes": 15752676,
+      "sha256": "a192e8f13fbd7b0d074725eaecb9d25ce4868911d288dbc40c2686b8b07b0e0a"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000058.gdbtablx",
+      "bytes": 10272,
+      "sha256": "e22f6ca65e5256d85d883da9b8ea24d5036490bd0923625f44bf0be36914fbe4"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/a00000058.spx",
+      "bytes": 28694,
+      "sha256": "1ac0d3b58ca9205e12777e74f18c6ab3ce523b6b6d4231502cdf774527658c7e"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/gdb",
+      "bytes": 4,
+      "sha256": "2594b6a92ebfb1c3312deb7d01c015fb95e9fbe9bd7bc6b527af07813ec7b910"
+    },
+    {
+      "path": "data/raw/geology/Nili.gdb/timestamps",
+      "bytes": 400,
+      "sha256": "a407c9c421e626d201d813b5878654183f8c081be493c6ba373b3d8946f9c41f"
+    },
+    {
+      "path": "data/raw/geology/source.json",
+      "bytes": 23258,
+      "sha256": "a0936ae425267c12da263826c921cce806ca648dc48c1f3dd70bc53ddb55e9bc"
+    },
+    {
+      "path": "data/raw/local/ctx_dem.json",
+      "bytes": 1497,
+      "sha256": "b7ecc23f690908b03dcfc0efea1ae961317335d613e9d2b7d27bd95ec8590c22"
+    },
+    {
+      "path": "data/raw/local/ctx_dem.tif",
+      "bytes": 3091,
+      "sha256": "b9db7405eb0123a873d7250022b2104f69c6dd34665eb36a19eb12b9479e13de"
+    },
+    {
+      "path": "data/raw/local/ctx_ortho.json",
+      "bytes": 1516,
+      "sha256": "75c34ae888a79e19bca77f1958f134121b6554c65770a4238ed9e13539e3a46f"
+    },
+    {
+      "path": "data/raw/local/ctx_ortho.tif",
+      "bytes": 4643,
+      "sha256": "fda47a7398977d066372780d23c75dcddea93c946698bd3f6dfa48d342b4986a"
+    },
+    {
+      "path": "data/raw/local/hirise_dtm.json",
+      "bytes": 1480,
+      "sha256": "1443ff39d897658a5fba66d30b78ef531c8dc85ab65f2c9704c598e9db346cc9"
+    },
+    {
+      "path": "data/raw/local/hirise_dtm.tif",
+      "bytes": 528807,
+      "sha256": "7ff4d3fd4ac6442059307e67073eb07b834454969181944bac0c4e6bf279310a"
+    },
+    {
+      "path": "data/raw/local/hirise_ortho.json",
+      "bytes": 1173,
+      "sha256": "038d0425a24be65a70e50548d95fdde6a7c7a291fc96cbea00e5b5080dbc2d7f"
+    },
+    {
+      "path": "data/raw/local/hirise_ortho.tif",
+      "bytes": 2092408,
+      "sha256": "cad341c91cb69339f38305470820dffeecd1955ef39499c84e63d2457c8206af"
+    },
+    {
+      "path": "data/raw/local-images/NLE_0645_0724215260_496ECM_N0310856SCAM15011_00_0LLJ.jpg",
+      "bytes": 88370,
+      "sha256": "1648ed9ffa998a263a132bdc08c16d5a5d172889f1da8841286cae3894475501"
+    },
+    {
+      "path": "data/raw/local-images/NLE_0647_0724391279_862ECM_N0312154SCAM15011_00_0LLJ.jpg",
+      "bytes": 72293,
+      "sha256": "fc5ff1ab38ee7b8b63ac39d9b3049cf28f308c0cd2668e86a775f64a6f218509"
+    },
+    {
+      "path": "data/raw/local-images/NLF_0646_0724297428_238ECM_N0311710NCAM03646_01_195J.jpg",
+      "bytes": 41830,
+      "sha256": "dc857cdf85a029c5bce53367d15c9231bf7cda45627104acd89ddf68340a96ca"
+    },
+    {
+      "path": "data/raw/local-images/NLF_0648_0724462226_274ECM_N0312154NCAM00501_01_295J.jpg",
+      "bytes": 20436,
+      "sha256": "86e34accbb977eaa0e49653efe85438e46a7bbc03ef03368359425cdd7f625a0"
+    },
+    {
+      "path": "data/raw/local-images/NRF_0645_0724201908_992ECM_N0310856NCAM03645_01_195J.jpg",
+      "bytes": 42286,
+      "sha256": "639a3fcf58b81f0a68cf6971b60abdeecc773402ef8bed0deb65c3df9ab12867"
+    },
+    {
+      "path": "data/raw/local-images/NRF_0646_0724297428_238ECM_N0311710NCAM03646_01_195J.jpg",
+      "bytes": 54591,
+      "sha256": "bd44468a917f6f4bb8e80dca28fd130f541bd8b5ecd7d19710a2527174ab4bc1"
+    },
+    {
+      "path": "data/raw/local-images/NRF_0647_0724384883_630ECM_N0312154NCAM03647_01_195J.jpg",
+      "bytes": 46148,
+      "sha256": "397250b5a0a1fac0f6b23fa6718df20f19c51f36410a0ede2334a32896b1326b"
+    },
+    {
+      "path": "data/raw/local-images/ZL0_0645_0724206077_928EBY_N0310856ZCAM07114_0340LMJ.jpg",
+      "bytes": 113556,
+      "sha256": "63814ebb445d38a7091503214ead7950a027d0e600d47ca7f2775f5794fc1b42"
+    },
+    {
+      "path": "data/raw/local-images/ZL0_0646_0724301293_488EBY_N0311710ZCAM07114_0340LMJ.jpg",
+      "bytes": 60847,
+      "sha256": "9235b02fc2b08e2cb7cdc5cdbc5c2710310d6d50f45fd1609fb037df5fce17b3"
+    },
+    {
+      "path": "data/raw/local-images/ZL0_0647_0724386402_724EBY_N0312154ZCAM07114_0340LMJ.jpg",
+      "bytes": 41389,
+      "sha256": "20f2970cac8829b7892d2e02cd3246d0935bacd393b9ce90a3f2e23c59482b72"
+    },
+    {
+      "path": "data/raw/local-images/ZL6_0648_0724461987_159ECM_N0312154ZCAM01061_034080J.jpg",
+      "bytes": 14788,
+      "sha256": "7cf750dcfb6e3fd87a2374f192bf5a395bb62f04a36296c8c211d0ac6089975e"
+    },
+    {
+      "path": "data/raw/local-images/ZR0_0645_0724206077_928EBY_N0310856ZCAM07114_0340LMJ.jpg",
+      "bytes": 113554,
+      "sha256": "ca1cc446775aad8d62d7c3310c6db0b00110d562b48d8708db4569dc1f87fe30"
+    },
+    {
+      "path": "data/raw/local-images/ZR0_0646_0724301293_488EBY_N0311710ZCAM07114_0340LMJ.jpg",
+      "bytes": 64984,
+      "sha256": "269fc902ad2acde9489f881b4d0b6c0efc8786e298d2deca327cb9f866779206"
+    },
+    {
+      "path": "data/raw/local-images/ZR0_0647_0724386402_724EBY_N0312154ZCAM07114_0340LMJ.jpg",
+      "bytes": 42563,
+      "sha256": "9d126da1585e4b3f6827ad557dc8b3c760534f48319c826cea582bc97ffedb62"
+    },
+    {
+      "path": "data/raw/local-images/ZR2_0648_0724461987_159ECM_N0312154ZCAM01061_034080J.jpg",
+      "bytes": 13946,
+      "sha256": "a20f94af1c38dfee9ddebf00540f0251d7dea418f15b82db1466eef742e3a9b4"
+    },
+    {
+      "path": "data/raw/local-images/manifest.json",
+      "bytes": 35208,
+      "sha256": "87c24a1c8d8076e0834842826f82325af1df1ae323611194cf39b26bceb0c25a"
+    },
+    {
+      "path": "data/raw/local-images/sol-645-metadata.json",
+      "bytes": 11744,
+      "sha256": "37a30b38520016f14c58b89b9428dd95e6962a3aec66ea047bb5d8e157036b74"
+    },
+    {
+      "path": "data/raw/local-images/sol-646-metadata.json",
+      "bytes": 11735,
+      "sha256": "fcd1f4e9843e4510b83846f0c4ee696f36935d5eb8781a1828873f9477c9df05"
+    },
+    {
+      "path": "data/raw/local-images/sol-647-metadata.json",
+      "bytes": 11735,
+      "sha256": "7b2ed4cfe1dc51f91a20112387265ba51c52557636f06fb3485b55861c82c069"
+    },
+    {
+      "path": "data/raw/local-images/sol-648-metadata.json",
+      "bytes": 8790,
+      "sha256": "e2d99bacaf3d0198af11c7f7601c796e8c36ed7ca615be8193dcb6b58267f00b"
+    },
+    {
+      "path": "data/raw/meda/sol_0307/WE__0307___________CAL_ATS_________________P01.CSV",
+      "bytes": 4094350,
+      "sha256": "e07b6adac579f7f35f6f0444100e7d437e55959c104d10ddcd13ececaf59ff0d"
+    },
+    {
+      "path": "data/raw/meda/sol_0307/WE__0307___________CAL_ATS_________________P01.xml",
+      "bytes": 9807,
+      "sha256": "3afdac6ff017ce0832680d857e8fd528f47432239f5bac5ea6f68f84289241f0"
+    },
+    {
+      "path": "data/raw/meda/sol_0307/WE__0307___________CAL_TIRS________________P02.CSV",
+      "bytes": 5903756,
+      "sha256": "5b0266813fecee17a3c8f7b53735f806fe3d675fbf85a15b07c8dbaa9e3038f2"
+    },
+    {
+      "path": "data/raw/meda/sol_0307/WE__0307___________CAL_TIRS________________P02.xml",
+      "bytes": 14921,
+      "sha256": "caf03e2d8e3df5e45fbb18732b5d755f57d55b70824c476f1d3cd056959de5ec"
+    },
+    {
+      "path": "data/raw/meda/sol_0307/WE__0307___________DER_PS__________________P01.CSV",
+      "bytes": 2780139,
+      "sha256": "01c928bdd26433299be9481e6cc7e2197dfd74c38a20bd36de72810e09a612f7"
+    },
+    {
+      "path": "data/raw/meda/sol_0307/WE__0307___________DER_PS__________________P01.xml",
+      "bytes": 9097,
+      "sha256": "ef606a7db8e27b0944648cc1f073773d8353d4c4b831ad1b89352d3ced10b584"
+    },
+    {
+      "path": "data/raw/meda/sol_0307/WE__0307___________DER_WS__________________P02.CSV",
+      "bytes": 2420933,
+      "sha256": "b2aabb4362166ffbf2c83a7f6b6b94d0d539bccabb6891a77e2c419bb3b39eeb"
+    },
+    {
+      "path": "data/raw/meda/sol_0307/WE__0307___________DER_WS__________________P02.xml",
+      "bytes": 10728,
+      "sha256": "d35306a78780da6d97b007799f40271f56f58a1a40403707dc1a13f31982ef9a"
+    },
+    {
+      "path": "data/raw/meda/sol_0308/WE__0308___________CAL_ATS_________________P01.CSV",
+      "bytes": 4341620,
+      "sha256": "028a32732fe6fa5e987bf974fdd8dbc427616f472d33a99084851d66a0b5b8aa"
+    },
+    {
+      "path": "data/raw/meda/sol_0308/WE__0308___________CAL_ATS_________________P01.xml",
+      "bytes": 9807,
+      "sha256": "ddd7dc681aa06f4156b9cd9cf31c8bbdd207e7ee72d32f5797f546a608a423af"
+    },
+    {
+      "path": "data/raw/meda/sol_0308/WE__0308___________CAL_TIRS________________P02.CSV",
+      "bytes": 6261928,
+      "sha256": "007199470483fc74f7ccf9a47b9757648f6a1ba67bf7791047289e99a5cdbace"
+    },
+    {
+      "path": "data/raw/meda/sol_0308/WE__0308___________CAL_TIRS________________P02.xml",
+      "bytes": 14921,
+      "sha256": "ff78405e4ecaf450b49ac7dd8720d2cf0996cb4842383c7d285c74eaac17030d"
+    },
+    {
+      "path": "data/raw/meda/sol_0308/WE__0308___________DER_PS__________________P01.CSV",
+      "bytes": 2948403,
+      "sha256": "a95eca77aad42382ee18b69e15bd94609643ad3fe63cb55a6f4e7425cec5aeda"
+    },
+    {
+      "path": "data/raw/meda/sol_0308/WE__0308___________DER_PS__________________P01.xml",
+      "bytes": 9097,
+      "sha256": "048923439d2430f47db12c973940e211e777ebd55ec6a485715ecbb25d527ed5"
+    },
+    {
+      "path": "data/raw/meda/sol_0308/WE__0308___________DER_WS__________________P02.CSV",
+      "bytes": 3363912,
+      "sha256": "5e03a42398ac8d4ecc6e9412f3489b27d104405b1c398970e4debc12e65acc6e"
+    },
+    {
+      "path": "data/raw/meda/sol_0308/WE__0308___________DER_WS__________________P02.xml",
+      "bytes": 10728,
+      "sha256": "3ebc389f5484ddf35776c7d9cb19c7150c479a06dda269dac6e05ed28ff5f089"
+    },
+    {
+      "path": "data/raw/meda/sol_0309/WE__0309___________CAL_ATS_________________P01.CSV",
+      "bytes": 3097923,
+      "sha256": "233467d679e6c6a035953b0c2ffa046c37eae61f5c4c04bad2e5fbcf9413306b"
+    },
+    {
+      "path": "data/raw/meda/sol_0309/WE__0309___________CAL_ATS_________________P01.xml",
+      "bytes": 9808,
+      "sha256": "fb67ebf95a9855f3fe7bea83075fbd3bd895228b9c73a37a6833e731597e674f"
+    },
+    {
+      "path": "data/raw/meda/sol_0309/WE__0309___________CAL_TIRS________________P02.CSV",
+      "bytes": 4469106,
+      "sha256": "17305d198a25080f9a263ae86eda84e9b0a0a2528406cc5a18592b8422415917"
+    },
+    {
+      "path": "data/raw/meda/sol_0309/WE__0309___________CAL_TIRS________________P02.xml",
+      "bytes": 14922,
+      "sha256": "9683a97b6240c1a0e4e84ab244d7af7d1a41d4c2aec2656551bfb61aa45f4445"
+    },
+    {
+      "path": "data/raw/meda/sol_0309/WE__0309___________DER_PS__________________P01.CSV",
+      "bytes": 2091855,
+      "sha256": "5f0495bd480739d9453673165bd835bfb6209f318bc6e2261a19c95a8aa452bb"
+    },
+    {
+      "path": "data/raw/meda/sol_0309/WE__0309___________DER_PS__________________P01.xml",
+      "bytes": 9098,
+      "sha256": "aec3115c74f87b3cbe138adf2f56cc6400266bac0279ef19f463f75937198f75"
+    },
+    {
+      "path": "data/raw/meda/sol_0309/WE__0309___________DER_WS__________________P01.CSV",
+      "bytes": 2064704,
+      "sha256": "3e2f278f4cdaf2aad324345684408dbd09e34bf370179b437062528e112676d1"
+    },
+    {
+      "path": "data/raw/meda/sol_0309/WE__0309___________DER_WS__________________P01.xml",
+      "bytes": 10467,
+      "sha256": "b084f5422b86298effda0ed89b3e1cb761bf3e9077a9883a81094fead30a38d6"
+    },
+    {
+      "path": "data/raw/meda/sol_0310/WE__0310___________CAL_ATS_________________P01.CSV",
+      "bytes": 4099959,
+      "sha256": "a2722191d55397c9eb64afcb5072b44c6fe7b43c84208e57d820d8380c9832c4"
+    },
+    {
+      "path": "data/raw/meda/sol_0310/WE__0310___________CAL_ATS_________________P01.xml",
+      "bytes": 9808,
+      "sha256": "ab2e58496528fd71e6f423a9b7f065dfc1015cd735dd04059d417c58074528dd"
+    },
+    {
+      "path": "data/raw/meda/sol_0310/WE__0310___________CAL_TIRS________________P02.CSV",
+      "bytes": 5924371,
+      "sha256": "cb3b0c092c3102d3e4161aa01caed65a0afa3cae66089bea50bd843797d64ed5"
+    },
+    {
+      "path": "data/raw/meda/sol_0310/WE__0310___________CAL_TIRS________________P02.xml",
+      "bytes": 14922,
+      "sha256": "acbc6ebe518dc93210bbe1fedefa53958ee94a75e7b0befc86ae7b80016adf8a"
+    },
+    {
+      "path": "data/raw/meda/sol_0310/WE__0310___________DER_PS__________________P01.CSV",
+      "bytes": 2783379,
+      "sha256": "184c5f5ef52819c7e682a3949c7218c931b6c636b43a6791f81e6a70c7b8ad3f"
+    },
+    {
+      "path": "data/raw/meda/sol_0310/WE__0310___________DER_PS__________________P01.xml",
+      "bytes": 9098,
+      "sha256": "034c5c76b002ac78ed5ce981b2548c519e72be285dde8e3fbd583890cc95ccba"
+    },
+    {
+      "path": "data/raw/meda/sol_0310/WE__0310___________DER_WS__________________P02.CSV",
+      "bytes": 3165775,
+      "sha256": "abe2a7744bcae2da22596cbd676b45abb8c18717b051d69f7166b7be503adbd8"
+    },
+    {
+      "path": "data/raw/meda/sol_0310/WE__0310___________DER_WS__________________P02.xml",
+      "bytes": 10729,
+      "sha256": "1119d42237d1c57894435a597c55755bedde2c1cf9129cb8a01d4e20d42f4aee"
+    },
+    {
+      "path": "data/raw/meda/sol_0311/WE__0311___________CAL_ATS_________________P01.CSV",
+      "bytes": 5850046,
+      "sha256": "b2f0bfe4511c2470e7c9b8ad01712296ae24806cca1922fd1fe5049ca5d20108"
+    },
+    {
+      "path": "data/raw/meda/sol_0311/WE__0311___________CAL_ATS_________________P01.xml",
+      "bytes": 9808,
+      "sha256": "f61fcba18f46c9062e3fa512458926dde8ffe7263963a7f76e38fcc9d8cbb19c"
+    },
+    {
+      "path": "data/raw/meda/sol_0311/WE__0311___________CAL_TIRS________________P02.CSV",
+      "bytes": 8441228,
+      "sha256": "65fb9bfc3e718a875d69839ad65c3cec16cc7d222928a95edc32b973bbc33452"
+    },
+    {
+      "path": "data/raw/meda/sol_0311/WE__0311___________CAL_TIRS________________P02.xml",
+      "bytes": 14922,
+      "sha256": "0742ef7f599b4bba542a2b2c2d5bff5144609071e167eebe569b40f85e8c6e31"
+    },
+    {
+      "path": "data/raw/meda/sol_0311/WE__0311___________DER_PS__________________P01.CSV",
+      "bytes": 3987579,
+      "sha256": "aeed50f59527f16d99ca39a124e83ed3515b6c4e8d6a6603d5e253a685f083da"
+    },
+    {
+      "path": "data/raw/meda/sol_0311/WE__0311___________DER_PS__________________P01.xml",
+      "bytes": 9098,
+      "sha256": "a673013b094e53af070297e7d134142809d018984a50e8fc213ada3f0fc9c9bc"
+    },
+    {
+      "path": "data/raw/meda/sol_0311/WE__0311___________DER_WS__________________P02.CSV",
+      "bytes": 4545619,
+      "sha256": "3376d9dbd05111e9db553a4171100ef12e4ed1009a01966b02cbc57799b0d33f"
+    },
+    {
+      "path": "data/raw/meda/sol_0311/WE__0311___________DER_WS__________________P02.xml",
+      "bytes": 10729,
+      "sha256": "819abc48fd45d7c81a7e0dfde6455fa4b8315f65a90b15089166cd2e9efc2a7f"
+    },
+    {
+      "path": "data/raw/meda/sol_0312/WE__0312___________CAL_ATS_________________P01.CSV",
+      "bytes": 6133656,
+      "sha256": "08fb141cd6214da7def28f730a2c4ecdeaa1e30c74cc51df205334b996ad1cf0"
+    },
+    {
+      "path": "data/raw/meda/sol_0312/WE__0312___________CAL_ATS_________________P01.xml",
+      "bytes": 9808,
+      "sha256": "a24fd16b8bbf5f43b9092af6b5e842703502733e879c8c0cf772b1af219d29ab"
+    },
+    {
+      "path": "data/raw/meda/sol_0312/WE__0312___________CAL_TIRS________________P02.CSV",
+      "bytes": 8844552,
+      "sha256": "a4479c504e8e01a5ea899464d28bcf3c19ee84cb360f7b6ac60771a170c5ffa2"
+    },
+    {
+      "path": "data/raw/meda/sol_0312/WE__0312___________CAL_TIRS________________P02.xml",
+      "bytes": 14922,
+      "sha256": "351cedb55c6ffba316fdf2ded2b2e4dda517b6ee19bbea87ba898a0a4e042330"
+    },
+    {
+      "path": "data/raw/meda/sol_0312/WE__0312___________DER_PS__________________P01.CSV",
+      "bytes": 4183437,
+      "sha256": "601310dd57e2afa81e75ded51ee175f2227ff6b2efafa7808dd934e080b0af60"
+    },
+    {
+      "path": "data/raw/meda/sol_0312/WE__0312___________DER_PS__________________P01.xml",
+      "bytes": 9098,
+      "sha256": "8c7bb5c7eb976895e57cadb6183bfac6e37619db3238978b16a606184d9e6217"
+    },
+    {
+      "path": "data/raw/meda/sol_0312/WE__0312___________DER_WS__________________P02.CSV",
+      "bytes": 4803382,
+      "sha256": "d592287305152182d9907761a5d20cf98c23a24c9c0867862116b3a1cf475ac1"
+    },
+    {
+      "path": "data/raw/meda/sol_0312/WE__0312___________DER_WS__________________P02.xml",
+      "bytes": 10729,
+      "sha256": "e2571ef6ee30abd41ef6b39c914e4b6e3f847b4836c47a8ad15cb351d496c1aa"
+    },
+    {
+      "path": "data/raw/meda/sol_0313/WE__0313___________CAL_ATS_________________P01.CSV",
+      "bytes": 6024241,
+      "sha256": "50cc034f7c5961ff15a1a35ee277572b255386d489462175c503f42eae846f4d"
+    },
+    {
+      "path": "data/raw/meda/sol_0313/WE__0313___________CAL_ATS_________________P01.xml",
+      "bytes": 9808,
+      "sha256": "591a723d68a0fdb2a7d6d6301bdfeb685ee5de0dd38f692a3677197d05ffe433"
+    },
+    {
+      "path": "data/raw/meda/sol_0313/WE__0313___________CAL_TIRS________________P02.CSV",
+      "bytes": 8700157,
+      "sha256": "7d26b869989abf96385ddb29e067e9d4e52aa2edbe3c8537d6d265a680d97bf1"
+    },
+    {
+      "path": "data/raw/meda/sol_0313/WE__0313___________CAL_TIRS________________P02.xml",
+      "bytes": 14922,
+      "sha256": "f44938a73247e4d644d4deb00b2d5c8ac69c23f6d9167c15b8c0f7204a67cf58"
+    },
+    {
+      "path": "data/raw/meda/sol_0313/WE__0313___________DER_PS__________________P03.CSV",
+      "bytes": 4111401,
+      "sha256": "1b445551a89a9fc2910aca0881d1b5671ad1e5b15ac335f3b3e47ea79ff66f99"
+    },
+    {
+      "path": "data/raw/meda/sol_0313/WE__0313___________DER_PS__________________P03.xml",
+      "bytes": 9585,
+      "sha256": "d809aea4809a6869ea9eb49a7adbe5776e5be3e14e96c3adf7eace10a286781d"
+    },
+    {
+      "path": "data/raw/meda/sol_0313/WE__0313___________DER_WS__________________P02.CSV",
+      "bytes": 1995142,
+      "sha256": "2bff0ddc834876447a92dc6e1ab95ea19c9137fec03caf47e1ec579542c6a574"
+    },
+    {
+      "path": "data/raw/meda/sol_0313/WE__0313___________DER_WS__________________P02.xml",
+      "bytes": 10729,
+      "sha256": "a62579301a6f97bc2596441be49d8e77740996f5e2a42bd54c466d674c0959fc"
+    },
+    {
+      "path": "data/raw/orbital_0_metadata.csv",
+      "bytes": 662,
+      "sha256": "31cc3a60ffa306787f0143149a94e618e0056f2dcdaef2e1a77f8260429831da"
+    },
+    {
+      "path": "data/raw/orbital_origin_global.csv",
+      "bytes": 1370,
+      "sha256": "f6f1a0c23fa57e6b7f1d64d38d61b591804e55e0147cf1c7fcfb14c18e429aa8"
+    }
+  ]
+}

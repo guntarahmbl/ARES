@@ -1,0 +1,8 @@
+sol,pressure_pa_min,pressure_pa_mean,pressure_pa_max,air_temp_k_min,air_temp_k_mean,air_temp_k_max,ground_temp_k_min,ground_temp_k_mean,ground_temp_k_max,horizontal_wind_m_s_min,horizontal_wind_m_s_mean,horizontal_wind_m_s_max,pressure_n,temperature_n,wind_n,context
+307,610.470,626.128,637.910,193.650,218.906,259.920,192.780,227.800,284.910,0.000,3.293,16.970,51483,51823,37314,historical observation; not a forecast
+308,609.020,627.994,640.670,193.830,218.612,258.980,192.440,226.578,285.650,0.000,2.822,16.710,54599,54956,52256,historical observation; not a forecast
+309,605.560,626.723,639.250,193.830,222.215,259.710,192.770,236.395,285.330,0.000,3.262,15.510,38737,39211,31420,historical observation; not a forecast
+310,607.340,625.752,638.610,195.640,221.358,259.640,193.490,232.200,284.800,0.000,3.510,16.070,51543,51898,49119,historical observation; not a forecast
+311,602.980,625.126,640.540,192.320,219.806,257.940,192.300,229.633,285.040,0.000,3.004,18.920,73843,74047,71386,historical observation; not a forecast
+312,595.620,625.855,645.060,191.870,222.433,263.490,192.110,230.676,285.690,0.000,3.062,16.760,77470,77638,75188,historical observation; not a forecast
+313,583.470,624.539,642.850,194.520,223.704,264.000,193.900,230.946,282.980,0.000,4.265,22.470,76136,76255,30395,historical observation; not a forecast

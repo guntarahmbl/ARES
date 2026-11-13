@@ -1,0 +1,380 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="theme-color" content="#101716" />
+    <title>ARES Path — Marswalk mission planner</title>
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="./" aria-label="ARES Path home"
+        ><span class="brand-mark">A<span>↗</span></span
+        ><span
+          >ARES<span class="brand-light"> PATH</span
+          ><small>ASTRONAUT ROUTE & EXPLORATION SAFETY</small></span
+        ></a
+      >
+      <div class="mission-id">
+        <span class="live-dot"></span> MISSION PLANNING
+        <span class="separator">/</span> JEZERO STUDY SCENARIO
+      </div>
+      <div class="header-actions">
+        <span class="badge amber">JEZERO DATA DEMO</span
+        ><button id="sources-open" class="quiet">Data & assumptions ↗</button
+        ><button id="reset" class="quiet" title="Restore initial mission">
+          ↺ Reset
+        </button>
+      </div>
+    </header>
+    <div class="workspace">
+      <aside class="left-panel panel">
+        <div class="eyebrow">01 / CONFIGURE</div>
+        <h1>Plan the science.<br /><span>Make it home.</span></h1>
+        <p class="intro">A local Marswalk, with every return accounted for.</p>
+        <form id="mission-form">
+          <div class="section-title">
+            <h2>Mission constraints</h2>
+            <span class="tag">ASSUMED</span>
+          </div>
+          <label class="field" for="duration"
+            ><span>EVA duration <small>minutes</small></span
+            ><input
+              id="duration"
+              type="number"
+              min="1"
+              max="480"
+              value="100"
+              required
+          /></label>
+          <label class="field" for="energy"
+            ><span>Energy budget <small>model units</small></span
+            ><input
+              id="energy"
+              type="number"
+              min="1"
+              max="300"
+              value="60"
+              required
+          /></label>
+          <label class="range-field" for="maxSlope"
+            ><span>Maximum slope <output id="slope-value">25°</output></span
+            ><input
+              id="maxSlope"
+              type="range"
+              min="1"
+              max="30"
+              value="25"
+            /><small>Hard traversal limit in this simulation</small></label
+          >
+          <label class="range-field" for="reserve"
+            ><span>Return reserve <output id="reserve-value">20%</output></span
+            ><input
+              id="reserve"
+              type="range"
+              min="0"
+              max="80"
+              step="5"
+              value="20"
+            /><small>Reserved from both energy and EVA duration</small></label
+          >
+          <label class="select-field" for="objective"
+            >Route objective<select id="objective">
+              <option value="balanced">Balanced exploration</option>
+              <option value="safest">Lowest terrain cost</option>
+              <option value="shortest">Shortest distance</option>
+            </select></label
+          >
+          <button class="primary" type="submit" id="generate">
+            Generate mission plan <span>↗</span>
+          </button>
+        </form>
+        <div class="section-title">
+          <h2>Map layers</h2>
+          <button
+            id="layer-sources"
+            class="icon-button"
+            aria-label="Layer sources"
+          >
+            ⓘ
+          </button>
+        </div>
+        <div id="layers">
+          <label class="layer"
+            ><input type="checkbox" data-layer="surface" checked /><span
+              class="swatch surface"
+            ></span
+            >HiRISE imagery<span class="layer-kind">M</span></label
+          >
+          <label class="layer"
+            ><input type="checkbox" data-layer="elevation" /><span
+              class="swatch elevation"
+            ></span
+            >Elevation<span class="layer-kind">D</span></label
+          >
+          <label class="layer"
+            ><input type="checkbox" data-layer="slope" /><span
+              class="swatch slope"
+            ></span
+            >Slope<span class="layer-kind">D</span></label
+          >
+          <label class="layer"
+            ><input type="checkbox" data-layer="hazard" checked /><span
+              class="swatch hazard"
+            ></span
+            >Terrain exclusions<span class="layer-kind">A</span></label
+          >
+          <label class="layer"
+            ><input type="checkbox" data-layer="geology" /><span
+              class="swatch geology"
+            ></span
+            >Geology context<span class="layer-kind">I</span></label
+          >
+          <label class="layer"
+            ><input type="checkbox" data-layer="traverse" /><span
+              class="swatch traverse"
+            ></span
+            >Rover traverse<span class="layer-kind">M</span></label
+          >
+          <label class="layer"
+            ><input type="checkbox" data-layer="science" checked /><span
+              class="swatch science"
+            ></span
+            >Science targets<span class="layer-kind">A</span></label
+          >
+          <label class="layer"
+            ><input type="checkbox" data-layer="envelope" checked /><span
+              class="swatch envelope"
+            ></span
+            >Return-to-safety<span class="layer-kind">D</span></label
+          >
+          <label class="layer"
+            ><input type="checkbox" data-layer="minerals" /><span
+              class="swatch geology"
+            ></span
+            >CRISM indicators<span class="layer-kind">M</span></label
+          >
+          <label class="select-field" for="mineral-band"
+            >Spectral parameter<select id="mineral-band">
+              <option value="olindex3">OLINDEX3</option>
+              <option value="d2300">D2300</option>
+              <option value="min2295_2480">MIN2295_2480</option>
+            </select></label
+          >
+        </div>
+        <label class="range-field opacity" for="opacity"
+          ><span>Overlay opacity <output id="opacity-value">40%</output></span
+          ><input id="opacity" type="range" min="0" max="80" value="40"
+        /></label>
+        <p class="tiny">
+          M · measured &nbsp; D · derived &nbsp; I · interpreted &nbsp; A · assumed<br />Historical
+          observations; EVA resources assumed.
+        </p>
+        <button id="briefing" class="secondary">
+          ↓ Export mission briefing
+        </button>
+      </aside>
+      <main class="center-panel">
+        <div class="map-toolbar">
+          <div>
+            <div class="eyebrow">LOCAL EXPLORATION AREA</div>
+            <h2>Jezero scenario <span>/ 400 × 400 m</span></h2>
+          </div>
+          <div class="view-switch" aria-label="Map view">
+            <button id="view-map" class="active" aria-pressed="true">
+              2D Map</button
+            ><button id="view-3d" aria-pressed="false">3D Preview</button>
+          </div>
+        </div>
+        <div id="map-stage" class="map-stage">
+          <canvas
+            id="map"
+            tabindex="0"
+            aria-label="Interactive Jezero terrain map. Drag to pan, scroll to zoom. Select targets from the Science stops panel."
+          ></canvas>
+          <canvas
+            id="scene"
+            hidden
+            aria-label="3D terrain preview. Drag to orbit and scroll to zoom."
+          ></canvas>
+          <div class="map-heading">
+            <span class="crosshair">⌖</span
+            ><span>LOCAL GRID <small>5 m / cell · HiRISE DTM</small></span>
+          </div>
+          <div class="map-tools">
+            <button id="zoom-in" aria-label="Zoom in">+</button
+            ><button id="zoom-out" aria-label="Zoom out">−</button
+            ><button id="fit" aria-label="Fit study area">⌖</button>
+          </div>
+          <div class="north">N<span>↑</span></div>
+          <div id="map-hint" class="map-hint">
+            Drag to pan · scroll to zoom · click to inspect
+          </div>
+          <div class="map-controls">
+            <button id="move-home" class="map-pill">⌂ Place habitat</button
+            ><button id="close-area" class="map-pill">⊘ Close area</button
+            ><button id="clear-closures" class="map-pill" hidden>
+              Clear closures
+            </button>
+          </div>
+          <div id="map-legend" class="map-legend"></div>
+          <div id="point-info" class="point-info" hidden></div>
+          <div id="webgl-error" class="map-error" hidden>
+            3D requires WebGL. Mission planning remains available in 2D.
+          </div>
+        </div>
+        <section class="simulation-bar" aria-label="Mission simulation">
+          <div class="simulation-title">
+            <span class="eyebrow">MISSION SIMULATOR</span
+            ><strong id="sim-status">Ready at habitat</strong>
+          </div>
+          <div class="sim-actions">
+            <button id="play" class="secondary">▶ Preview EVA</button
+            ><button id="energy-loss" class="scenario">−20% energy</button
+            ><button id="emergency" class="danger">↩ Return now</button>
+          </div>
+          <label class="progress-label" for="progress"
+            >Route position <output id="progress-label">0%</output></label
+          ><input
+            id="progress"
+            type="range"
+            min="0"
+            max="100"
+            value="0"
+            step="1"
+            aria-label="Simulated route position"
+          />
+          <div class="sim-stats">
+            <span>Elapsed <b id="elapsed">0 min</b></span
+            ><span>Energy left <b id="energy-left">100 u</b></span
+            ><span>Minimum energy home <b id="return-cost">0 u</b></span>
+          </div>
+        </section>
+        <section class="profile-panel">
+          <div class="section-title">
+            <h2>Elevation profile <span class="tag">DERIVED</span></h2>
+            <span id="profile-summary" class="tiny"></span>
+          </div>
+          <canvas
+            id="profile"
+            aria-label="Route elevation profile in meters; marker shows simulated position"
+          ></canvas>
+          <p class="tiny profile-caption">
+            HiRISE source elevation datum · scrub route position to inspect
+            corresponding elevation
+          </p>
+        </section>
+      </main>
+      <aside class="right-panel panel">
+        <div class="section-title">
+          <div>
+            <div class="eyebrow">02 / EVALUATE</div>
+            <h2 class="large-title">Mission overview</h2>
+          </div>
+          <span id="plan-state" class="badge">CHECKING</span>
+        </div>
+        <div id="warning" role="status" aria-live="polite"></div>
+        <section id="route-cards" aria-label="Route candidates"></section>
+        <div id="explanation" class="explanation"></div>
+        <div class="section-title">
+          <h2>Science stops</h2>
+          <span id="target-count" class="tiny">3 selected</span>
+        </div>
+        <p class="tiny">Ordered visits · observation time included</p>
+        <div id="targets"></div>
+        <div class="return-card">
+          <div class="section-title">
+            <h2>Return-to-safety</h2>
+            <span class="live-dot"></span>
+          </div>
+          <div id="return-status"></div>
+          <p class="tiny">
+            Envelope includes travel from the current position and a return to
+            habitat. Observation time is included for visited stops, not
+            hypothetical stops in the envelope.
+          </p>
+        </div>
+        <h2>Historical environment</h2>
+        <div id="meda-summary"></div>
+        <div class="assumption-note">
+          <span>ⓘ</span>
+          <p>
+            Decision-support prototype. Energy, speed and terrain scores are
+            heuristic assumptions. No NASA operational validation.
+          </p>
+        </div>
+      </aside>
+    </div>
+    <footer>
+      <span
+        >ARES PATH <span class="separator">/</span> EXPLORE WITH A WAY
+        HOME.</span
+      ><span id="calculation-time"></span
+      ><span>NASA SPACE APPS · PROTOTYPE</span>
+    </footer>
+    <dialog id="sources">
+      <div class="dialog-header">
+        <div>
+          <div class="eyebrow">DATA TRANSPARENCY</div>
+          <h2>Sources & assumptions</h2>
+        </div>
+        <button
+          id="sources-close"
+          class="icon-button"
+          aria-label="Close data dialog"
+        >
+          ✕
+        </button>
+      </div>
+      <div class="dialog-body">
+        <div class="notice">
+          <strong>Eight source products are locally integrated.</strong>
+          HiRISE/CTX terrain and imagery, USGS geology, CRISM, PLACES, surface
+          photographs and MEDA. Routing metrics are derived; habitat and EVA
+          resources are assumed.
+        </div>
+        <div id="source-list"></div>
+        <h3>Calculation assumptions</h3>
+        <p>
+          Mars equirectangular coordinates, radius 3396190 m; center
+          77.405123636° E, 18.451193185° N. Local x east, z south. 81 × 81 grid,
+          5 m spacing. Deterministic least-cost search, 8-connected grid without
+          diagonal corner cutting. Excluded and nodata cells cannot be crossed.
+        </p>
+        <div id="model-details"></div>
+        <h3>Known limitations</h3>
+        <p>
+          Habitat and EVA activities are hypothetical. Geology has 100–200 m
+          registration uncertainty and is not used for navigation. CRISM
+          indicators have native 18 m resolution and are not confirmed mineral
+          detections. Photos are localized by camera site/drive, not image
+          footprint. The return envelope describes this model only; it does not
+          establish real-world safety. MEDA sols 307–313 are earlier historical
+          observations, not a forecast; weather and radiation do not modify
+          routing.
+        </p>
+        <p>
+          Reserve applies to both original energy capacity and total EVA time.
+          Lost energy reduces remaining resources. Emergency routing minimizes
+          estimated energy; its time and reserve are checked separately. Speed,
+          energy, science and safety scores are illustrative.
+        </p>
+      </div>
+    </dialog>
+    <dialog id="target-detail">
+      <div class="dialog-header">
+        <h2 id="detail-title"></h2>
+        <button
+          id="detail-close"
+          class="icon-button"
+          aria-label="Close target details"
+        >
+          ✕
+        </button>
+      </div>
+      <div id="detail-body" class="dialog-body"></div>
+    </dialog>
+    <div id="toast" role="status" aria-live="polite"></div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
