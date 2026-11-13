@@ -1,0 +1,187 @@
+version: 1
+generated_for: ARES Path
+analysis_crs: "+proj=eqc +lat_ts=0 +lat_0=0 +lon_0=0 +R=3396190 +units=m +no_defs"
+geographic_crs: "+proj=longlat +R=3396190 +no_defs"
+aoi: data/aoi/jezero_delta_traverse.geojson
+
+datasets:
+  - id: D-01
+    title: Mars 2020 Science Investigation CTX DEM Mosaic
+    tier: core
+    kind: files
+    product_id: M20_JezeroCrater_CTXDEM_20m
+    version: "2021-10-14"
+    catalog_url: https://astrogeology.usgs.gov/search/map/mars_2020_science_investigation_ctx_dem_mosaic
+    format: GeoTIFF
+    expected_size_bytes: 90345300
+    checksum: null
+    destination: data/raw/ctx/M20_JezeroCrater_CTXDEM_20m.tif
+    download_url: https://planetarymaps.usgs.gov/mosaic/mars2020_trn/CTX/ScienceInvestigationMaps_JPL/M20_JezeroCrater_CTXDEM_20m.tif
+    crs: Mars equirectangular, planetocentric, positive-east longitude
+    resolution_m: 20
+    license: Public domain; cite authors
+    attribution: USGS Astrogeology Science Center, NASA PDS, and product authors
+    processing: Crop to AOI, preserve as contextual DEM, derive metadata.
+
+  - id: D-02
+    title: Mars 2020 Terrain Relative Navigation HiRISE DTM Mosaic
+    tier: core
+    kind: remote_raster
+    product_id: JEZ_hirise_soc_006_DTM_MOLAtopography_DeltaGeoid_1m
+    version: "2020-07-24"
+    catalog_url: https://astrogeology.usgs.gov/search/map/mars_2020_terrain_relative_navigation_hirise_dtm_mosaic
+    format: GeoTIFF
+    expected_size_bytes: 1839545409
+    checksum: null
+    destination: data/processed/rasters/hirise_dtm_1m.tif
+    download_url: https://planetarymaps.usgs.gov/mosaic/mars2020_trn/HiRISE/JEZ_hirise_soc_006_DTM_MOLAtopography_DeltaGeoid_1m_Eqc_latTs0_lon0_blend40.tif
+    crs: ESRI:103885, Mars equirectangular
+    resolution_m: 1
+    license: Public domain; cite authors
+    attribution: USGS Astrogeology Science Center and NASA/JPL/University of Arizona
+    processing: Read AOI by HTTP range, crop at 1 m, derive 5 m routing grid.
+
+  - id: D-03
+    title: Mars 2020 HiRISE Orthorectified Image Mosaic
+    tier: core
+    kind: remote_raster
+    product_id: JEZ_hirise_soc_007_orthoMosaic_25cm_Ortho_blend120
+    version: "2020-07-24"
+    catalog_url: https://astrogeology.usgs.gov/search/map/Mars/Mars2020/JEZ_hirise_soc_006_orthoMosaic_25cm_Eqc_latTs0_lon0_first
+    format: GeoTIFF
+    expected_size_bytes: 3408854746
+    checksum: null
+    destination: data/processed/rasters/hirise_ortho_1m.tif
+    download_url: https://planetarymaps.usgs.gov/mosaic/mars2020_trn/HiRISE/JEZ_hirise_soc_007_orthoMosaic_25cm_Ortho_blend120.tif
+    crs: Mars orthographic centered near Jezero
+    resolution_m: 0.25
+    license: Public domain; cite authors
+    attribution: USGS Astrogeology Science Center and NASA/JPL/University of Arizona
+    processing: Read AOI by HTTP range and resample to 1 m.
+
+  - id: D-04
+    title: Geologic Map of Jezero Crater and the Nili Planum Region
+    tier: core
+    kind: files
+    product_id: USGS_SIM_3464
+    version: "2020"
+    catalog_url: https://pubs.usgs.gov/publication/sim3464
+    format: ZIP containing GIS database and metadata
+    expected_size_bytes: null
+    checksum: null
+    destination: data/raw/geology/sim3464_database.zip
+    download_url: https://pubs.usgs.gov/sim/3464/sim3464_database.zip
+    crs: See source metadata
+    resolution_m: null
+    license: Public domain except where noted in source
+    attribution: Sun, V.Z., and Stack, K.M., 2020, USGS SIM 3464
+    processing: Extract GIS database, select geologic units, clip to AOI.
+
+  - id: D-05
+    title: Jezero CRISM Map-Projected Targeted Reduced Data Record summary cube
+    tier: core
+    kind: files
+    product_id: FRT00005C5E_07_SU166J_MTR3
+    version: MTR3
+    catalog_url: https://ode.rsl.wustl.edu/mars/indexproductpage.aspx?product_id=frt00005c5e_07_if166j_mtr3&product_idGeo=47360968
+    format: ENVI IMG, HDR, PDS label, and PDS4 XML
+    expected_size_bytes: 190317600
+    checksum: null
+    base_url: https://pds-geosciences.wustl.edu/mro/mro-m-crism-5-rdr-mptargeted-v1/mrocr_4001/mtrdr/2007/2007_139/frt00005c5e/
+    files:
+      - frt00005c5e_07_su166j_mtr3.img
+      - frt00005c5e_07_su166j_mtr3.hdr
+      - frt00005c5e_07_su166j_mtr3.lbl
+      - frt00005c5e_07_su166j_mtr3.xml
+    destination: data/raw/crism
+    crs: Mars equirectangular with latitude of true scale 15 degrees
+    resolution_m: 18
+    license: NASA PDS public data
+    attribution: NASA/JPL/JHUAPL CRISM team and PDS Geosciences Node
+    processing: Extract OLINDEX3, D2300, and MIN2295_2480 indicators and align to AOI.
+
+  - id: D-06
+    title: Mars 2020 Rover PLACES best interpreted localization
+    tier: core
+    kind: files
+    product_id: urn:nasa:pds:mars2020_rover_places:data_localizations:best_interp.csv
+    version: "16.0"
+    catalog_url: https://pds-geosciences.wustl.edu/missions/mars2020/places.htm
+    format: CSV with PDS4 XML
+    expected_size_bytes: 8684070
+    checksum: null
+    base_url: https://pds-geosciences.wustl.edu/m2020/urn-nasa-pds-mars2020_rover_places/data_localizations/
+    files:
+      - best_interp.csv
+      - best_interp.csv.xml
+    destination: data/raw/places
+    crs: Planetocentric latitude, positive-east longitude
+    resolution_m: null
+    license: NASA PDS public data
+    attribution: NASA/JPL-Caltech Mars 2020 Rover PLACES Bundle
+    processing: Filter ROVER frames to AOI and simplify the traverse.
+
+  - id: D-07
+    title: Curated Perseverance surface images
+    tier: core
+    kind: mars_images
+    product_id: NASA_MARS2020_RAW_IMAGES
+    version: API 1.2
+    catalog_url: https://mars.nasa.gov/mars2020/multimedia/raw-images/
+    api_url: https://mars.nasa.gov/rss/api/
+    format: JPEG plus JSON metadata
+    expected_size_bytes: null
+    checksum: null
+    destination: data/raw/images
+    sols: [399, 647, 868]
+    instruments: [MCZ_LEFT, MCZ_RIGHT, NAVCAM_LEFT, NAVCAM_RIGHT]
+    images_per_sol: 4
+    crs: Locations inherited from Rover PLACES for the matching sol
+    resolution_m: null
+    license: NASA/JPL-Caltech credit required
+    attribution: NASA/JPL-Caltech
+    processing: Select deterministically, download medium browse image, create <=1600 px thumbnail.
+
+  - id: D-08
+    title: MEDA seven-sol historical context window
+    tier: core
+    kind: meda_window
+    product_id: urn:nasa:pds:mars2020_meda
+    version: PDS4 archive available 2026-11-14
+    catalog_url: https://pds-atmospheres.nmsu.edu/data_and_services/atmospheres_data/PERSEVERANCE/meda.html
+    format: CSV with PDS4 XML
+    expected_size_bytes: null
+    checksum: null
+    destination: data/raw/meda
+    sols: [307, 308, 309, 310, 311, 312, 313]
+    products:
+      - collection: calibrated
+        token: CAL_ATS
+      - collection: calibrated
+        token: CAL_TIRS
+      - collection: derived
+        token: DER_PS
+      - collection: derived
+        token: DER_WS
+    crs: Non-spatial time-series observations at the rover location
+    resolution_m: null
+    license: NASA PDS public data
+    attribution: Rodriguez-Manfredi et al., Mars 2020 MEDA, DOI 10.17189/1522849
+    processing: Aggregate min, mean, max, and observation count by sol; historical context only.
+
+  - id: D-09
+    title: JPL Mars Trek
+    tier: reference
+    kind: reference
+    product_id: MARS_TREK
+    version: Web service
+    catalog_url: https://trek.nasa.gov/mars/
+    format: WMTS
+    expected_size_bytes: null
+    checksum: null
+    destination: null
+    crs: Layer dependent
+    resolution_m: null
+    license: NASA terms and source-layer attribution
+    attribution: NASA/JPL-Caltech
+    processing: Discovery and visual cross-check only; do not archive tiles.

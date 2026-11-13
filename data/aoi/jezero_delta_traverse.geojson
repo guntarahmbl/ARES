@@ -1,0 +1,34 @@
+{
+  "type": "FeatureCollection",
+  "name": "jezero_delta_traverse",
+  "crs": {
+    "type": "name",
+    "properties": {
+      "name": "+proj=longlat +R=3396190 +no_defs"
+    }
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "AOI-01",
+        "name": "Jezero western delta and Perseverance traverse",
+        "longitude_direction": "positive_east",
+        "latitude_type": "planetocentric",
+        "analysis_crs": "+proj=eqc +lat_ts=0 +lat_0=0 +lon_0=0 +R=3396190 +units=m +no_defs"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [77.335, 18.420],
+            [77.455, 18.420],
+            [77.455, 18.500],
+            [77.335, 18.500],
+            [77.335, 18.420]
+          ]
+        ]
+      }
+    }
+  ]
+}

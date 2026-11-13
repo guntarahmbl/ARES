@@ -1,0 +1,45 @@
+{
+  "type": "FeatureCollection",
+  "name": "science_waypoints",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "WP-01",
+        "name": "Crater Floor Transition",
+        "sol": 399,
+        "priority": 2,
+        "status": "preliminary",
+        "science_rationale": "Compare crater-floor material with deposits encountered toward the delta.",
+        "source": "Mars 2020 Rover PLACES Release 16"
+      },
+      "geometry": {"type": "Point", "coordinates": [77.439073689, 18.464058093]}
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "WP-02",
+        "name": "Delta Front",
+        "sol": 647,
+        "priority": 3,
+        "status": "preliminary",
+        "science_rationale": "Examine accessible sedimentary material near the delta front and relate it to orbital mineral indicators.",
+        "source": "Mars 2020 Rover PLACES Release 16"
+      },
+      "geometry": {"type": "Point", "coordinates": [77.405123636, 18.451193185]}
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "WP-03",
+        "name": "Upper Delta Traverse",
+        "sol": 868,
+        "priority": 3,
+        "status": "preliminary",
+        "science_rationale": "Sample a later traverse position across the upper delta and maximize geologic diversity.",
+        "source": "Mars 2020 Rover PLACES Release 16"
+      },
+      "geometry": {"type": "Point", "coordinates": [77.361561209, 18.481135388]}
+    }
+  ]
+}

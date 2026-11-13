@@ -1,0 +1,8 @@
+numpy>=2.0,<3
+Fiona>=1.10,<2
+Pillow>=11,<13
+pyproj>=3.7,<4
+PyYAML>=6,<7
+pyshp>=2.3,<3
+rasterio>=1.4,<2
+shapely>=2.0,<3

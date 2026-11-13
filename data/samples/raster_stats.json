@@ -1,0 +1,246 @@
+{
+  "rasters": [
+    {
+      "file": "crism_d2300_5m.tif",
+      "width": 1423,
+      "height": 949,
+      "count": 1,
+      "dtype": "float32",
+      "crs": "PROJCS[\"unknown\",GEOGCS[\"unknown\",DATUM[\"unknown\",SPHEROID[\"unknown\",3396190,0]],PRIMEM[\"Reference meridian\",0],UNIT[\"degree\",0.0174532925199433,AUTHORITY[\"EPSG\",\"9122\"]]],PROJECTION[\"Equirectangular\"],PARAMETER[\"standard_parallel_1\",0],PARAMETER[\"central_meridian\",0],PARAMETER[\"false_easting\",0],PARAMETER[\"false_northing\",0],UNIT[\"metre\",1,AUTHORITY[\"EPSG\",\"9001\"]],AXIS[\"Easting\",EAST],AXIS[\"Northing\",NORTH]]",
+      "bounds": [
+        4584008.732964886,
+        1091839.9283793007,
+        4591121.696667683,
+        1096581.9041811652
+      ],
+      "resolution": [
+        4.998569011101165,
+        4.996813279098426
+      ],
+      "nodata": -9999.0,
+      "min": -0.009501434862613678,
+      "max": 0.022642284631729126,
+      "sha256": "5260ab1d0d7abf4b26d97ed7df5e6d9db952bc0b5951f98c370df2512a8239b8"
+    },
+    {
+      "file": "crism_min2295_2480_5m.tif",
+      "width": 1423,
+      "height": 949,
+      "count": 1,
+      "dtype": "float32",
+      "crs": "PROJCS[\"unknown\",GEOGCS[\"unknown\",DATUM[\"unknown\",SPHEROID[\"unknown\",3396190,0]],PRIMEM[\"Reference meridian\",0],UNIT[\"degree\",0.0174532925199433,AUTHORITY[\"EPSG\",\"9122\"]]],PROJECTION[\"Equirectangular\"],PARAMETER[\"standard_parallel_1\",0],PARAMETER[\"central_meridian\",0],PARAMETER[\"false_easting\",0],PARAMETER[\"false_northing\",0],UNIT[\"metre\",1,AUTHORITY[\"EPSG\",\"9001\"]],AXIS[\"Easting\",EAST],AXIS[\"Northing\",NORTH]]",
+      "bounds": [
+        4584008.732964886,
+        1091839.9283793007,
+        4591121.696667683,
+        1096581.9041811652
+      ],
+      "resolution": [
+        4.998569011101165,
+        4.996813279098426
+      ],
+      "nodata": -9999.0,
+      "min": -0.026307525113224983,
+      "max": 0.010494301095604897,
+      "sha256": "b4742f2554eb3380f0303162fc3c17e7c9161e7134a668ffdc8e6d36212910ea"
+    },
+    {
+      "file": "crism_olindex3_5m.tif",
+      "width": 1423,
+      "height": 949,
+      "count": 1,
+      "dtype": "float32",
+      "crs": "PROJCS[\"unknown\",GEOGCS[\"unknown\",DATUM[\"unknown\",SPHEROID[\"unknown\",3396190,0]],PRIMEM[\"Reference meridian\",0],UNIT[\"degree\",0.0174532925199433,AUTHORITY[\"EPSG\",\"9122\"]]],PROJECTION[\"Equirectangular\"],PARAMETER[\"standard_parallel_1\",0],PARAMETER[\"central_meridian\",0],PARAMETER[\"false_easting\",0],PARAMETER[\"false_northing\",0],UNIT[\"metre\",1,AUTHORITY[\"EPSG\",\"9001\"]],AXIS[\"Easting\",EAST],AXIS[\"Northing\",NORTH]]",
+      "bounds": [
+        4584008.732964886,
+        1091839.9283793007,
+        4591121.696667683,
+        1096581.9041811652
+      ],
+      "resolution": [
+        4.998569011101165,
+        4.996813279098426
+      ],
+      "nodata": -9999.0,
+      "min": 0.02962690033018589,
+      "max": 0.13731898367404938,
+      "sha256": "63356c0d058ce3289f1fd069017109dc05ff1e3a9729f539cdf2aaa5f3a7fd93"
+    },
+    {
+      "file": "ctx_dem_20m.tif",
+      "width": 356,
+      "height": 238,
+      "count": 1,
+      "dtype": "float32",
+      "crs": "PROJCS[\"unknown\",GEOGCS[\"unknown\",DATUM[\"unknown\",SPHEROID[\"unknown\",3396190,0]],PRIMEM[\"Reference meridian\",0],UNIT[\"degree\",0.0174532925199433,AUTHORITY[\"EPSG\",\"9122\"]]],PROJECTION[\"Equirectangular\"],PARAMETER[\"standard_parallel_1\",0],PARAMETER[\"central_meridian\",0],PARAMETER[\"false_easting\",0],PARAMETER[\"false_northing\",0],UNIT[\"metre\",1,AUTHORITY[\"EPSG\",\"9001\"]],AXIS[\"Easting\",EAST],AXIS[\"Northing\",NORTH]]",
+      "bounds": [
+        4584008.732964886,
+        1091839.9283793007,
+        4591121.696667683,
+        1096581.9041811652
+      ],
+      "resolution": [
+        19.980235120216175,
+        19.924268075060528
+      ],
+      "nodata": -3.4028234663852886e+38,
+      "min": -2586.343994140625,
+      "max": -2357.390869140625,
+      "sha256": "563e04c9ba2a0b4fb13128bcfcee0ce8a600f21c1a621f1c42d66da34938dbd1"
+    },
+    {
+      "file": "hillshade_5m.tif",
+      "width": 1423,
+      "height": 949,
+      "count": 1,
+      "dtype": "uint8",
+      "crs": "PROJCS[\"unknown\",GEOGCS[\"unknown\",DATUM[\"unknown\",SPHEROID[\"unknown\",3396190,0]],PRIMEM[\"Reference meridian\",0],UNIT[\"degree\",0.0174532925199433,AUTHORITY[\"EPSG\",\"9122\"]]],PROJECTION[\"Equirectangular\"],PARAMETER[\"standard_parallel_1\",0],PARAMETER[\"central_meridian\",0],PARAMETER[\"false_easting\",0],PARAMETER[\"false_northing\",0],UNIT[\"metre\",1,AUTHORITY[\"EPSG\",\"9001\"]],AXIS[\"Easting\",EAST],AXIS[\"Northing\",NORTH]]",
+      "bounds": [
+        4584008.732964886,
+        1091839.9283793007,
+        4591121.696667683,
+        1096581.9041811652
+      ],
+      "resolution": [
+        4.998569011101165,
+        4.996813279098426
+      ],
+      "nodata": 0.0,
+      "min": 1.0,
+      "max": 254.0,
+      "sha256": "a2270edf619027dcc9664a9fea15075ec0dc452232f362a2d756608d6eafb110"
+    },
+    {
+      "file": "hirise_dtm_1m.tif",
+      "width": 7113,
+      "height": 4742,
+      "count": 1,
+      "dtype": "float32",
+      "crs": "PROJCS[\"unknown\",GEOGCS[\"unknown\",DATUM[\"unknown\",SPHEROID[\"unknown\",3396190,0]],PRIMEM[\"Reference meridian\",0],UNIT[\"degree\",0.0174532925199433,AUTHORITY[\"EPSG\",\"9122\"]]],PROJECTION[\"Equirectangular\"],PARAMETER[\"standard_parallel_1\",0],PARAMETER[\"central_meridian\",0],PARAMETER[\"false_easting\",0],PARAMETER[\"false_northing\",0],UNIT[\"metre\",1,AUTHORITY[\"EPSG\",\"9001\"]],AXIS[\"Easting\",EAST],AXIS[\"Northing\",NORTH]]",
+      "bounds": [
+        4584008.732964886,
+        1091839.9283793007,
+        4591121.696667683,
+        1096581.9041811652
+      ],
+      "resolution": [
+        0.9999948970612904,
+        0.9999948970612412
+      ],
+      "nodata": -3.4028226550889045e+38,
+      "min": -2592.675048828125,
+      "max": -2354.59765625,
+      "sha256": "b673bca2a5a482bd088942cf4be54c02c2b926a58ade9205a96b48878719e911"
+    },
+    {
+      "file": "hirise_ortho_1m.tif",
+      "width": 7113,
+      "height": 4742,
+      "count": 1,
+      "dtype": "uint8",
+      "crs": "PROJCS[\"unknown\",GEOGCS[\"unknown\",DATUM[\"unknown\",SPHEROID[\"unknown\",3396190,0]],PRIMEM[\"Reference meridian\",0],UNIT[\"degree\",0.0174532925199433,AUTHORITY[\"EPSG\",\"9122\"]]],PROJECTION[\"Equirectangular\"],PARAMETER[\"standard_parallel_1\",0],PARAMETER[\"central_meridian\",0],PARAMETER[\"false_easting\",0],PARAMETER[\"false_northing\",0],UNIT[\"metre\",1,AUTHORITY[\"EPSG\",\"9001\"]],AXIS[\"Easting\",EAST],AXIS[\"Northing\",NORTH]]",
+      "bounds": [
+        4584008.732964886,
+        1091839.9283793007,
+        4591121.696667683,
+        1096581.9041811652
+      ],
+      "resolution": [
+        0.9999948970612904,
+        0.9999948970612412
+      ],
+      "nodata": 0.0,
+      "min": 1.0,
+      "max": 254.0,
+      "sha256": "1340ba92b0a0f64f6a29177c1232ccbc9af4ea828fcac330c33271dce09cc197"
+    },
+    {
+      "file": "roughness_5m.tif",
+      "width": 1423,
+      "height": 949,
+      "count": 1,
+      "dtype": "float32",
+      "crs": "PROJCS[\"unknown\",GEOGCS[\"unknown\",DATUM[\"unknown\",SPHEROID[\"unknown\",3396190,0]],PRIMEM[\"Reference meridian\",0],UNIT[\"degree\",0.0174532925199433,AUTHORITY[\"EPSG\",\"9122\"]]],PROJECTION[\"Equirectangular\"],PARAMETER[\"standard_parallel_1\",0],PARAMETER[\"central_meridian\",0],PARAMETER[\"false_easting\",0],PARAMETER[\"false_northing\",0],UNIT[\"metre\",1,AUTHORITY[\"EPSG\",\"9001\"]],AXIS[\"Easting\",EAST],AXIS[\"Northing\",NORTH]]",
+      "bounds": [
+        4584008.732964886,
+        1091839.9283793007,
+        4591121.696667683,
+        1096581.9041811652
+      ],
+      "resolution": [
+        4.998569011101165,
+        4.996813279098426
+      ],
+      "nodata": -9999.0,
+      "min": 0.0,
+      "max": 6.720474720001221,
+      "sha256": "c49c0d11686d0d4260516766e5ff835d7efe5cbd44eb045ef9c1530ceb5e6aa8"
+    },
+    {
+      "file": "routing_elevation_5m.tif",
+      "width": 1423,
+      "height": 949,
+      "count": 1,
+      "dtype": "float32",
+      "crs": "PROJCS[\"unknown\",GEOGCS[\"unknown\",DATUM[\"unknown\",SPHEROID[\"unknown\",3396190,0]],PRIMEM[\"Reference meridian\",0],UNIT[\"degree\",0.0174532925199433,AUTHORITY[\"EPSG\",\"9122\"]]],PROJECTION[\"Equirectangular\"],PARAMETER[\"standard_parallel_1\",0],PARAMETER[\"central_meridian\",0],PARAMETER[\"false_easting\",0],PARAMETER[\"false_northing\",0],UNIT[\"metre\",1,AUTHORITY[\"EPSG\",\"9001\"]],AXIS[\"Easting\",EAST],AXIS[\"Northing\",NORTH]]",
+      "bounds": [
+        4584008.732964886,
+        1091839.9283793007,
+        4591121.696667683,
+        1096581.9041811652
+      ],
+      "resolution": [
+        4.998569011101165,
+        4.996813279098426
+      ],
+      "nodata": -9999.0,
+      "min": -2592.587890625,
+      "max": -2355.773193359375,
+      "sha256": "ede9bd7ed58787780b0fd0fa5606630b884d65ff001ec37a9c01e7bbd2921192"
+    },
+    {
+      "file": "slope_5m.tif",
+      "width": 1423,
+      "height": 949,
+      "count": 1,
+      "dtype": "float32",
+      "crs": "PROJCS[\"unknown\",GEOGCS[\"unknown\",DATUM[\"unknown\",SPHEROID[\"unknown\",3396190,0]],PRIMEM[\"Reference meridian\",0],UNIT[\"degree\",0.0174532925199433,AUTHORITY[\"EPSG\",\"9122\"]]],PROJECTION[\"Equirectangular\"],PARAMETER[\"standard_parallel_1\",0],PARAMETER[\"central_meridian\",0],PARAMETER[\"false_easting\",0],PARAMETER[\"false_northing\",0],UNIT[\"metre\",1,AUTHORITY[\"EPSG\",\"9001\"]],AXIS[\"Easting\",EAST],AXIS[\"Northing\",NORTH]]",
+      "bounds": [
+        4584008.732964886,
+        1091839.9283793007,
+        4591121.696667683,
+        1096581.9041811652
+      ],
+      "resolution": [
+        4.998569011101165,
+        4.996813279098426
+      ],
+      "nodata": -9999.0,
+      "min": 0.001979147782549262,
+      "max": 61.93656921386719,
+      "sha256": "7c9966e036d394ebf7bdadc84a7a1cddccb573deb180d88cec88a1bea0cdb5ec"
+    },
+    {
+      "file": "traversability_mask_5m.tif",
+      "width": 1423,
+      "height": 949,
+      "count": 1,
+      "dtype": "uint8",
+      "crs": "PROJCS[\"unknown\",GEOGCS[\"unknown\",DATUM[\"unknown\",SPHEROID[\"unknown\",3396190,0]],PRIMEM[\"Reference meridian\",0],UNIT[\"degree\",0.0174532925199433,AUTHORITY[\"EPSG\",\"9122\"]]],PROJECTION[\"Equirectangular\"],PARAMETER[\"standard_parallel_1\",0],PARAMETER[\"central_meridian\",0],PARAMETER[\"false_easting\",0],PARAMETER[\"false_northing\",0],UNIT[\"metre\",1,AUTHORITY[\"EPSG\",\"9001\"]],AXIS[\"Easting\",EAST],AXIS[\"Northing\",NORTH]]",
+      "bounds": [
+        4584008.732964886,
+        1091839.9283793007,
+        4591121.696667683,
+        1096581.9041811652
+      ],
+      "resolution": [
+        4.998569011101165,
+        4.996813279098426
+      ],
+      "nodata": 0.0,
+      "min": 1.0,
+      "max": 1.0,
+      "sha256": "f5ea653b1fce5276a626daf0f29bc358db2c75596047041091259a27c748a27d"
+    }
+  ]
+}
