@@ -65,7 +65,25 @@ npm run deploy
 
 `npm run deploy` publishes the main `ares-path` Worker and attaches the custom
 domain `ares.disra.net`, including Cloudflare-managed DNS and HTTPS. Deployments
-are manual; pushing `main` runs validation without automatically publishing it.
+also run automatically through GitHub Actions: every push to `main` must pass
+Python tests, frontend tests/build, and routing tests before Wrangler publishes
+the site. Pull requests and other branches run validation without deployment.
+The workflow checks the public health endpoint after publishing and serializes
+runs for each branch to prevent simultaneous deployments.
+
+Configure these GitHub repository secrets for automatic deployment:
+
+- `CLOUDFLARE_API_TOKEN`: a durable API token using the **Edit Cloudflare Workers**
+  template, restricted to the deployment account and the `disra.net` zone, with
+  R2 access for the dataset binding.
+- `CLOUDFLARE_ACCOUNT_ID`: the account that owns the Worker and R2 bucket.
+
+The deployment token **ARES GitHub Actions deploy** expires on **November 15,
+2027**. Rotate `CLOUDFLARE_API_TOKEN` in GitHub Secrets before that date.
+
+The data is already uploaded to R2. Normal code deployments reuse that dataset;
+rebuilding or uploading scientific data remains a separate operation. Local
+Wrangler OAuth credentials are not copied to GitHub.
 
 The upload script obtains the current OAuth/API token from Wrangler in memory.
 No token is printed or saved in the repository. It uploads only the compressed
