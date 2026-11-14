@@ -91,23 +91,26 @@ export function MarsMap() {
     const routeSource = new VectorSource()
     const routeLayer = new VectorLayer({ source: routeSource })
     const trackingSource = new VectorSource()
-    const trackingLayer = new VectorLayer({ source: trackingSource, properties: { layerId: 'astronaut' } })
+    const trackingLayer = new VectorLayer({ source: trackingSource })
     const astronaut = new Feature(new Point([0, 0]))
     const updateAstronaut = () => {
       const telemetry = useMissionStore.getState().walkTelemetry
       trackingSource.clear()
       if (!telemetry) return
       astronaut.setGeometry(new Point(telemetry.projectedPosition))
-      astronaut.setStyle(new Style({
-        image: new RegularShape({
-          points: 3,
-          radius: 11,
-          rotation: telemetry.headingRad,
-          fill: new Fill({ color: '#ffffff' }),
-          stroke: new Stroke({ color: '#082f49', width: 3 }),
+      astronaut.setStyle([
+        new Style({ image: new Circle({ radius: 16, fill: new Fill({ color: 'rgba(76,201,240,.2)' }), stroke: new Stroke({ color: '#4cc9f0', width: 2 }) }) }),
+        new Style({
+          image: new RegularShape({
+            points: 3,
+            radius: 11,
+            rotation: telemetry.headingRad,
+            fill: new Fill({ color: '#ffffff' }),
+            stroke: new Stroke({ color: '#082f49', width: 3 }),
+          }),
+          text: new Text({ text: 'YOU ARE HERE', offsetY: 25, font: '700 10px Inter', fill: new Fill({ color: '#bdefff' }), stroke: new Stroke({ color: '#0a0d11', width: 4 }) }),
         }),
-        text: new Text({ text: 'ASTRONAUT', offsetY: 20, font: '700 10px Inter', fill: new Fill({ color: '#ffffff' }), stroke: new Stroke({ color: '#0a0d11', width: 4 }) }),
-      }))
+      ])
       trackingSource.addFeature(astronaut)
     }
     updateAstronaut()
@@ -117,12 +120,15 @@ export function MarsMap() {
     const centerY = (bounds[1] + bounds[3]) / 2
     const extentW = bounds[2] - bounds[0]
     const extentH = bounds[3] - bounds[1]
+    const initialTelemetry = useMissionStore.getState().walkTelemetry
+    const returningFromMarsWalk = Boolean(initialTelemetry && initialTelemetry.updatedAt > 0)
+    const initialCenter = returningFromMarsWalk ? initialTelemetry!.projectedPosition : [centerX, centerY]
 
     // Immersive full-viewport view without pillarboxing or empty borders
     const view = new View({
       projection,
-      center: [centerX, centerY],
-      zoom: 2.8,
+      center: initialCenter,
+      zoom: returningFromMarsWalk ? 6 : 2.8,
       minZoom: 2.2,
       maxZoom: 7,
       extent: [bounds[0] - 800, bounds[1] - 800, bounds[2] + 800, bounds[3] + 800],
@@ -148,6 +154,9 @@ export function MarsMap() {
         if ((view.getZoom() ?? 0) < coverZoom) {
           view.setResolution(coverRes)
           view.setCenter([centerX, centerY])
+        }
+        if (returningFromMarsWalk && initialTelemetry) {
+          view.centerOn(initialTelemetry.projectedPosition, size, [size[0] * 0.61, size[1] * 0.48])
         }
       }
     }

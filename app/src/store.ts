@@ -45,7 +45,7 @@ const telemetryAt = (bootstrap: Bootstrap, coordinate: Coordinate): WalkTelemetr
     routeIndex: 0,
     progress: 0,
     mode: 'guided',
-    updatedAt: performance.now(),
+    updatedAt: 0,
   }
 }
 
