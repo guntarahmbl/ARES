@@ -445,7 +445,7 @@ function RouteDetails() {
     <Sheet open={open} onOpenChange={setOpen} title="Route details" side="right">
       {route && (
         <div className="space-y-5">
-          <dl className="grid grid-cols-2 border-y border-rule">
+          <dl className="grid grid-cols-2 border-b border-rule">
             {[
               ['Distance', formatDistance(route.metrics.distance_m)],
               ['Max slope', `${route.metrics.maximum_slope_deg}°`],
@@ -467,11 +467,13 @@ function RouteDetails() {
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={route.elevation_profile}>
                   <XAxis dataKey="distance_m" hide />
-                  <YAxis width={42} tick={{ fill: '#838a86', fontSize: 10, fontFamily: 'Martian Mono Variable, monospace' }} axisLine={false} tickLine={false} domain={['dataMin - 5', 'dataMax + 5']} />
+                  <YAxis width={52} tickCount={4} tickFormatter={(v: number) => `${Math.round(v)}`} tick={{ fill: '#838a86', fontSize: 10, fontFamily: 'Martian Mono Variable, monospace' }} axisLine={false} tickLine={false} domain={['dataMin - 5', 'dataMax + 5']} />
                   <Tooltip
+                    formatter={(v: number) => [`${Math.round(v)} m`, 'Elevation']}
+                    labelFormatter={(d: number) => `${Math.round(d)} m along route`}
                     contentStyle={{ background: '#181b1a', borderColor: '#343a38', borderRadius: '3px', fontSize: '12px' }}
                   />
-                  <Area type="monotone" dataKey="elevation_m" stroke="#e2784a" fill="#e2784a1f" strokeWidth={1.5} />
+                  <Area type="monotone" baseValue="dataMin" dataKey="elevation_m" stroke="#e2784a" fill="#e2784a1f" strokeWidth={1.5} />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
