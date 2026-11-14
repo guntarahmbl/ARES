@@ -81,12 +81,11 @@ export default function App() {
 
           <button
             onClick={() => setShowInfo(true)}
-            className="flex h-8 items-center gap-1.5 rounded-md border border-white/10 bg-[#0d1117] px-2.5 text-xs text-slate-300 hover:text-white hover:bg-white/10 transition"
+            className="flex h-8 w-8 items-center justify-center rounded-md border border-white/10 bg-[#0d1117] text-slate-300 hover:text-white hover:bg-white/10 transition"
             title="Mission Briefing & Data Specifications"
             aria-label="Mission Briefing & Data Specifications"
           >
-            <Info size={14} className="text-sky-400" />
-            <span className="hidden md:inline">Mission Specs</span>
+            <Info size={15} className="text-sky-400" />
           </button>
 
           <button

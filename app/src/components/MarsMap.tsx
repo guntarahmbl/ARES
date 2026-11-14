@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { Minus, Plus } from 'lucide-react'
 import Map from 'ol/Map'
 import View from 'ol/View'
 import Feature from 'ol/Feature'
@@ -302,6 +303,45 @@ export function MarsMap() {
     })
   }, [visibility, opacity])
 
-  return <div className={`mars-map ${placementMode ? 'is-placing' : ''}`} ref={target} aria-label="Interactive Jezero mission map" />
+  const handleZoomIn = () => {
+    const map = mapRef.current
+    if (!map) return
+    const view = map.getView()
+    const zoom = view.getZoom() ?? 2.8
+    view.animate({ zoom: Math.min(view.getMaxZoom(), zoom + 0.5), duration: 200 })
+  }
+
+  const handleZoomOut = () => {
+    const map = mapRef.current
+    if (!map) return
+    const view = map.getView()
+    const zoom = view.getZoom() ?? 2.8
+    view.animate({ zoom: Math.max(view.getMinZoom(), zoom - 0.5), duration: 200 })
+  }
+
+  return (
+    <>
+      <div className={`mars-map size-full touch-none select-none ${placementMode ? 'is-placing' : ''}`} ref={target} aria-label="Interactive Jezero mission map" />
+      {/* 2D Discrete Zoom Controls */}
+      <div className="absolute bottom-20 sm:bottom-4 right-3 z-20 flex flex-col rounded-lg border border-white/20 bg-[#0d1117] shadow-xl overflow-hidden">
+        <button
+          onClick={handleZoomIn}
+          className="flex size-8 items-center justify-center text-slate-300 hover:text-white hover:bg-white/10 transition border-b border-white/10"
+          title="Zoom In"
+          aria-label="Zoom In"
+        >
+          <Plus size={15} />
+        </button>
+        <button
+          onClick={handleZoomOut}
+          className="flex size-8 items-center justify-center text-slate-300 hover:text-white hover:bg-white/10 transition"
+          title="Zoom Out"
+          aria-label="Zoom Out"
+        >
+          <Minus size={15} />
+        </button>
+      </div>
+    </>
+  )
 }
 

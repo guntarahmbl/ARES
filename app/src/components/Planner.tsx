@@ -165,7 +165,7 @@ function MissionSidebar() {
         <section>
           <div className="mb-2 flex items-center justify-between">
             <h2 className="text-xs font-mono uppercase tracking-wider text-slate-300">Route Trajectory</h2>
-            <span className="font-mono text-xs font-bold text-sky-400">{mission.route_stops.length} STOPS · SORTIE LOOP</span>
+            <span className="font-mono text-xs font-bold text-sky-400">{mission.route_stops.length} STOPS (ROUND TRIP)</span>
           </div>
 
           <div className="space-y-1.5">
@@ -317,7 +317,7 @@ function MissionSidebar() {
           onClick={() => calculate()}
         >
           {state === 'loading' ? <span className="spinner" /> : <Navigation size={14} />}
-          {state === 'loading' ? 'COMPUTING A* TRAJECTORY…' : 'COMPUTE SORTIE TRAJECTORY'}
+          {state === 'loading' ? 'COMPUTING A* TRAJECTORY…' : 'COMPUTE MISSION ROUTE'}
         </button>
       </div>
     </aside>
@@ -579,9 +579,6 @@ export function Planner() {
       <RouteSummary />
       <RouteDetails />
       <DraftStopSheet />
-      <div className="pointer-events-none absolute bottom-3 right-3 hidden rounded-lg border border-white/10 bg-[#0d1117]/80 px-3 py-1.5 text-[11px] font-mono text-slate-300 backdrop-blur md:block">
-        Jezero Delta Western Traverse · MRO HiRISE DTM
-      </div>
     </div>
   )
 }
