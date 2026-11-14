@@ -24,6 +24,7 @@ test('planner exposes a focused map-first mission flow', async ({ page }) => {
 })
 
 test('custom checkpoint placement validates terrain before save', async ({ page }) => {
+  const errors = captureErrors(page)
   await page.goto('/')
   await expect(page.getByTestId('route-status')).toContainText('Route is safe to return', { timeout: 20_000 })
   await page.getByRole('button', { name: /Add stop on map/i }).click()
@@ -33,6 +34,24 @@ test('custom checkpoint placement validates terrain before save', async ({ page 
   await page.mouse.click(box.x + box.width * 0.55, box.y + box.height * 0.52)
   await expect(page.getByRole('dialog')).toContainText('Add checkpoint')
   await expect(page.getByText(/This location is traversable|Choose another location/)).toBeVisible({ timeout: 10_000 })
+  expect(errors).toEqual([])
+})
+
+test('changing a route constraint recalculates and returns to a synchronized state', async ({ page }) => {
+  const errors = captureErrors(page)
+  await page.goto('/')
+  await expect(page.getByTestId('route-action')).toHaveText('Route up to date', { timeout: 20_000 })
+
+  await page.getByText('Route settings', { exact: true }).click()
+  const energy = page.locator('label', { hasText: 'Energy budget' }).locator('input[type="range"]')
+  const recalculated = page.waitForResponse((response) => response.url().endsWith('/api/v1/routes/plan') && response.request().method() === 'POST')
+  await energy.focus()
+  await page.keyboard.press('ArrowLeft')
+  await recalculated
+
+  await expect(page.getByTestId('route-action')).toHaveText('Route up to date', { timeout: 20_000 })
+  await expect(page.getByTestId('route-action')).toBeDisabled()
+  expect(errors).toEqual([])
 })
 
 test('MarsWalk loads terrain and returns to planner', async ({ page }) => {
@@ -53,6 +72,7 @@ for (const viewport of [
   { width: 1024, height: 768 }, { width: 1280, height: 720 }, { width: 1440, height: 900 }, { width: 1920, height: 1080 },
 ]) {
   test(`planner stays usable at ${viewport.width}x${viewport.height}`, async ({ page }) => {
+    const errors = captureErrors(page)
     await page.setViewportSize(viewport)
     await page.goto('/')
     await expect(page.getByTestId('route-status')).toContainText('Route is safe to return', { timeout: 20_000 })
@@ -61,5 +81,6 @@ for (const viewport of [
     expect(overflow.y).toBeLessThanOrEqual(0)
     await expect(page.locator('.mars-map')).toBeVisible()
     await page.screenshot({ path: `test-results/planner-${viewport.width}x${viewport.height}.png` })
+    expect(errors).toEqual([])
   })
 }
