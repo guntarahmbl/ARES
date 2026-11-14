@@ -1,10 +1,11 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
-import { Footprints, Info, Map, Menu, RotateCcw } from 'lucide-react'
+import { Footprints, Info, Map, Menu, MessageSquareText, RotateCcw } from 'lucide-react'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { MarsTrackingMap } from './components/MarsTrackingMap'
 import { Planner } from './components/Planner'
 import { Button } from './components/ui/button'
 import { Sheet } from './components/ui/sheet'
+import { useAdvisorStore } from './advisorStore'
 import { useMissionStore } from './store'
 import { useViewTransition } from './hooks/useViewTransition'
 import { loadMarsWalk, preloadMarsWalk } from './lib/marsWalkLoader'
@@ -23,7 +24,13 @@ export default function App() {
   const [showInfo, setShowInfo] = useState(false)
   const { transitionTo, transitioning } = useViewTransition()
 
+  const advisorStatus = useAdvisorStore((state) => state.status)
+  const advisorOpen = useAdvisorStore((state) => state.open)
+  const setAdvisorOpen = useAdvisorStore((state) => state.setOpen)
+  const checkAdvisor = useAdvisorStore((state) => state.checkStatus)
+
   useEffect(() => { void initialize() }, [initialize])
+  useEffect(() => { void checkAdvisor() }, [checkAdvisor])
 
   if (!bootstrap && state === 'loading') {
     return (
@@ -59,7 +66,7 @@ export default function App() {
           )}
 
           <div className="flex min-w-0 items-baseline gap-3">
-            <strong className="wordmark truncate text-[15px] text-ink">ARES Path</strong>
+            <strong className="wordmark shrink-0 text-[15px] text-ink">ARES Path</strong>
             <span className="hidden truncate text-[13px] text-ink-2 sm:block">Jezero Crater, Mars <span className="num hidden text-ink-3 lg:inline">18.4°N 77.5°E</span></span>
           </div>
 
@@ -86,7 +93,20 @@ export default function App() {
             </button>
           </nav>
 
-          <span className="mx-1 h-5 w-px bg-rule" aria-hidden />
+          <span className="mx-1 hidden h-5 w-px bg-rule sm:block" aria-hidden />
+
+          {view === 'planner' && (advisorStatus === 'ready' || advisorStatus === 'off') && (
+            <button
+              onClick={() => setAdvisorOpen(!advisorOpen)}
+              className={`flex h-8 items-center gap-1.5 rounded px-2 text-[13px] font-medium transition-colors hover:bg-panel-2 hover:text-ink ${advisorOpen ? 'bg-panel-2 text-ink' : 'text-ink-2'}`}
+              aria-pressed={advisorOpen}
+              aria-label="Route advisor"
+              title="Ask about this route"
+            >
+              <MessageSquareText size={15} />
+              <span className="hidden lg:inline">Advisor</span>
+            </button>
+          )}
 
           <button onClick={() => setShowInfo(true)} className={iconBtn} title="Data and limitations" aria-label="Data and limitations">
             <Info size={16} />

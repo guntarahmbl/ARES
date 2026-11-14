@@ -113,3 +113,25 @@ export type Bootstrap = {
   bounds_projected: number[]
 }
 
+export type AdvisorProposal = {
+  summary: string
+  mission: MissionConfig
+  outcome: {
+    feasible: boolean
+    warnings: string[]
+    route: Pick<RouteMetrics, 'distance_m' | 'duration_min' | 'energy_units' | 'return_reserve_units' | 'maximum_slope_deg' | 'elevation_gain_m' | 'science_score'> | null
+  }
+}
+
+export type AdvisorEvent =
+  | { type: 'text'; text: string }
+  | ({ type: 'proposal' } & AdvisorProposal)
+  | { type: 'notice'; message: string }
+  | { type: 'error'; message: string }
+  | { type: 'done' }
+
+export type AdvisorRequest = {
+  mission: MissionConfig
+  messages: { role: 'user' | 'assistant'; content: string }[]
+  active_route: 'primary' | 'alternative'
+}

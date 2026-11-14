@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { Check, ChevronLeft, ChevronRight, GripVertical, Layers3, PanelLeftOpen, Plus, Trash2, X } from 'lucide-react'
 import { useMissionStore } from '../store'
 import type { RouteCandidate, RouteStop } from '../types'
+import { Advisor } from './Advisor'
 import { MarsMap } from './MarsMap'
 import { TraverseProfile } from './TraverseProfile'
 import { Button } from './ui/button'
@@ -460,12 +461,13 @@ function RouteStrip() {
   if (!plan || !route || !mission) return null
 
   return (
+    <div className="relative z-10 shrink-0 [container-type:inline-size]">
     <section
       data-testid="route-status"
       aria-live="polite"
-      className={`relative z-10 flex shrink-0 flex-wrap items-stretch border-t border-ink bg-panel transition-opacity xl:flex-nowrap ${loading ? 'opacity-60' : ''}`}
+      className={`flex flex-wrap items-stretch border-t border-ink bg-panel transition-opacity wide:flex-nowrap ${loading ? 'opacity-60' : ''}`}
     >
-      <div className="order-1 flex min-w-0 flex-1 items-center gap-3.5 px-4 py-3 xl:w-[21.5rem] xl:flex-none xl:border-r xl:border-rule">
+      <div className="order-1 flex min-w-0 flex-1 items-center gap-3.5 px-4 py-3 wide:w-[21.5rem] wide:flex-none wide:border-r wide:border-rule">
         <strong className={`wordmark shrink-0 text-[26px] leading-none ${plan.feasible ? 'text-safe' : 'text-danger'}`}>
           {plan.feasible ? 'Go' : 'No-go'}
         </strong>
@@ -483,17 +485,17 @@ function RouteStrip() {
         route={route}
         stops={mission.route_stops}
         slopeLimitDeg={mission.preferred_max_slope_deg}
-        className="order-3 hidden h-[84px] flex-1 px-4 pb-2.5 pt-1.5 xl:flex"
+        className="order-3 hidden h-[84px] flex-1 px-4 pb-2.5 pt-1.5 wide:flex"
       />
 
-      <dl className="order-4 grid w-full grid-cols-4 gap-3 border-t border-rule px-4 py-2.5 xl:order-3 xl:w-auto xl:grid-cols-[repeat(4,4.25rem)] xl:content-center xl:border-l xl:border-t-0">
+      <dl className="order-4 grid w-full grid-cols-4 gap-3 border-t border-rule px-4 py-2.5 wide:order-3 wide:w-auto wide:grid-cols-[repeat(4,4.25rem)] wide:content-center wide:border-l wide:border-t-0">
         <Stat label="Distance" value={formatDistance(route.metrics.distance_m)} />
         <Stat label="Duration" value={`${Math.round(route.metrics.duration_min)} min`} />
         <Stat label="Max slope" value={`${route.metrics.maximum_slope_deg}°`} />
         <Stat label="Science" value={`${route.metrics.science_score}`} />
       </dl>
 
-      <div className="order-2 flex shrink-0 flex-col justify-center gap-1 py-2 pl-1 pr-3 xl:order-4 xl:border-l xl:border-rule xl:pl-3">
+      <div className="order-2 flex shrink-0 flex-col justify-center gap-1 py-2 pl-1 pr-3 wide:order-4 wide:border-l wide:border-rule wide:pl-3">
         <Button variant="secondary" size="sm" onClick={() => setDetails(true)}>Details</Button>
         {plan.alternative && (
           <Button variant="ghost" size="sm" className="hidden sm:flex" onClick={() => setActive(active === 'primary' ? 'alternative' : 'primary')}>
@@ -502,6 +504,7 @@ function RouteStrip() {
         )}
       </div>
     </section>
+    </div>
   )
 }
 
@@ -615,6 +618,7 @@ export function Planner() {
         </div>
         <RouteStrip />
       </div>
+      <Advisor />
       <RouteDetails />
       <DraftStopSheet />
     </div>

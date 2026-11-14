@@ -62,6 +62,18 @@ Start the prepared offline demo with:
 
 The launcher serves the React planner, FastAPI routing service, local map layers, and MarsWalk terrain at `http://127.0.0.1:8000`. No third-party service is required during the demo.
 
+## Route advisor (optional)
+
+The planner has an advisor panel that answers questions about the current route and proposes changes. It talks to any OpenAI-compatible chat endpoint, and every provider preset has a free tier.
+
+1. Copy `.env.example` to `.env`.
+2. Set one key: `GEMINI_API_KEY` (Google AI Studio), `GROQ_API_KEY` or `OPENROUTER_API_KEY`. For a local model, set `ARES_LLM_PROVIDER=ollama` instead.
+3. Restart the server. The **Advisor** button appears in the header.
+
+Free model line-ups change; if the default model is rejected, set `ARES_LLM_MODEL` to one your account lists. Hosted free tiers are rate-limited and may use prompts to improve their products, so use Ollama if the plan must stay on the machine.
+
+The advisor only reads the planner's figures. Each proposal is re-planned by the routing engine before it is shown, and nothing changes until you choose **Apply to plan**. Without a key the panel explains how to set one up and the rest of the app is unaffected.
+
 ## Device support
 
 The planner adapts from 360 px mobile screens to wide desktop displays. Desktop uses a collapsible mission sidebar, tablet uses an overlay panel, and mobile uses a bottom sheet. MarsWalk supports keyboard/mouse and touch controls, with automatic terrain quality scaling on smaller devices.

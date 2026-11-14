@@ -1,3 +1,5 @@
+const plugin = require('tailwindcss/plugin')
+
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
@@ -25,5 +27,8 @@ module.exports = {
       borderRadius: { DEFAULT: '2px', sm: '1px', md: '2px', lg: '2px', xl: '2px' },
     },
   },
-  plugins: [],
+  plugins: [
+    // The route strip lays out by its own width: panels dock and undock on either side of it.
+    plugin(({ addVariant }) => addVariant('wide', '@container (min-width: 1000px)')),
+  ],
 }

@@ -4,9 +4,10 @@ import json
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
+from .assistant import AssistantRequest, advise, get_llm_config
 from .config import APP_DIST, DATA_ROOT, DEFAULT_MISSION, HABITAT_RADIUS_M, SCENE_ROOT, WEB_ROOT
 from .routing import RoutingEngine, RoutingError, get_engine
 from .schemas import (
@@ -96,6 +97,24 @@ def energy_loss(request: EnergyLossRequest, engine: RoutingEngine = Depends(get_
     plan = engine.plan(mission)
     status = "replanned" if plan.feasible else "return_required" if plan.primary else "infeasible"
     return EnergyLossResponse(mission=mission, plan=plan, status=status)
+
+
+@app.get("/api/v1/assistant/status")
+def assistant_status() -> dict:
+    config = get_llm_config()
+    return {"available": config is not None, "provider": config.label if config else None, "model": config.model if config else None}
+
+
+@app.post("/api/v1/assistant/chat")
+def assistant_chat(request: AssistantRequest, engine: RoutingEngine = Depends(get_engine)) -> StreamingResponse:
+    config = get_llm_config()
+    if config is None:
+        raise HTTPException(status_code=503, detail="The route advisor is not set up. Add a provider API key to .env and restart the server.")
+    return StreamingResponse(
+        advise(engine, config, request),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
 
 
 if WEB_ROOT.exists():
