@@ -1,3 +1,6 @@
+@import '@fontsource-variable/hanken-grotesk';
+@import '@fontsource-variable/martian-mono/wdth.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -5,23 +8,19 @@
 * {
   box-sizing: border-box;
   scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+  scrollbar-color: #343a38 transparent;
 }
 
-/* Seamless ultra-thin aerospace scrollbars */
 ::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
+  width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.16);
-  border-radius: 4px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(225, 138, 85, 0.45);
+  background: #343a38;
+  border-radius: 3px;
 }
 
 html, body, #root {
@@ -32,18 +31,19 @@ html, body, #root {
 }
 
 body {
-  background: #090b0e;
-  color: #eceff2;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  letter-spacing: -0.01em;
+  background: #101312;
+  color: #e9e8e3;
+  font-family: 'Hanken Grotesk Variable', system-ui, sans-serif;
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
 }
 
 button, input {
   font: inherit;
 }
 
-button:focus-visible, input:focus-visible {
-  outline: 2px solid #62c7e8;
+button:focus-visible, input:focus-visible, summary:focus-visible {
+  outline: 2px solid #e9e8e3;
   outline-offset: 2px;
 }
 
@@ -69,7 +69,7 @@ button:focus-visible, input:focus-visible {
 
 ::view-transition-old(mars-map),
 ::view-transition-new(mars-map) {
-  border-radius: 0.75rem;
+  border-radius: 4px;
 }
 
 ::view-transition-old(root),
@@ -100,6 +100,7 @@ button:focus-visible, input:focus-visible {
   ::view-transition-new(root) {
     animation-duration: 1ms;
   }
+  .spinner { animation-duration: 2s; }
 }
 
 @keyframes spin {
@@ -107,53 +108,87 @@ button:focus-visible, input:focus-visible {
 }
 
 .spinner {
-  width: 1rem;
-  height: 1rem;
-  border: 2px solid #ffffff33;
-  border-top-color: white;
+  width: 0.875rem;
+  height: 0.875rem;
+  border: 2px solid #e9e8e355;
+  border-top-color: #e9e8e3;
   border-radius: 999px;
   animation: spin .8s linear infinite;
 }
 
-/* Tactical range input slider styling */
+/* Numerals line up in readouts */
+.num {
+  font-family: 'Martian Mono Variable', ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.8125em;
+  letter-spacing: -0.02em;
+}
+
+/* Range inputs: hairline track, square ink thumb */
 input[type="range"] {
   -webkit-appearance: none;
   appearance: none;
-  background: rgba(255, 255, 255, 0.12);
-  border-radius: 999px;
-  height: 6px;
+  background: transparent;
+  height: 16px;
   outline: none;
-  transition: background 0.15s;
 }
 
-input[type="range"]:hover {
-  background: rgba(255, 255, 255, 0.2);
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 2px;
+  background: #4a514e;
+}
+input[type="range"]::-moz-range-track {
+  height: 2px;
+  background: #4a514e;
 }
 
 input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 14px;
+  width: 10px;
   height: 14px;
-  border-radius: 50%;
-  background: #e18a55;
-  box-shadow: 0 0 8px rgba(225, 138, 85, 0.6);
+  margin-top: -6px;
+  border-radius: 1px;
+  background: #e9e8e3;
+  border: 0;
   cursor: pointer;
-  border: 2px solid #ffffff;
-  transition: transform 0.1s, box-shadow 0.1s;
 }
-
-input[type="range"]::-webkit-slider-thumb:hover {
-  transform: scale(1.15);
-  box-shadow: 0 0 12px rgba(225, 138, 85, 0.9);
-}
-
 input[type="range"]::-moz-range-thumb {
+  width: 10px;
+  height: 14px;
+  border-radius: 1px;
+  background: #e9e8e3;
+  border: 0;
+  cursor: pointer;
+}
+
+input[type="range"]:focus-visible::-webkit-slider-thumb {
+  outline: 2px solid #e2784a;
+  outline-offset: 2px;
+}
+
+/* Checkboxes: square, ink fill when checked */
+input[type="checkbox"].check {
+  -webkit-appearance: none;
+  appearance: none;
   width: 14px;
   height: 14px;
-  border-radius: 50%;
-  background: #e18a55;
-  box-shadow: 0 0 8px rgba(225, 138, 85, 0.6);
+  border: 1px solid #838a86;
+  border-radius: 2px;
+  background: transparent;
+  display: inline-grid;
+  place-content: center;
   cursor: pointer;
-  border: 2px solid #ffffff;
+}
+input[type="checkbox"].check:checked {
+  background: #e9e8e3;
+  border-color: #e9e8e3;
+}
+input[type="checkbox"].check:checked::after {
+  content: '';
+  width: 7px;
+  height: 4px;
+  border-left: 2px solid #101312;
+  border-bottom: 2px solid #101312;
+  transform: translateY(-1px) rotate(-45deg);
 }

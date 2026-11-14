@@ -99,7 +99,7 @@ export function MarsMap() {
       if (!telemetry) return
       astronaut.setGeometry(new Point(telemetry.projectedPosition))
       astronaut.setStyle([
-        new Style({ image: new Circle({ radius: 16, fill: new Fill({ color: 'rgba(76,201,240,.2)' }), stroke: new Stroke({ color: '#4cc9f0', width: 2 }) }) }),
+        new Style({ image: new Circle({ radius: 16, fill: new Fill({ color: 'rgba(76,201,240,.2)' }), stroke: new Stroke({ color: '#62c7e8', width: 2 }) }) }),
         new Style({
           image: new RegularShape({
             points: 3,
@@ -108,7 +108,7 @@ export function MarsMap() {
             fill: new Fill({ color: '#ffffff' }),
             stroke: new Stroke({ color: '#082f49', width: 3 }),
           }),
-          text: new Text({ text: 'YOU ARE HERE', offsetY: 25, font: '700 10px Inter', fill: new Fill({ color: '#bdefff' }), stroke: new Stroke({ color: '#0a0d11', width: 4 }) }),
+          text: new Text({ text: 'You are here', offsetY: 25, font: '600 10px Hanken Grotesk Variable', fill: new Fill({ color: '#bdefff' }), stroke: new Stroke({ color: '#0a0d11', width: 4 }) }),
         }),
       ])
       trackingSource.addFeature(astronaut)
@@ -173,7 +173,7 @@ export function MarsMap() {
       zone.setStyle(new Style({ fill: new Fill({ color: 'rgba(76, 201, 240, .06)' }), stroke: new Stroke({ color: 'rgba(76, 201, 240, .55)', width: 1, lineDash: [4, 5] }) }))
       missionSource.addFeature(zone)
       const habitat = new Feature({ geometry: new Point(habitatPoint), kind: 'habitat' })
-      habitat.setStyle(new Style({ image: new Circle({ radius: 9, fill: new Fill({ color: '#4cc9f0' }), stroke: new Stroke({ color: '#07141a', width: 4 }) }), text: new Text({ text: 'HAB', offsetY: -20, font: '700 11px Inter', fill: new Fill({ color: '#bdefff' }), stroke: new Stroke({ color: '#0a0d11', width: 4 }) }) }))
+      habitat.setStyle(new Style({ image: new Circle({ radius: 9, fill: new Fill({ color: '#62c7e8' }), stroke: new Stroke({ color: '#07141a', width: 4 }) }), text: new Text({ text: 'HAB', offsetY: -20, font: '600 11px Hanken Grotesk Variable', fill: new Fill({ color: '#bdefff' }), stroke: new Stroke({ color: '#0a0d11', width: 4 }) }) }))
       missionSource.addFeature(habitat)
       const initialHovered = useMissionStore.getState().hoveredWaypoint
       const initialSelected = useMissionStore.getState().selectedWaypoint
@@ -187,7 +187,7 @@ export function MarsMap() {
       for (const stop of currentMission.route_stops) {
         if (stop.type !== 'custom') continue
         const feature = new Feature({ geometry: new Point(transform([stop.longitude, stop.latitude], 'EPSG:4326', projection)), customStopId: stop.id })
-        feature.setStyle(new Style({ image: new Circle({ radius: 8, fill: new Fill({ color: '#62c7e8' }), stroke: new Stroke({ color: '#07141a', width: 3 }) }), text: new Text({ text: stop.name, offsetY: -20, font: '600 12px Inter', fill: new Fill({ color: '#dff7ff' }), stroke: new Stroke({ color: '#111', width: 4 }) }) }))
+        feature.setStyle(new Style({ image: new Circle({ radius: 8, fill: new Fill({ color: '#62c7e8' }), stroke: new Stroke({ color: '#07141a', width: 3 }) }), text: new Text({ text: stop.name, offsetY: -20, font: '600 12px Hanken Grotesk Variable', fill: new Fill({ color: '#dff7ff' }), stroke: new Stroke({ color: '#111', width: 4 }) }) }))
         missionSource.addFeature(feature)
       }
       const draft = useMissionStore.getState().draftStop
@@ -216,7 +216,7 @@ export function MarsMap() {
         routeSource.addFeature(feature)
       }
       addRoute(other, 'rgba(255,255,255,.38)', 2, [8, 8])
-      addRoute(current, '#4cc9f0', 4)
+      addRoute(current, '#62c7e8', 4)
       addRoute(state.emergencyRoute, '#ff5d73', 4, [8, 5])
     }
     refreshRoutes()
@@ -348,10 +348,10 @@ export function MarsMap() {
     <>
       <div className={`mars-map map-transition-surface size-full touch-none select-none ${placementMode ? 'is-placing' : ''}`} ref={target} aria-label="Interactive Jezero mission map" />
       {/* 2D Discrete Zoom Controls */}
-      <div className="absolute bottom-20 sm:bottom-4 right-3 z-20 flex flex-col rounded-lg border border-white/20 bg-[#0d1117] shadow-xl overflow-hidden">
+      <div className="absolute bottom-20 sm:bottom-4 right-3 z-20 flex flex-col rounded border border-rule bg-panel overflow-hidden">
         <button
           onClick={handleZoomIn}
-          className="flex size-8 items-center justify-center text-slate-300 hover:text-white hover:bg-white/10 transition border-b border-white/10"
+          className="flex size-8 items-center justify-center text-ink-2 hover:text-ink hover:bg-panel-2 border-b border-rule"
           title="Zoom In"
           aria-label="Zoom In"
         >
@@ -359,7 +359,7 @@ export function MarsMap() {
         </button>
         <button
           onClick={handleZoomOut}
-          className="flex size-8 items-center justify-center text-slate-300 hover:text-white hover:bg-white/10 transition"
+          className="flex size-8 items-center justify-center text-ink-2 hover:text-ink hover:bg-panel-2"
           title="Zoom Out"
           aria-label="Zoom Out"
         >

@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
-import { Footprints, Info, Map, Menu, RotateCcw, Satellite } from 'lucide-react'
+import { Footprints, Info, Map, Menu, RotateCcw } from 'lucide-react'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { MarsTrackingMap } from './components/MarsTrackingMap'
 import { Planner } from './components/Planner'
@@ -27,46 +27,43 @@ export default function App() {
 
   if (!bootstrap && state === 'loading') {
     return (
-      <div className="grid h-full place-content-center gap-4 bg-[#090b0e] text-center">
-        <Satellite className="mx-auto size-12 text-mars animate-pulse" />
-        <h1 className="text-xl font-bold tracking-[.25em] text-white">ARES PATH</h1>
-        <p className="text-sm text-slate-300">Loading Jezero terrain…</p>
+      <div className="grid h-full place-content-center gap-2 bg-ground text-center">
+        <h1 className="text-lg font-semibold text-ink">ARES Path</h1>
+        <p className="text-sm text-ink-3">Loading Jezero terrain…</p>
       </div>
     )
   }
 
   if (!bootstrap) {
     return (
-      <div className="grid h-full place-content-center gap-4 bg-[#090b0e] text-center p-6">
-        <h1 className="text-lg font-semibold text-white">Mission data unavailable</h1>
-        <p className="text-sm text-danger">{error}</p>
-        <Button onClick={() => initialize()}>Try again</Button>
+      <div className="grid h-full place-content-center gap-3 bg-ground p-6 text-center">
+        <h1 className="text-lg font-semibold text-ink">Mission data unavailable</h1>
+        <p className="max-w-sm text-sm text-danger">{error}</p>
+        <Button className="mx-auto" onClick={() => initialize()}>Try again</Button>
       </div>
     )
   }
 
+  const tab = (active: boolean) =>
+    `relative flex h-14 items-center gap-1.5 px-3 text-[13px] font-medium transition-colors after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 ${active ? 'text-ink after:bg-rust' : 'text-ink-3 hover:text-ink after:bg-transparent'}`
+  const iconBtn = 'grid size-8 place-items-center rounded text-ink-3 transition-colors hover:bg-panel-2 hover:text-ink'
+
   return (
     <ErrorBoundary>
-      <div className="relative flex h-full flex-col overflow-hidden bg-[#090b0e]">
-        {/* Aerospace Command Header */}
-        <header className="relative z-40 flex h-14 shrink-0 items-center gap-2 border-b border-white/10 bg-[#090b0e] px-3 md:px-5">
-          <Button variant="ghost" size="icon" className="lg:hidden text-slate-300" onClick={() => setSidebarOpen(true)} aria-label="Open mission panel">
+      <div className="relative flex h-full flex-col overflow-hidden bg-ground">
+        <header className="relative z-40 flex h-14 shrink-0 items-center gap-3 border-b border-rule bg-panel px-3 md:px-5">
+          <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setSidebarOpen(true)} aria-label="Open mission panel">
             <Menu size={18} />
           </Button>
 
-          <div className="flex min-w-0 items-center gap-2.5">
-            <span className="grid size-8 shrink-0 place-items-center rounded-lg border border-white/20 bg-[#161b22] text-white">
-              <Satellite size={17} />
-            </span>
-            <span className="min-w-0">
-              <strong className="block truncate text-xs font-bold tracking-wider text-white">ARES PATH</strong>
-              <small className="hidden text-xs text-slate-300 sm:block">Jezero route planner</small>
-            </span>
+          <div className="flex min-w-0 items-baseline gap-2.5">
+            <strong className="truncate text-[15px] font-bold tracking-tight text-ink">ARES Path</strong>
+            <span className="hidden text-[13px] text-ink-3 sm:block">Jezero Crater</span>
           </div>
 
-          <nav className="ml-auto flex rounded-lg border border-white/10 bg-[#0d1117] p-0.5" aria-label="Primary view selector">
+          <nav className="ml-auto flex items-center" aria-label="Primary view selector">
             <button
-              className={`flex h-8 items-center gap-1.5 rounded-md px-3 text-xs font-medium transition ${view === 'planner' ? 'bg-[#1e2530] text-white shadow-sm font-semibold' : 'text-slate-300 hover:text-white'}`}
+              className={tab(view === 'planner')}
               aria-label="Planner"
               disabled={transitioning}
               onClick={() => transitionTo('planner')}
@@ -75,7 +72,7 @@ export default function App() {
               <span className="hidden sm:inline">Planner</span>
             </button>
             <button
-              className={`flex h-8 items-center gap-1.5 rounded-md px-3 text-xs font-medium transition ${view === 'marswalk' ? 'bg-[#1e2530] text-white shadow-sm font-semibold' : 'text-slate-300 hover:text-white'} disabled:opacity-30`}
+              className={`${tab(view === 'marswalk')} disabled:opacity-35`}
               aria-label="MarsWalk"
               disabled={!plan?.primary || transitioning}
               onPointerEnter={preloadMarsWalk}
@@ -87,29 +84,20 @@ export default function App() {
             </button>
           </nav>
 
-          <button
-            onClick={() => setShowInfo(true)}
-            className="flex h-8 w-8 items-center justify-center rounded-md border border-white/10 bg-[#0d1117] text-slate-300 hover:text-white hover:bg-white/10 transition"
-            title="Data and limitations"
-            aria-label="Data and limitations"
-          >
-            <Info size={15} className="text-sky-400" />
-          </button>
+          <span className="h-5 w-px bg-rule" aria-hidden />
 
-          <button
-            onClick={() => reset()}
-            className="flex h-8 w-8 items-center justify-center rounded-md border border-white/10 bg-[#0d1117] text-slate-300 hover:text-white hover:bg-white/10 transition"
-            title="Reset mission state"
-            aria-label="Reset mission"
-          >
-            <RotateCcw size={14} />
+          <button onClick={() => setShowInfo(true)} className={iconBtn} title="Data and limitations" aria-label="Data and limitations">
+            <Info size={16} />
+          </button>
+          <button onClick={() => reset()} className={iconBtn} title="Reset mission state" aria-label="Reset mission">
+            <RotateCcw size={15} />
           </button>
         </header>
 
         {error && (
-          <div className="absolute left-1/2 top-16 z-50 flex max-w-[90vw] -translate-x-1/2 items-center gap-3 rounded-lg border border-red-700 bg-[#161b22] px-4 py-2.5 text-xs text-red-300 shadow-xl">
-            <span>{error}</span>
-            <button className="underline font-semibold ml-2 text-white" onClick={() => useMissionStore.setState({ error: null })}>Dismiss</button>
+          <div className="absolute left-1/2 top-16 z-50 flex max-w-[90vw] -translate-x-1/2 items-center gap-3 rounded border border-danger/60 bg-panel px-4 py-2.5 text-[13px] text-ink">
+            <span className="text-danger">{error}</span>
+            <button className="font-medium underline underline-offset-2" onClick={() => useMissionStore.setState({ error: null })}>Dismiss</button>
           </div>
         )}
 
@@ -118,7 +106,7 @@ export default function App() {
             <Planner />
           ) : (
             <>
-              <Suspense fallback={<div className="grid h-full place-content-center text-sm text-slate-300">Loading MarsWalk terrain…</div>}>
+              <Suspense fallback={<div className="grid h-full place-content-center text-sm text-ink-3">Loading MarsWalk terrain…</div>}>
                 <MarsWalk />
               </Suspense>
               <MarsTrackingMap />
@@ -127,33 +115,31 @@ export default function App() {
         </main>
 
         <Sheet open={showInfo} onOpenChange={setShowInfo} title="Data sources and limitations">
-          <div className="space-y-4 text-xs text-slate-300">
-            <p className="leading-relaxed">
-              ARES Path combines NASA and USGS observations with derived terrain analysis. Assumed operational values are clearly separated from measured data.
+          <div className="space-y-5 text-[13px] leading-relaxed text-ink-2">
+            <p>
+              ARES Path combines NASA and USGS observations with derived terrain analysis. Assumed operational values are kept separate from measured data.
             </p>
-            <div className="grid gap-2 sm:grid-cols-3">
+            <dl className="divide-y divide-rule border-y border-rule">
               {[
-                ['Measured', 'MRO HiRISE orthomosaic (25cm/px) and Perseverance rover imagery (Mastcam-Z/Navcam)'],
-                ['Derived', '5m DTM slope raster, surface roughness matrix, and traversability cost mask'],
-                ['Simulated', 'Astronaut metabolic walking speeds, suit energy units (EU), and return safety margin']
+                ['Measured', 'MRO HiRISE orthomosaic (25 cm/px) and Perseverance rover imagery (Mastcam-Z, Navcam)'],
+                ['Derived', '5 m DTM slope raster, surface roughness matrix, and traversability cost mask'],
+                ['Simulated', 'Astronaut walking speeds, suit energy units (EU), and return safety margin']
               ].map(([title, copy]) => (
-                <article className="rounded-lg border border-white/10 bg-[#161b22] p-2.5 font-mono" key={title}>
-                  <strong className="block text-xs uppercase tracking-wide text-mars font-bold">{title}</strong>
-                  <p className="mt-1 text-[11px] leading-relaxed text-slate-300">{copy}</p>
-                </article>
+                <div className="grid grid-cols-[5.5rem_1fr] gap-3 py-2.5" key={title}>
+                  <dt className="font-semibold text-ink">{title}</dt>
+                  <dd>{copy}</dd>
+                </div>
               ))}
-            </div>
-            <div className="rounded-lg border border-white/10 bg-[#161b22] p-3">
-              <h4 className="text-sm text-white mb-2 font-semibold">Known limitations</h4>
-              <ul className="list-disc space-y-1.5 pl-4 font-mono text-[11px] text-slate-300">
+            </dl>
+            <div>
+              <h4 className="mb-2 font-semibold text-ink">Known limitations</h4>
+              <ul className="list-disc space-y-1.5 pl-4 marker:text-ink-3">
                 {bootstrap.limitations.map((item) => (
                   <li key={item}>{item}</li>
                 ))}
               </ul>
             </div>
-            <p className="border-l-2 border-mars pl-2.5 text-[11px] text-slate-400">
-              Decision-support prototype engineered for NASA Space Apps Challenge 2026.
-            </p>
+            <p className="text-ink-3">Decision-support prototype built for NASA Space Apps Challenge 2026.</p>
           </div>
         </Sheet>
       </div>
