@@ -62,6 +62,15 @@ Start the prepared offline demo with:
 
 The launcher serves the React planner, FastAPI routing service, local map layers, and MarsWalk terrain at `http://127.0.0.1:8000`. No third-party service is required during the demo.
 
+## Cloudflare deployment
+
+The application can also run entirely on Cloudflare Workers with a private R2
+bucket. A browser Web Worker calculates routes from a compact export of the
+original 5 m grid, while Static Assets serves React and R2 supplies terrain and
+imagery. This fits the Workers Free CPU budget without a separate backend.
+See [cloudflare/README.md](cloudflare/README.md) for export, verification, and
+deployment commands.
+
 ## Device support
 
 The planner adapts from 360 px mobile screens to wide desktop displays. Desktop uses a collapsible mission sidebar, tablet uses an overlay panel, and mobile uses a bottom sheet. MarsWalk supports keyboard/mouse and touch controls, with automatic terrain quality scaling on smaller devices.

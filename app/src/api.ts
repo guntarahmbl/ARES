@@ -1,4 +1,7 @@
 import type { Bootstrap, Coordinate, MissionConfig, RouteCandidate, RoutePlan, WaypointValidation } from './types'
+import { browserRouting } from './browserRouting'
+
+let routing: Bootstrap['routing']
 
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
   const response = await fetch(url, {
@@ -13,17 +16,21 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
 }
 
 export const api = {
-  bootstrap: (signal?: AbortSignal) => request<Bootstrap>('/api/v1/bootstrap', { signal }),
+  bootstrap: async (signal?: AbortSignal) => {
+    const bootstrap = await request<Bootstrap>('/api/v1/bootstrap', { signal })
+    routing = bootstrap.routing
+    return bootstrap
+  },
   plan: (mission: MissionConfig, signal?: AbortSignal) =>
-    request<RoutePlan>('/api/v1/routes/plan', { method: 'POST', body: JSON.stringify(mission), signal }),
+    routing ? browserRouting<RoutePlan>(routing, 'plan', mission, signal) : request<RoutePlan>('/api/v1/routes/plan', { method: 'POST', body: JSON.stringify(mission), signal }),
   validateWaypoint: (coordinate: Coordinate, signal?: AbortSignal) =>
-    request<WaypointValidation>('/api/v1/waypoints/validate', { method: 'POST', body: JSON.stringify(coordinate), signal }),
+    routing ? browserRouting<WaypointValidation>(routing, 'validate', coordinate, signal) : request<WaypointValidation>('/api/v1/waypoints/validate', { method: 'POST', body: JSON.stringify(coordinate), signal }),
   energyLoss: (mission: MissionConfig, lossPct = 20, signal?: AbortSignal) =>
-    request<{ mission: MissionConfig; plan: RoutePlan; status: string }>('/api/v1/scenarios/energy-loss', {
+    routing ? browserRouting<{ mission: MissionConfig; plan: RoutePlan; status: string }>(routing, 'energy-loss', { mission, loss_pct: lossPct }, signal) : request<{ mission: MissionConfig; plan: RoutePlan; status: string }>('/api/v1/scenarios/energy-loss', {
       method: 'POST', body: JSON.stringify({ mission, loss_pct: lossPct }), signal,
     }),
   emergencyReturn: (mission: MissionConfig, position: Coordinate, remainingEnergy: number, signal?: AbortSignal) =>
-    request<{ route: RouteCandidate; reserve_after_return: number }>('/api/v1/routes/return', {
+    routing ? browserRouting<{ route: RouteCandidate; reserve_after_return: number }>(routing, 'return', { mission, position, remaining_energy: remainingEnergy }, signal) : request<{ route: RouteCandidate; reserve_after_return: number }>('/api/v1/routes/return', {
       method: 'POST', body: JSON.stringify({ mission, position, remaining_energy: remainingEnergy }), signal,
     }),
 }
