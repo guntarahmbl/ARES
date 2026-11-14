@@ -160,3 +160,12 @@ data/manifests/runtime_checksums.sha256
 # Python cache
 __pycache__/
 *.py[cod]
+
+# Application build and browser test artifacts
+app/node_modules/
+app/dist/
+app/test-results/
+app/playwright-report/
+app/*.tsbuildinfo
+app/vite.config.js
+app/vite.config.d.ts
