@@ -1,4 +1,14 @@
 export type Coordinate = { longitude: number; latitude: number }
+export type WalkTelemetry = {
+  localPosition: [number, number, number]
+  projectedPosition: [number, number]
+  coordinate: Coordinate
+  headingRad: number
+  routeIndex: number | null
+  progress: number
+  mode: 'guided' | 'free'
+  updatedAt: number
+}
 export type ScienceRouteStop = { type: 'science'; id: string }
 export type CustomRouteStop = Coordinate & { type: 'custom'; id: string; name: string; visit_duration_min: number }
 export type RouteStop = ScienceRouteStop | CustomRouteStop

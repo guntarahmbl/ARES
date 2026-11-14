@@ -1,24 +1,27 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
 import { Footprints, Info, Map, Menu, RotateCcw, Satellite } from 'lucide-react'
 import { ErrorBoundary } from './components/ErrorBoundary'
+import { MarsTrackingMap } from './components/MarsTrackingMap'
 import { Planner } from './components/Planner'
 import { Button } from './components/ui/button'
 import { Sheet } from './components/ui/sheet'
 import { useMissionStore } from './store'
+import { useViewTransition } from './hooks/useViewTransition'
+import { loadMarsWalk, preloadMarsWalk } from './lib/marsWalkLoader'
 
-const MarsWalk = lazy(() => import('./components/MarsWalk'))
+const MarsWalk = lazy(loadMarsWalk)
 
 export default function App() {
   const initialize = useMissionStore((state) => state.initialize)
   const reset = useMissionStore((state) => state.reset)
   const view = useMissionStore((state) => state.view)
-  const setView = useMissionStore((state) => state.setView)
   const state = useMissionStore((state) => state.state)
   const error = useMissionStore((state) => state.error)
   const bootstrap = useMissionStore((state) => state.bootstrap)
   const plan = useMissionStore((state) => state.plan)
   const setSidebarOpen = useMissionStore((state) => state.setSidebarOpen)
   const [showInfo, setShowInfo] = useState(false)
+  const { transitionTo, transitioning } = useViewTransition()
 
   useEffect(() => { void initialize() }, [initialize])
 
@@ -64,15 +67,20 @@ export default function App() {
           <nav className="ml-auto flex rounded-lg border border-white/10 bg-[#0d1117] p-0.5" aria-label="Primary view selector">
             <button
               className={`flex h-8 items-center gap-1.5 rounded-md px-3 text-xs font-medium transition ${view === 'planner' ? 'bg-[#1e2530] text-white shadow-sm font-semibold' : 'text-slate-300 hover:text-white'}`}
-              onClick={() => setView('planner')}
+              aria-label="Planner"
+              disabled={transitioning}
+              onClick={() => transitionTo('planner')}
             >
               <Map size={14} />
               <span className="hidden sm:inline">Planner</span>
             </button>
             <button
               className={`flex h-8 items-center gap-1.5 rounded-md px-3 text-xs font-medium transition ${view === 'marswalk' ? 'bg-[#1e2530] text-white shadow-sm font-semibold' : 'text-slate-300 hover:text-white'} disabled:opacity-30`}
-              disabled={!plan?.primary}
-              onClick={() => setView('marswalk')}
+              aria-label="MarsWalk"
+              disabled={!plan?.primary || transitioning}
+              onPointerEnter={preloadMarsWalk}
+              onFocus={preloadMarsWalk}
+              onClick={() => transitionTo('marswalk')}
             >
               <Footprints size={14} />
               <span className="hidden sm:inline">MarsWalk</span>
@@ -109,9 +117,12 @@ export default function App() {
           {view === 'planner' ? (
             <Planner />
           ) : (
-            <Suspense fallback={<div className="grid h-full place-content-center text-sm text-slate-300">Loading MarsWalk terrain…</div>}>
-              <MarsWalk />
-            </Suspense>
+            <>
+              <Suspense fallback={<div className="grid h-full place-content-center text-sm text-slate-300">Loading MarsWalk terrain…</div>}>
+                <MarsWalk />
+              </Suspense>
+              <MarsTrackingMap />
+            </>
           )}
         </main>
 

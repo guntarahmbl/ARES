@@ -7,7 +7,9 @@ import {
 } from 'lucide-react'
 import * as THREE from 'three'
 import { useMissionStore } from '../store'
-import type { CustomRouteStop, RouteCandidate, SceneManifest, SceneTile } from '../types'
+import { localToProjected, projectedToCoordinate } from '../lib/marsProjection'
+import { useViewTransition } from '../hooks/useViewTransition'
+import type { CustomRouteStop, RouteCandidate, SceneManifest, SceneTile, WalkTelemetry } from '../types'
 
 type Position = [number, number, number]
 
@@ -192,7 +194,7 @@ interface CameraControllerState {
 function Scene({
   route,
   scene,
-  onPosition,
+  onTelemetry,
   touchInput,
   compact,
   cameraControllerRef,
@@ -200,7 +202,7 @@ function Scene({
 }: {
   route: RouteCandidate
   scene: SceneManifest
-  onPosition: (position: Position, index: number) => void
+  onTelemetry: (telemetry: WalkTelemetry) => void
   touchInput: { forward: number; turn: number }
   compact: boolean
   cameraControllerRef: React.MutableRefObject<CameraControllerState>
@@ -211,6 +213,7 @@ function Scene({
   const speed = useMissionStore((state) => state.speed)
   const progress = useMissionStore((state) => state.progress)
   const setWalkState = useMissionStore((state) => state.setMarsWalkState)
+  const setWalkTelemetry = useMissionStore((state) => state.setWalkTelemetry)
   const emergencyRoute = useMissionStore((state) => state.emergencyRoute)
   const avatar = useRef<THREE.Group>(null)
   const cameraTarget = useRef(new THREE.Vector3())
@@ -218,11 +221,17 @@ function Scene({
   const keys = useRef(new Set<string>())
   const routePath = useMemo(() => routeInterpolator(route.scene_coordinates), [route])
   const overview = useBinary(scene.overview.url)
+  const storedTelemetry = useMissionStore.getState().walkTelemetry
   const [avatarPosition, setAvatarPosition] = useState<Position>(() => {
+    if (!guided && storedTelemetry?.mode === 'free') return storedTelemetry.localPosition
     const initial = routePath.at(progress).position
     return [initial[0], initial[1] + 0.18, initial[2]]
   })
-  const direction = useRef(routePath.at(progress).direction)
+  const direction = useRef(
+    !guided && storedTelemetry?.mode === 'free'
+      ? new THREE.Vector3(Math.sin(storedTelemetry.headingRad), 0, -Math.cos(storedTelemetry.headingRad))
+      : routePath.at(progress).direction,
+  )
   const lastStoreUpdate = useRef(0)
   const lastUiUpdate = useRef(0)
   const { camera } = useThree()
@@ -270,9 +279,11 @@ function Scene({
   useFrame((_, delta) => {
     let next = [...avatarPosition] as Position
     let routeIndex = 0
+    let currentProgress = useMissionStore.getState().progress
     if (guided) {
-      let nextProgress = useMissionStore.getState().progress
+      let nextProgress = currentProgress
       if (playing) nextProgress = Math.min(1, nextProgress + (speed * delta) / routePath.total)
+      currentProgress = nextProgress
       const sample = routePath.at(nextProgress)
       // Ground clearance offset (+0.18m) so astronaut shoes don't sink into terrain polygons
       next = [sample.position[0], sample.position[1] + 0.18, sample.position[2]]
@@ -300,7 +311,19 @@ function Scene({
     }
     setAvatarPosition(next)
     if (performance.now() - lastUiUpdate.current > 100) {
-      onPosition(next, routeIndex)
+      const projectedPosition = localToProjected(scene, next)
+      const telemetry: WalkTelemetry = {
+        localPosition: next,
+        projectedPosition,
+        coordinate: projectedToCoordinate(projectedPosition),
+        headingRad: Math.atan2(direction.current.x, -direction.current.z),
+        routeIndex: guided ? routeIndex : null,
+        progress: currentProgress,
+        mode: guided ? 'guided' : 'free',
+        updatedAt: performance.now(),
+      }
+      setWalkTelemetry(telemetry)
+      onTelemetry(telemetry)
       lastUiUpdate.current = performance.now()
     }
     if (avatar.current) {
@@ -394,11 +417,12 @@ export default function MarsWalk() {
   const playing = useMissionStore((state) => state.playing)
   const speed = useMissionStore((state) => state.speed)
   const progress = useMissionStore((state) => state.progress)
+  const walkTelemetry = useMissionStore((state) => state.walkTelemetry)
   const setWalkState = useMissionStore((state) => state.setMarsWalkState)
-  const setView = useMissionStore((state) => state.setView)
   const applyEnergyLoss = useMissionStore((state) => state.applyEnergyLoss)
   const requestEmergency = useMissionStore((state) => state.requestEmergencyReturn)
   const selectedWaypoint = useMissionStore((state) => state.selectedWaypoint)
+  const { transitionTo } = useViewTransition()
   const [routeIndex, setRouteIndex] = useState(0)
   const [compact, setCompact] = useState(() => window.innerWidth < 768)
   const [touchInput, setTouchInput] = useState({ forward: 0, turn: 0 })
@@ -413,7 +437,8 @@ export default function MarsWalk() {
   })
   const isDraggingRef = useRef(false)
   const dragStartRef = useRef({ x: 0, y: 0 })
-  const coordinate = route.coordinates[Math.min(routeIndex, route.coordinates.length - 1)]
+  const routeCoordinate = route.coordinates[Math.min(routeIndex, route.coordinates.length - 1)]
+  const coordinate = walkTelemetry?.coordinate ?? { longitude: routeCoordinate[0], latitude: routeCoordinate[1] }
   const remaining = Math.max(0, mission.energy_budget - route.metrics.energy_units * progress)
   const nextVisit = route.stop_visits.find((visit) => visit.route_vertex_index > routeIndex)
   const nextWaypointId = nextVisit?.id ?? 'HAB'
@@ -446,7 +471,7 @@ export default function MarsWalk() {
     const feature = bootstrap.waypoints.features.find((item) => item.properties.id === nextWaypointId)
     if (!feature) return
     const [lon, lat] = feature.geometry.coordinates
-    if (Math.hypot(coordinate[0] - lon, coordinate[1] - lat) < 0.00025) {
+    if (Math.hypot(coordinate.longitude - lon, coordinate.latitude - lat) < 0.00025) {
       useMissionStore.getState().setSelectedWaypoint(nextWaypointId)
     }
   }, [coordinate, nextWaypointId, bootstrap.waypoints.features])
@@ -544,7 +569,9 @@ export default function MarsWalk() {
         <Scene
           route={route}
           scene={bootstrap.scene}
-          onPosition={(_, index) => setRouteIndex(index)}
+          onTelemetry={(telemetry) => {
+            if (telemetry.routeIndex !== null) setRouteIndex(telemetry.routeIndex)
+          }}
           touchInput={touchInput}
           compact={compact}
           cameraControllerRef={cameraControllerRef}
@@ -555,7 +582,7 @@ export default function MarsWalk() {
 
     {/* Top Back Navigation */}
     <div className="absolute left-3 top-3 z-10">
-      <button className="flex min-h-10 items-center gap-2 rounded-lg border border-white/20 bg-[#0d1117] px-3 text-xs font-semibold text-white shadow-md hover:bg-white/10" onClick={() => setView('planner')}>
+      <button className="flex min-h-10 items-center gap-2 rounded-lg border border-white/20 bg-[#0d1117] px-3 text-xs font-semibold text-white shadow-md hover:bg-white/10" onClick={() => transitionTo('planner')}>
         <ChevronLeft size={16} /> Planner
       </button>
     </div>
@@ -645,7 +672,7 @@ export default function MarsWalk() {
             </button>
             <button
               className="flex h-7 items-center gap-1.5 rounded border border-red-700 bg-[#b91c1c] px-2.5 text-[11px] font-mono font-bold uppercase tracking-wider text-white hover:bg-[#dc2626] transition shadow-sm"
-              onClick={() => requestEmergency({ longitude: coordinate[0], latitude: coordinate[1] })}
+              onClick={() => requestEmergency(coordinate)}
               title="Emergency Abort Path to Habitat Base"
             >
               <AlertTriangle size={12} className="text-white" />

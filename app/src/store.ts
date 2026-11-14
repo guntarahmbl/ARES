@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { api } from './api'
-import type { Bootstrap, Coordinate, CustomRouteStop, MissionConfig, RouteCandidate, RoutePlan, RouteStop, WaypointValidation } from './types'
+import { coordinateToProjected, projectedToLocal } from './lib/marsProjection'
+import type { Bootstrap, Coordinate, CustomRouteStop, MissionConfig, RouteCandidate, RoutePlan, RouteStop, WalkTelemetry, WaypointValidation } from './types'
 
 type ViewMode = 'planner' | 'marswalk'
 type LoadState = 'idle' | 'loading' | 'ready' | 'error'
@@ -13,6 +14,7 @@ type MissionStore = {
   activeRoute: 'primary' | 'alternative'; layerVisibility: Record<string, boolean>; layerOpacity: number
   placementMode: PlacementMode; sidebarOpen: boolean; detailsOpen: boolean; routeDirty: boolean
   guided: boolean; playing: boolean; speed: number; reducedMotion: boolean; progress: number
+  walkTelemetry: WalkTelemetry | null; minimapOpen: boolean; viewTransitioning: boolean
   initialize: () => Promise<void>; calculate: () => Promise<void>; previewStop: (coordinate: Coordinate) => Promise<void>
   commitDraftStop: () => void; cancelPlacement: () => void; updateStop: (id: string, patch: Partial<CustomRouteStop>) => void
   removeStop: (id: string) => void; reorderStop: (id: string, direction: -1 | 1) => void; moveStop: (fromIndex: number, toIndex: number) => void
@@ -23,13 +25,29 @@ type MissionStore = {
   setActiveRoute: (route: 'primary' | 'alternative') => void; setSelectedWaypoint: (id: string | null) => void; setHoveredWaypoint: (id: string | null) => void
   setSidebarOpen: (open: boolean) => void; setDetailsOpen: (open: boolean) => void
   setMarsWalkState: (patch: Partial<Pick<MissionStore, 'guided' | 'playing' | 'speed' | 'reducedMotion' | 'progress'>>) => void
+  setWalkTelemetry: (telemetry: WalkTelemetry) => void; setMinimapOpen: (open: boolean) => void; setViewTransitioning: (active: boolean) => void
   reset: () => Promise<void>
 }
 
 let activeRequest = 0
 let validationRequest = 0
 const sidebarPreference = typeof localStorage === 'undefined' ? null : localStorage.getItem('ares-sidebar')
+const minimapPreference = typeof localStorage === 'undefined' ? null : localStorage.getItem('ares-minimap')
 const replaceStop = (stops: RouteStop[], id: string, patch: Partial<CustomRouteStop>) => stops.map((stop) => stop.id === id && stop.type === 'custom' ? { ...stop, ...patch } : stop)
+
+const telemetryAt = (bootstrap: Bootstrap, coordinate: Coordinate): WalkTelemetry => {
+  const projectedPosition = coordinateToProjected(coordinate)
+  return {
+    localPosition: projectedToLocal(bootstrap.scene, projectedPosition),
+    projectedPosition,
+    coordinate,
+    headingRad: 0,
+    routeIndex: 0,
+    progress: 0,
+    mode: 'guided',
+    updatedAt: performance.now(),
+  }
+}
 
 export const useMissionStore = create<MissionStore>((set, get) => ({
   bootstrap: null, mission: null, plan: null, emergencyRoute: null, waypointValidation: null, draftStop: null,
@@ -37,11 +55,17 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
   layerVisibility: { imagery: true, slope: false, hazard: true, crism: false, geology: true, traverse: true },
   layerOpacity: 0.55, placementMode: null, sidebarOpen: sidebarPreference !== 'closed', detailsOpen: false, routeDirty: true,
   guided: true, playing: false, speed: 8, reducedMotion: false, progress: 0,
+  walkTelemetry: null, minimapOpen: minimapPreference !== 'closed', viewTransitioning: false,
   initialize: async () => {
     set({ state: 'loading', error: null })
     try {
       const bootstrap = await api.bootstrap()
-      set({ bootstrap, mission: structuredClone(bootstrap.default_mission), state: 'ready' })
+      set({
+        bootstrap,
+        mission: structuredClone(bootstrap.default_mission),
+        walkTelemetry: telemetryAt(bootstrap, bootstrap.default_mission.habitat),
+        state: 'ready',
+      })
       void get().calculate()
     } catch (error) {
       set({ state: 'error', error: error instanceof Error ? error.message : 'Startup failed' })
@@ -166,10 +190,24 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
   },
   setDetailsOpen: (detailsOpen) => set({ detailsOpen }),
   setMarsWalkState: (patch) => set((state) => ({ ...state, ...patch })),
+  setWalkTelemetry: (walkTelemetry) => set({ walkTelemetry }),
+  setMinimapOpen: (minimapOpen) => {
+    localStorage.setItem('ares-minimap', minimapOpen ? 'open' : 'closed')
+    set({ minimapOpen })
+  },
+  setViewTransitioning: (viewTransitioning) => set({ viewTransitioning }),
   reset: async () => {
     const bootstrap = get().bootstrap
     if (!bootstrap) return
-    set({ mission: structuredClone(bootstrap.default_mission), activeRoute: 'primary', emergencyRoute: null, progress: 0, playing: false, routeDirty: true })
+    set({
+      mission: structuredClone(bootstrap.default_mission),
+      activeRoute: 'primary',
+      emergencyRoute: null,
+      progress: 0,
+      playing: false,
+      walkTelemetry: telemetryAt(bootstrap, bootstrap.default_mission.habitat),
+      routeDirty: true,
+    })
     await get().calculate()
   },
 }))

@@ -9,21 +9,15 @@ import LineString from 'ol/geom/LineString'
 import Point from 'ol/geom/Point'
 import ImageLayer from 'ol/layer/Image'
 import VectorLayer from 'ol/layer/Vector'
-import Projection from 'ol/proj/Projection'
-import { register } from 'ol/proj/proj4'
 import { transform } from 'ol/proj'
 import ImageStatic from 'ol/source/ImageStatic'
 import VectorSource from 'ol/source/Vector'
 import Translate from 'ol/interaction/Translate'
-import { Circle, Fill, Stroke, Style, Text } from 'ol/style'
-import proj4 from 'proj4'
+import { Circle, Fill, RegularShape, Stroke, Style, Text } from 'ol/style'
 import 'ol/ol.css'
 import { useMissionStore } from '../store'
 import { api } from '../api'
-
-const projectionCode = 'MARS:EQC'
-proj4.defs(projectionCode, '+proj=eqc +lat_ts=0 +lat_0=0 +lon_0=0 +R=3396190 +units=m +no_defs')
-register(proj4)
+import { createMarsProjection } from '../lib/marsProjection'
 
 const routeStyle = (color: string, width: number, dash?: number[]) => new Style({
   stroke: new Stroke({ color, width, lineDash: dash }),
@@ -59,7 +53,7 @@ export function MarsMap() {
 
   useEffect(() => {
     if (!target.current || !bootstrap || !mission) return
-    const projection = new Projection({ code: projectionCode, units: 'm', extent: bootstrap.bounds_projected })
+    const projection = createMarsProjection(bootstrap.bounds_projected)
     const imageLayers = bootstrap.layers.map((layer) => new ImageLayer({
       properties: { layerId: layer.id },
       source: new ImageStatic({ url: layer.url, imageExtent: bootstrap.bounds_projected, projection }),
@@ -96,6 +90,27 @@ export function MarsMap() {
     })
     const routeSource = new VectorSource()
     const routeLayer = new VectorLayer({ source: routeSource })
+    const trackingSource = new VectorSource()
+    const trackingLayer = new VectorLayer({ source: trackingSource, properties: { layerId: 'astronaut' } })
+    const astronaut = new Feature(new Point([0, 0]))
+    const updateAstronaut = () => {
+      const telemetry = useMissionStore.getState().walkTelemetry
+      trackingSource.clear()
+      if (!telemetry) return
+      astronaut.setGeometry(new Point(telemetry.projectedPosition))
+      astronaut.setStyle(new Style({
+        image: new RegularShape({
+          points: 3,
+          radius: 11,
+          rotation: telemetry.headingRad,
+          fill: new Fill({ color: '#ffffff' }),
+          stroke: new Stroke({ color: '#082f49', width: 3 }),
+        }),
+        text: new Text({ text: 'ASTRONAUT', offsetY: 20, font: '700 10px Inter', fill: new Fill({ color: '#ffffff' }), stroke: new Stroke({ color: '#0a0d11', width: 4 }) }),
+      }))
+      trackingSource.addFeature(astronaut)
+    }
+    updateAstronaut()
 
     const bounds = bootstrap.bounds_projected
     const centerX = (bounds[0] + bounds[2]) / 2
@@ -117,7 +132,7 @@ export function MarsMap() {
 
     const map = new Map({
       target: target.current,
-      layers: [...imageLayers, geologyLayer, traverseLayer, envelopeLayer, routeLayer, missionLayer],
+      layers: [...imageLayers, geologyLayer, traverseLayer, envelopeLayer, routeLayer, missionLayer, trackingLayer],
       view,
       controls: [],
     })
@@ -281,6 +296,7 @@ export function MarsMap() {
       if (state.plan !== previous.plan || state.emergencyRoute !== previous.emergencyRoute || state.activeRoute !== previous.activeRoute) {
         refreshRoutes()
       }
+      if (state.walkTelemetry !== previous.walkTelemetry) updateAstronaut()
     })
 
     return () => {
@@ -321,7 +337,7 @@ export function MarsMap() {
 
   return (
     <>
-      <div className={`mars-map size-full touch-none select-none ${placementMode ? 'is-placing' : ''}`} ref={target} aria-label="Interactive Jezero mission map" />
+      <div className={`mars-map map-transition-surface size-full touch-none select-none ${placementMode ? 'is-placing' : ''}`} ref={target} aria-label="Interactive Jezero mission map" />
       {/* 2D Discrete Zoom Controls */}
       <div className="absolute bottom-20 sm:bottom-4 right-3 z-20 flex flex-col rounded-lg border border-white/20 bg-[#0d1117] shadow-xl overflow-hidden">
         <button

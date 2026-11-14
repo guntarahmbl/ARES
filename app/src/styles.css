@@ -56,6 +56,27 @@ button:focus-visible, input:focus-visible {
   cursor: crosshair;
 }
 
+.map-transition-surface {
+  view-transition-name: mars-map;
+  contain: layout paint;
+}
+
+::view-transition-group(mars-map) {
+  animation-duration: 480ms;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  overflow: clip;
+}
+
+::view-transition-old(mars-map),
+::view-transition-new(mars-map) {
+  border-radius: 0.75rem;
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 320ms;
+}
+
 .marswalk-shell canvas {
   position: absolute !important;
   inset: 0;
@@ -64,6 +85,21 @@ button:focus-visible, input:focus-visible {
 
 .ol-viewport {
   border-radius: inherit;
+}
+
+@media (max-width: 639px) and (orientation: landscape) {
+  .map-transition-surface[aria-label="Astronaut tracking map"] {
+    width: min(30vw, 11.25rem);
+    max-height: 42svh;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(mars-map),
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation-duration: 1ms;
+  }
 }
 
 @keyframes spin {
