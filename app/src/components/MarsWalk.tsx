@@ -2,8 +2,8 @@ import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame, useLoader, useThree } from '@react-three/fiber'
 import { Html, Line, Stars } from '@react-three/drei'
 import {
-  Activity, AlertTriangle, BatteryCharging, ChevronLeft, Compass, FastForward, Footprints, Gauge, Map, Pause, Play,
-  RotateCcw, ShieldCheck, Target, Zap
+  Activity, AlertTriangle, BatteryCharging, ChevronLeft, Compass, FastForward, Footprints, Gauge, Map, Minus, Pause, Play,
+  Plus, RotateCcw, ShieldCheck, Target, Zap
 } from 'lucide-react'
 import * as THREE from 'three'
 import { useMissionStore } from '../store'
@@ -480,26 +480,64 @@ export default function MarsWalk() {
     isDraggingRef.current = false
   }
 
-  const handleWheel = (event: React.WheelEvent<HTMLDivElement>) => {
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  // Non-passive wheel listener with e.preventDefault to strictly block browser page zoom on trackpad pinch
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+
+    const onWheel = (event: WheelEvent) => {
+      event.preventDefault()
+      event.stopPropagation()
+
+      const ctrl = cameraControllerRef.current
+      const delta = event.deltaY * 0.015
+      ctrl.distance = Math.max(0.2, Math.min(80, ctrl.distance + delta))
+      if (ctrl.distance <= 0.6) {
+        setCameraMode('pov')
+      } else if (ctrl.distance > 30) {
+        setCameraMode('drone')
+      } else {
+        setCameraMode('chase')
+      }
+    }
+
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => el.removeEventListener('wheel', onWheel)
+  }, [])
+
+  const handleZoomIn = () => {
     const ctrl = cameraControllerRef.current
-    const delta = event.deltaY * 0.015
-    ctrl.distance = Math.max(0.2, Math.min(80, ctrl.distance + delta))
+    ctrl.distance = Math.max(0.2, ctrl.distance * 0.75)
     if (ctrl.distance <= 0.6) {
-      if (cameraMode !== 'pov') setCameraMode('pov')
+      setCameraMode('pov')
     } else if (ctrl.distance > 30) {
-      if (cameraMode !== 'drone') setCameraMode('drone')
+      setCameraMode('drone')
     } else {
-      if (cameraMode !== 'chase') setCameraMode('chase')
+      setCameraMode('chase')
+    }
+  }
+
+  const handleZoomOut = () => {
+    const ctrl = cameraControllerRef.current
+    ctrl.distance = Math.min(80, Math.max(1.5, ctrl.distance * 1.35))
+    if (ctrl.distance <= 0.6) {
+      setCameraMode('pov')
+    } else if (ctrl.distance > 30) {
+      setCameraMode('drone')
+    } else {
+      setCameraMode('chase')
     }
   }
 
   return <div
-    className="marswalk-shell overflow-hidden bg-[#9b472c] select-none cursor-grab active:cursor-grabbing"
+    ref={containerRef}
+    className="marswalk-shell overflow-hidden bg-[#9b472c] select-none cursor-grab active:cursor-grabbing touch-none"
     onPointerDown={handlePointerDown}
     onPointerMove={handlePointerMove}
     onPointerUp={handlePointerUp}
     onPointerCancel={handlePointerUp}
-    onWheel={handleWheel}
   >
     <Canvas shadows={false} dpr={compact ? 1 : [1, 1.5]} camera={{ fov: 52, near: 0.2, far: compact ? 3200 : 5000, position: [0, 8, 15] }} gl={{ antialias: !compact, powerPreference: 'high-performance' }}>
       <Suspense fallback={<SuspenseFallback />}>
@@ -515,22 +553,16 @@ export default function MarsWalk() {
       </Suspense>
     </Canvas>
 
-    {/* Top Mission Telemetry Bar */}
-    <div className="pointer-events-none absolute inset-x-3 top-3 z-10 flex items-center gap-2">
-      <button className="pointer-events-auto flex min-h-10 items-center gap-2 rounded-lg border border-white/20 bg-[#0d1117] px-3 text-xs font-semibold text-white shadow-md hover:bg-white/10" onClick={() => setView('planner')}>
+    {/* Top Back Navigation */}
+    <div className="absolute left-3 top-3 z-10">
+      <button className="flex min-h-10 items-center gap-2 rounded-lg border border-white/20 bg-[#0d1117] px-3 text-xs font-semibold text-white shadow-md hover:bg-white/10" onClick={() => setView('planner')}>
         <ChevronLeft size={16} /> Planner
       </button>
-      <span className="rounded-lg border border-white/20 bg-[#0d1117] px-3 py-1.5 shadow-md">
-        <small className="block text-[9px] uppercase tracking-wider text-slate-400">MarsWalk · 3D EVA Reconstruction</small>
-        <strong className="block max-w-64 truncate text-xs font-semibold text-white">
-          {nextWaypointId === 'HAB' ? 'Return to Habitat Base' : `En route to ${targetName}`}
-        </strong>
-      </span>
     </div>
 
-    {/* UNIFIED MISSION CONSOLE DOCK */}
+    {/* UNIFIED MISSION CONSOLE DOCK (DUAL-DECK SYMMETRICAL) */}
     <div className="absolute inset-x-3 bottom-3 z-20 mx-auto max-w-3xl rounded-xl border border-white/20 bg-[#0d1117] p-2.5 shadow-2xl">
-      {/* Interactive Timeline Scrubber Slider */}
+      {/* 1. Timeline Scrubber */}
       <div className="flex items-center gap-3 px-1 mb-2">
         <span className="min-w-8 text-right font-mono text-[10px] text-slate-300 font-bold">{Math.round(progress * 100)}%</span>
         <input
@@ -551,106 +583,124 @@ export default function MarsWalk() {
         </span>
       </div>
 
-      {/* Integrated Control & Telemetry Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-white/10 pt-2">
-        {/* Vital Stats (Left) */}
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1.5 font-mono text-xs">
-            <BatteryCharging size={15} className="text-mars" />
-            <span className="text-[10px] text-slate-400 uppercase">Energy</span>
+      {/* 2. Core Playback Console (Centered Master Deck) */}
+      <div className="flex items-center justify-center gap-2 pb-2 border-b border-white/10">
+        <button
+          className="flex h-8 items-center gap-1.5 rounded-md border border-white/10 bg-[#161b22] px-3 text-xs text-white hover:bg-white/10 transition"
+          onClick={() => setWalkState({ guided: !guided, playing: false })}
+          title={guided ? 'Switch to free walking' : 'Switch to guided tour'}
+        >
+          <Footprints size={14} className={guided ? 'text-sky-400' : 'text-slate-400'} />
+          <span className="font-medium text-[11px]">{guided ? 'Guided Tour' : 'Free Walk'}</span>
+        </button>
+
+        <button
+          className="grid size-9 place-items-center rounded-md bg-[#1f6feb] text-white hover:bg-[#388bfd] transition shadow-md font-bold border border-[#58a6ff]/40"
+          onClick={() => setWalkState({ playing: !playing })}
+          title={playing ? 'Pause' : 'Play'}
+          aria-label={playing ? 'Pause' : 'Play'}
+        >
+          {playing ? <Pause size={16} /> : <Play size={16} className="translate-x-0.5" />}
+        </button>
+
+        <button
+          className="flex h-8 items-center gap-1 rounded-md border border-white/10 bg-[#161b22] px-2.5 font-mono text-xs text-white hover:bg-white/10 font-bold transition"
+          onClick={cycleSpeed}
+          title="Cycle playback speed"
+        >
+          <FastForward size={13} className="text-sky-400" />
+          <span>{speed}×</span>
+        </button>
+
+        <button
+          className="h-8 w-8 grid place-items-center rounded-md border border-white/10 bg-[#161b22] text-white hover:bg-white/10 transition"
+          onClick={() => setWalkState({ progress: 0, playing: false })}
+          title="Reset to mission origin"
+          aria-label="Reset to mission origin"
+        >
+          <RotateCcw size={14} />
+        </button>
+      </div>
+
+      {/* 3. Symmetrical Auxiliary Wings (Telemetry Left · Camera Right) */}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-2 pt-2">
+        {/* Left Wing: Suit Telemetry & Safety Actions */}
+        <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-start">
+          <div className="flex items-center gap-2 font-mono text-xs px-2.5 py-1 rounded-md bg-[#161b22] border border-white/10">
+            <BatteryCharging size={14} className="text-mars" />
             <strong className="text-white font-bold">{Math.round(remaining).toLocaleString()} EU</strong>
-          </div>
-          <div className="hidden sm:flex items-center gap-1.5 font-mono text-xs">
-            <span className="text-[10px] text-slate-400 uppercase">Return:</span>
-            <strong className={`font-mono text-xs font-bold ${remaining > mission.energy_budget * mission.return_reserve_pct / 100 ? 'text-emerald-400' : 'text-amber-400'}`}>
+            <span className="text-slate-500">·</span>
+            <span className={`font-bold text-[10px] ${remaining > mission.energy_budget * mission.return_reserve_pct / 100 ? 'text-emerald-400' : 'text-amber-400'}`}>
               {remaining > mission.energy_budget * mission.return_reserve_pct / 100 ? 'SAFE' : 'CAUTION'}
-            </strong>
+            </span>
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            <button
+              className="flex h-7 items-center rounded border border-white/15 bg-[#161b22] px-2 text-[11px] font-mono font-medium text-slate-300 hover:text-white hover:bg-white/10 transition"
+              onClick={() => applyEnergyLoss()}
+              title="Simulate 20% Suit Energy Depletion"
+            >
+              <span className="text-amber-400 font-bold">-20%</span>
+            </button>
+            <button
+              className="flex h-7 items-center gap-1.5 rounded border border-red-700 bg-[#b91c1c] px-2.5 text-[11px] font-mono font-bold uppercase tracking-wider text-white hover:bg-[#dc2626] transition shadow-sm"
+              onClick={() => requestEmergency({ longitude: coordinate[0], latitude: coordinate[1] })}
+              title="Emergency Abort Path to Habitat Base"
+            >
+              <AlertTriangle size={12} className="text-white" />
+              <span>Abort</span>
+            </button>
           </div>
         </div>
 
-        {/* Center Playback Console */}
-        <div className="flex items-center gap-1.5">
-          <button
-            className="flex h-8 items-center gap-1 rounded-md border border-white/10 bg-[#161b22] px-2 text-xs text-white hover:bg-white/10"
-            onClick={() => setWalkState({ guided: !guided, playing: false })}
-            title={guided ? 'Switch to free walking' : 'Switch to guided tour'}
-          >
-            <Footprints size={14} />
-            <span className="hidden md:inline font-medium text-[11px]">{guided ? 'Guided' : 'Free Walk'}</span>
-          </button>
-
-          <button
-            className="grid size-8 place-items-center rounded-md bg-[#1f6feb] text-white hover:bg-[#388bfd] transition shadow font-bold border border-[#58a6ff]/40"
-            onClick={() => setWalkState({ playing: !playing })}
-            title={playing ? 'Pause' : 'Play'}
-            aria-label={playing ? 'Pause' : 'Play'}
-          >
-            {playing ? <Pause size={15} /> : <Play size={15} />}
-          </button>
-
-          <button
-            className="flex h-8 items-center gap-1 rounded-md border border-white/10 bg-[#161b22] px-2 font-mono text-xs text-white hover:bg-white/10 font-bold"
-            onClick={cycleSpeed}
-            title="Cycle playback speed"
-          >
-            <FastForward size={13} className="text-sky-400" />
-            <span>{speed}×</span>
-          </button>
-
-          <button
-            className="h-8 w-8 grid place-items-center rounded-md border border-white/10 bg-[#161b22] text-white hover:bg-white/10"
-            onClick={() => setWalkState({ progress: 0, playing: false })}
-            title="Reset to mission origin"
-            aria-label="Reset to mission origin"
-          >
-            <RotateCcw size={14} />
-          </button>
-        </div>
-
-        {/* Camera View Presets & Compass Reset */}
-        <div className="flex items-center gap-1 rounded-md border border-white/10 bg-[#161b22] p-0.5">
-          {(['chase', 'drone', 'pov'] as const).map((mode) => (
+        {/* Right Wing: Camera Optics & Zoom */}
+        <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
+          {/* Zoom In (+) / Zoom Out (-) */}
+          <div className="flex items-center rounded-md border border-white/10 bg-[#161b22] p-0.5">
             <button
-              key={mode}
-              className={`px-2 py-1 text-[11px] font-mono font-semibold uppercase rounded transition ${
-                cameraMode === mode
-                  ? 'bg-[#1f6feb] text-white shadow-sm'
-                  : 'text-slate-400 hover:text-white hover:bg-white/5'
-              }`}
-              onClick={() => cameraControllerRef.current.setPreset(mode)}
-              title={`Switch camera view to ${mode.toUpperCase()}`}
+              className="grid size-6 place-items-center rounded text-slate-300 hover:text-white hover:bg-white/10 transition"
+              onClick={handleZoomIn}
+              title="Zoom Camera In"
+              aria-label="Zoom in"
             >
-              {mode}
+              <Plus size={13} />
             </button>
-          ))}
-          <button
-            className="grid size-7 place-items-center rounded text-slate-400 hover:text-white hover:bg-white/10 transition border-l border-white/10 ml-0.5 pl-0.5"
-            onClick={() => cameraControllerRef.current.resetCamera()}
-            title="Reset view to Chase angle"
-            aria-label="Reset Camera View"
-          >
-            <Compass size={14} />
-          </button>
-        </div>
+            <button
+              className="grid size-6 place-items-center rounded text-slate-300 hover:text-white hover:bg-white/10 transition border-l border-white/10"
+              onClick={handleZoomOut}
+              title="Zoom Camera Out"
+              aria-label="Zoom out"
+            >
+              <Minus size={13} />
+            </button>
+          </div>
 
-        {/* Contingency Actions (Right) */}
-        <div className="flex items-center gap-1.5">
-          <button
-            className="flex h-8 items-center gap-1.5 rounded-md border border-white/20 bg-[#21262d] px-2.5 text-xs font-mono font-bold text-white hover:bg-[#30363d] transition"
-            onClick={() => applyEnergyLoss()}
-            title="Simulate 20% Suit Energy Depletion"
-          >
-            <BatteryCharging size={13} className="text-amber-400" />
-            <span className="hidden sm:inline">-20% EU</span>
-          </button>
-          <button
-            className="flex h-8 items-center gap-1.5 rounded-md border border-red-700 bg-[#b91c1c] px-3 text-xs font-mono font-bold uppercase tracking-wider text-white hover:bg-[#dc2626] transition shadow-sm"
-            onClick={() => requestEmergency({ longitude: coordinate[0], latitude: coordinate[1] })}
-            title="Emergency Abort Path to Habitat Base"
-          >
-            <AlertTriangle size={13} className="text-white" />
-            <span>Abort</span>
-          </button>
+          {/* Camera View Presets & Compass Reset */}
+          <div className="flex items-center gap-0.5 rounded-md border border-white/10 bg-[#161b22] p-0.5">
+            {(['chase', 'drone', 'pov'] as const).map((mode) => (
+              <button
+                key={mode}
+                className={`px-2 py-0.5 text-[11px] font-mono font-semibold uppercase rounded transition ${
+                  cameraMode === mode
+                    ? 'bg-[#1f6feb] text-white shadow-sm'
+                    : 'text-slate-400 hover:text-white hover:bg-white/5'
+                }`}
+                onClick={() => cameraControllerRef.current.setPreset(mode)}
+                title={`Switch camera view to ${mode.toUpperCase()}`}
+              >
+                {mode}
+              </button>
+            ))}
+            <button
+              className="grid size-6 place-items-center rounded text-slate-400 hover:text-white hover:bg-white/10 transition border-l border-white/10 ml-0.5 pl-0.5"
+              onClick={() => cameraControllerRef.current.resetCamera()}
+              title="Reset view to Chase angle"
+              aria-label="Reset Camera View"
+            >
+              <Compass size={13} />
+            </button>
+          </div>
         </div>
       </div>
     </div>
