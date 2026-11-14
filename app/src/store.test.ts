@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { useMissionStore } from './store'
-import type { MissionConfig } from './types'
+import type { MissionConfig, WalkTelemetry } from './types'
 
 const mission: MissionConfig = {
   habitat: { longitude: 77.45, latitude: 18.44 },
@@ -29,6 +29,16 @@ describe('mission store', () => {
     useMissionStore.setState({ mission: { ...mission, route_stops: [{ type: 'science', id: 'WP-01' }] } })
     useMissionStore.getState().toggleScienceStop('WP-01')
     expect(useMissionStore.getState().mission?.route_stops).toEqual([{ type: 'science', id: 'WP-01' }])
+  })
+
+  it('stores free-walk telemetry independently from guided progress', () => {
+    const telemetry: WalkTelemetry = {
+      localPosition: [10, 2, 20], projectedPosition: [100, 200], coordinate: { longitude: 77.4, latitude: 18.45 },
+      headingRad: 1.2, routeIndex: null, progress: 0.4, mode: 'free', updatedAt: 42,
+    }
+    useMissionStore.getState().setWalkTelemetry(telemetry)
+    expect(useMissionStore.getState().walkTelemetry).toEqual(telemetry)
+    expect(useMissionStore.getState().progress).not.toBe(telemetry.progress)
   })
 })
 
