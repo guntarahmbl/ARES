@@ -27,7 +27,7 @@ export default function App() {
       <div className="grid h-full place-content-center gap-4 bg-[#090b0e] text-center">
         <Satellite className="mx-auto size-12 text-mars animate-pulse" />
         <h1 className="text-xl font-bold tracking-[.25em] text-white">ARES PATH</h1>
-        <p className="font-mono text-xs text-slate-300">Aligning Jezero Crater HiRISE & MOLA Telemetry…</p>
+        <p className="text-sm text-slate-300">Loading Jezero terrain…</p>
       </div>
     )
   }
@@ -35,9 +35,9 @@ export default function App() {
   if (!bootstrap) {
     return (
       <div className="grid h-full place-content-center gap-4 bg-[#090b0e] text-center p-6">
-        <h1 className="text-lg font-semibold text-white">Mission Data Stream Offline</h1>
-        <p className="font-mono text-xs text-danger">{error}</p>
-        <Button onClick={() => initialize()}>Retry Startup Pipeline</Button>
+        <h1 className="text-lg font-semibold text-white">Mission data unavailable</h1>
+        <p className="text-sm text-danger">{error}</p>
+        <Button onClick={() => initialize()}>Try again</Button>
       </div>
     )
   }
@@ -57,7 +57,7 @@ export default function App() {
             </span>
             <span className="min-w-0">
               <strong className="block truncate text-xs font-bold tracking-wider text-white">ARES PATH</strong>
-              <small className="hidden font-mono text-[10px] text-slate-300 sm:block uppercase">EVA Navigation & Safety · Jezero</small>
+              <small className="hidden text-xs text-slate-300 sm:block">Jezero route planner</small>
             </span>
           </div>
 
@@ -67,7 +67,7 @@ export default function App() {
               onClick={() => setView('planner')}
             >
               <Map size={14} />
-              <span className="hidden sm:inline">2D Planner</span>
+              <span className="hidden sm:inline">Planner</span>
             </button>
             <button
               className={`flex h-8 items-center gap-1.5 rounded-md px-3 text-xs font-medium transition ${view === 'marswalk' ? 'bg-[#1e2530] text-white shadow-sm font-semibold' : 'text-slate-300 hover:text-white'} disabled:opacity-30`}
@@ -75,15 +75,15 @@ export default function App() {
               onClick={() => setView('marswalk')}
             >
               <Footprints size={14} />
-              <span className="hidden sm:inline">MarsWalk 3D</span>
+              <span className="hidden sm:inline">MarsWalk</span>
             </button>
           </nav>
 
           <button
             onClick={() => setShowInfo(true)}
             className="flex h-8 w-8 items-center justify-center rounded-md border border-white/10 bg-[#0d1117] text-slate-300 hover:text-white hover:bg-white/10 transition"
-            title="Mission Briefing & Data Specifications"
-            aria-label="Mission Briefing & Data Specifications"
+            title="Data and limitations"
+            aria-label="Data and limitations"
           >
             <Info size={15} className="text-sky-400" />
           </button>
@@ -92,7 +92,7 @@ export default function App() {
             onClick={() => reset()}
             className="flex h-8 w-8 items-center justify-center rounded-md border border-white/10 bg-[#0d1117] text-slate-300 hover:text-white hover:bg-white/10 transition"
             title="Reset mission state"
-            aria-label="Reset mission state"
+            aria-label="Reset mission"
           >
             <RotateCcw size={14} />
           </button>
@@ -109,16 +109,16 @@ export default function App() {
           {view === 'planner' ? (
             <Planner />
           ) : (
-            <Suspense fallback={<div className="grid h-full place-content-center font-mono text-xs text-slate-300">Streaming 3D Mars DTM Sectors…</div>}>
+            <Suspense fallback={<div className="grid h-full place-content-center text-sm text-slate-300">Loading MarsWalk terrain…</div>}>
               <MarsWalk />
             </Suspense>
           )}
         </main>
 
-        <Sheet open={showInfo} onOpenChange={setShowInfo} title="Mission Data Integrity & Telemetry Limitations">
+        <Sheet open={showInfo} onOpenChange={setShowInfo} title="Data sources and limitations">
           <div className="space-y-4 text-xs text-slate-300">
             <p className="leading-relaxed">
-              ARES Path integrates verified observational datasets from NASA PDS and USGS Astrogeology Science Center to support astronaut exploration safety.
+              ARES Path combines NASA and USGS observations with derived terrain analysis. Assumed operational values are clearly separated from measured data.
             </p>
             <div className="grid gap-2 sm:grid-cols-3">
               {[
@@ -133,7 +133,7 @@ export default function App() {
               ))}
             </div>
             <div className="rounded-lg border border-white/10 bg-[#161b22] p-3">
-              <h4 className="font-mono uppercase tracking-wider text-white mb-2 font-bold">Scientific & Technical Notes:</h4>
+              <h4 className="text-sm text-white mb-2 font-semibold">Known limitations</h4>
               <ul className="list-disc space-y-1.5 pl-4 font-mono text-[11px] text-slate-300">
                 {bootstrap.limitations.map((item) => (
                   <li key={item}>{item}</li>

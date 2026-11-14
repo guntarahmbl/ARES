@@ -37,8 +37,8 @@ function PlacementBanner() {
       <span className="flex items-center gap-1.5 font-medium text-route">
         <MapPin size={15} className="animate-bounce" />
         {mode === 'habitat'
-          ? 'Click within the approved 250 m landing zone (dashed circle) to relocate HAB'
-          : 'Click anywhere on Jezero crater map to position a checkpoint'}
+          ? 'Click inside the dashed zone to move the habitat'
+          : 'Click the map to place a checkpoint'}
       </span>
       <button className="rounded bg-white/10 px-2 py-0.5 text-white hover:bg-white/20 font-mono text-[11px]" onClick={cancel}>
         Cancel (Esc)
@@ -119,7 +119,7 @@ function WaypointInspector2D() {
           className="w-full text-xs font-semibold"
           onClick={() => toggleScience(id)}
         >
-          {isSelected ? '✓ In Active Mission' : '+ Add to Mission Route'}
+          {isSelected ? '✓ Added to route' : '+ Add to route'}
         </Button>
       </div>
     </aside>
@@ -138,6 +138,8 @@ function MissionSidebar() {
   const moveStop = useMissionStore((state) => state.moveStop)
   const setMission = useMissionStore((state) => state.setMission)
   const calculate = useMissionStore((state) => state.calculate)
+  const plan = useMissionStore((state) => state.plan)
+  const routeDirty = useMissionStore((state) => state.routeDirty)
 
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
 
@@ -151,8 +153,8 @@ function MissionSidebar() {
     <aside className="absolute inset-x-2 bottom-2 z-20 flex max-h-[52svh] flex-col overflow-hidden rounded-xl border border-white/20 bg-[#0d1117] shadow-2xl sm:bottom-3 sm:left-3 sm:right-auto sm:top-3 sm:max-h-none sm:w-96 lg:w-[380px]">
       <div className="flex items-center gap-3 border-b border-white/10 px-4 py-3 bg-[#12161f]">
         <div className="min-w-0 flex-1">
-          <h1 className="text-xs font-mono font-bold tracking-wider uppercase text-white">Mission EVA Planning</h1>
-          <p className="mt-0.5 font-mono text-[11px] text-slate-300">Jezero Crater · Surface Route & Safety Solver</p>
+          <h1 className="text-sm font-semibold text-white">Plan an EVA</h1>
+          <p className="mt-0.5 text-xs text-slate-300">Choose stops and check a safe return route</p>
         </div>
         <Button variant="ghost" size="icon" onClick={() => setOpen(false)} aria-label="Collapse mission panel">
           <ChevronLeft className="hidden lg:block text-slate-300" />
@@ -164,8 +166,8 @@ function MissionSidebar() {
         {/* Stops section */}
         <section>
           <div className="mb-2 flex items-center justify-between">
-            <h2 className="text-xs font-mono uppercase tracking-wider text-slate-300">Route Trajectory</h2>
-            <span className="font-mono text-xs font-bold text-sky-400">{mission.route_stops.length} STOPS (ROUND TRIP)</span>
+            <h2 className="text-xs font-medium text-slate-300">Route stops</h2>
+            <span className="text-xs font-semibold text-sky-400">{mission.route_stops.length} stops · round trip</span>
           </div>
 
           <div className="space-y-1.5">
@@ -176,7 +178,7 @@ function MissionSidebar() {
               </span>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between">
-                  <strong className="text-white text-xs font-mono">HABITAT BASE (ORIGIN)</strong>
+                  <strong className="text-white text-xs">Habitat</strong>
                   <button
                     className="text-[10px] font-mono text-sky-400 hover:text-sky-200 underline"
                     onClick={() => useMissionStore.getState().setPlacementMode('habitat')}
@@ -185,7 +187,7 @@ function MissionSidebar() {
                     Relocate
                   </button>
                 </div>
-                <span className="font-mono text-[10px] text-slate-300">Sol 018 Staging Base</span>
+                <span className="text-[11px] text-slate-300">Starting point</span>
               </div>
             </div>
 
@@ -228,8 +230,8 @@ function MissionSidebar() {
                 RET
               </span>
               <div className="min-w-0 flex-1">
-                <strong className="block text-white text-xs font-mono">HABITAT BASE (RETURN)</strong>
-                <span className="font-mono text-[10px] text-slate-300">Closed-Loop Envelope Verified</span>
+                <strong className="block text-white text-xs">Return to habitat</strong>
+                <span className="text-[11px] text-slate-300">Route ends at the starting point</span>
               </div>
             </div>
           </div>
@@ -243,14 +245,14 @@ function MissionSidebar() {
               if (window.innerWidth < 1024) setOpen(false)
             }}
           >
-            <Plus size={15} /> Add Waypoint on Map
+            <Plus size={15} /> Add stop on map
           </Button>
         </section>
 
         {/* Science Targets accordion */}
         <details className="group rounded-lg border border-white/10 bg-[#161b22]">
           <summary className="flex min-h-10 cursor-pointer items-center justify-between px-3 text-xs font-medium text-slate-200">
-            <span>Curated Science Targets</span>
+            <span>Science targets</span>
             <ChevronRight size={14} className="transition group-open:rotate-90 text-slate-400" />
           </summary>
           <div className="space-y-1 border-t border-white/10 p-2">
@@ -280,15 +282,15 @@ function MissionSidebar() {
         {/* Advanced Constraints accordion */}
         <details className="group rounded-lg border border-white/10 bg-[#161b22]">
           <summary className="flex min-h-10 cursor-pointer items-center justify-between px-3 text-xs font-medium text-slate-200">
-            <span>Mission Constraints & Envelope</span>
+            <span>Route settings</span>
             <ChevronRight size={14} className="transition group-open:rotate-90 text-slate-400" />
           </summary>
           <div className="space-y-4 border-t border-white/10 p-3">
             {[
-              ['Maximum EVA Duration', 'max_duration_min', 240, 1000, 10, `${mission.max_duration_min} min`],
-              ['Energy Storage Budget', 'energy_budget', 15000, 70000, 1000, `${mission.energy_budget.toLocaleString()} EU`],
-              ['Traversable Slope Limit', 'preferred_max_slope_deg', 8, 25, 1, `${mission.preferred_max_slope_deg}°`],
-              ['Abort Safety Reserve', 'return_reserve_pct', 10, 50, 5, `${mission.return_reserve_pct}%`],
+              ['Maximum duration', 'max_duration_min', 240, 1000, 10, `${mission.max_duration_min} min`],
+              ['Energy budget', 'energy_budget', 15000, 70000, 1000, `${mission.energy_budget.toLocaleString()} EU`],
+              ['Preferred maximum slope', 'preferred_max_slope_deg', 8, 25, 1, `${mission.preferred_max_slope_deg}°`],
+              ['Return reserve', 'return_reserve_pct', 10, 50, 5, `${mission.return_reserve_pct}%`],
             ].map(([label, key, min, max, step, value]) => (
               <label className="block text-xs" key={String(key)}>
                 <span className="mb-1.5 flex justify-between">
@@ -312,12 +314,13 @@ function MissionSidebar() {
 
       <div className="border-t border-white/10 p-3 bg-[#0d1117]">
         <button
-          className="w-full h-11 flex items-center justify-center gap-2 rounded-lg bg-[#1f6feb] hover:bg-[#388bfd] text-white font-mono text-xs font-bold uppercase tracking-wider border border-[#58a6ff]/40 shadow-lg active:scale-[0.98] transition disabled:opacity-40 disabled:pointer-events-none"
-          disabled={state === 'loading'}
+          data-testid="route-action"
+          className="w-full h-11 flex items-center justify-center gap-2 rounded-lg bg-[#1f6feb] hover:bg-[#388bfd] text-white text-sm font-semibold border border-[#58a6ff]/40 shadow-lg active:scale-[0.98] transition disabled:opacity-60 disabled:pointer-events-none"
+          disabled={state === 'loading' || (Boolean(plan) && !routeDirty)}
           onClick={() => calculate()}
         >
           {state === 'loading' ? <span className="spinner" /> : <Navigation size={14} />}
-          {state === 'loading' ? 'COMPUTING A* TRAJECTORY…' : 'COMPUTE MISSION ROUTE'}
+          {state === 'loading' ? 'Updating route…' : routeDirty ? (plan ? 'Update route' : 'Plan route') : 'Route up to date'}
         </button>
       </div>
     </aside>
@@ -345,7 +348,7 @@ function LayerControl() {
       {open && (
         <div className="absolute right-0 mt-2 w-72 rounded-xl border border-white/20 bg-[#0d1117] p-3.5 shadow-2xl">
           <div className="mb-2 flex items-center justify-between border-b border-white/10 pb-2">
-            <h2 className="text-xs font-mono uppercase tracking-wider text-slate-200">Orbital Data Layers</h2>
+            <h2 className="text-sm font-semibold text-slate-200">Map layers</h2>
             <span className="text-[10px] text-slate-400">NASA PDS</span>
           </div>
           {layers.map((layer) => (
@@ -417,15 +420,15 @@ function RouteSummary() {
   const leftPosition = sidebarOpen ? 'sm:left-[405px]' : 'sm:left-3'
 
   return (
-    <section className={`absolute bottom-3 left-2 right-2 z-10 rounded-xl border border-white/20 bg-[#0d1117]/95 p-3 shadow-2xl transition-all duration-300 ease-in-out ${leftPosition} sm:right-auto sm:max-w-xl md:max-w-2xl backdrop-blur`}>
+    <section data-testid="route-status" aria-live="polite" className={`absolute bottom-3 left-2 right-2 z-10 rounded-xl border border-white/20 bg-[#0d1117]/95 p-3 shadow-2xl transition-all duration-300 ease-in-out ${leftPosition} sm:right-auto sm:max-w-xl md:max-w-2xl backdrop-blur`}>
       <div className="flex items-center gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <span className={`font-mono text-[11px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border ${plan.feasible ? 'border-emerald-600 bg-[#21262d] text-emerald-400' : 'border-amber-600 bg-[#21262d] text-amber-400'}`}>
-              {plan.feasible ? 'NOMINAL' : 'CAUTION'}
+              {plan.feasible ? 'SAFE' : 'CAUTION'}
             </span>
             <strong className="block text-xs font-mono font-bold uppercase tracking-wider text-white">
-              {plan.feasible ? 'TRAJECTORY CONFIRMED · RETURN SAFE' : 'CAUTION · ENVELOPE EXCEEDED'}
+              {plan.feasible ? 'Route is safe to return' : 'Route needs changes'}
             </strong>
             <span className="hidden font-mono text-[10px] text-sky-400 font-semibold lg:inline-block">
               SCI SCORE {route.metrics.science_score}/100
@@ -436,7 +439,7 @@ function RouteSummary() {
           </p>
           {route.explanation[0] && (
             <p className="hidden text-[11px] text-slate-300 truncate sm:block mt-0.5 font-mono">
-              <span className="text-sky-400 font-bold mr-1">NAV DECISION:</span>
+              <span className="text-sky-400 font-semibold mr-1">Why:</span>
               {route.explanation[0]} {route.explanation[1]}
             </p>
           )}
@@ -445,10 +448,10 @@ function RouteSummary() {
         {/* Clean, consolidated action buttons */}
         <div className="flex items-center gap-2 shrink-0">
           <Button variant="ghost" size="sm" className="hidden sm:flex text-xs font-mono border border-white/10 hover:border-white/20 bg-[#161b22]" onClick={() => setActive(active === 'primary' ? 'alternative' : 'primary')}>
-            {active === 'primary' ? 'Alt Route' : 'Primary'}
+            {active === 'primary' ? 'Show alternative' : 'Show primary'}
           </Button>
           <Button variant="secondary" size="sm" className="text-xs font-semibold bg-[#21262d] border border-white/20 hover:bg-[#30363d]" onClick={() => setDetails(true)}>
-            Route Details
+            Details
           </Button>
         </div>
       </div>
@@ -465,7 +468,7 @@ function RouteDetails() {
   const route: RouteCandidate | null | undefined = active === 'alternative' ? plan?.alternative : plan?.primary
 
   return (
-    <Sheet open={open} onOpenChange={setOpen} title="Mission Route Details" side="right">
+    <Sheet open={open} onOpenChange={setOpen} title="Route details" side="right">
       {route && (
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-2">
@@ -485,7 +488,7 @@ function RouteDetails() {
           </div>
 
           <div className="rounded-lg border border-white/10 bg-[#161b22] p-2.5">
-            <h4 className="mb-2 text-[11px] font-mono uppercase tracking-wider text-slate-300">Topographic Elevation Profile (HiRISE DTM)</h4>
+            <h4 className="mb-2 text-xs font-medium text-slate-300">Elevation profile · HiRISE DTM</h4>
             <div className="h-44">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={route.elevation_profile}>
@@ -502,7 +505,7 @@ function RouteDetails() {
 
           <div className="rounded-lg border border-white/10 bg-[#161b22] p-3">
             <h3 className="mb-2 flex items-center gap-2 text-xs font-mono font-semibold tracking-wider uppercase text-mars">
-              <Activity size={14} /> Route Decision & Terrain Telemetry
+              <Activity size={14} /> Why this route
             </h3>
             <div className="space-y-1.5">
               {route.explanation.map((line) => (
@@ -512,7 +515,7 @@ function RouteDetails() {
           </div>
 
           <Button variant="secondary" className="w-full text-xs" onClick={() => applyEnergyLoss()}>
-            <Zap size={14} className="text-amber-400" /> Simulate Contingency: -20% Energy
+            <Zap size={14} className="text-amber-400" /> Simulate 20% energy loss
           </Button>
         </div>
       )}
@@ -527,26 +530,26 @@ function DraftStopSheet() {
   const cancel = useMissionStore((state) => state.cancelPlacement)
 
   return (
-    <Sheet open={Boolean(draft)} onOpenChange={(open) => !open && cancel()} title="Add Custom Checkpoint" side="bottom">
+    <Sheet open={Boolean(draft)} onOpenChange={(open) => !open && cancel()} title="Add checkpoint" side="bottom">
       {draft && (
         <div className="mx-auto max-w-xl space-y-4">
           <label className="block text-xs font-medium text-slate-200">
-            Checkpoint Label
+            Checkpoint name
             <input
               className="mt-1.5 min-h-10 w-full rounded-lg border border-white/20 bg-background px-3 text-xs font-mono text-white"
               value={draft.name}
-              placeholder="e.g. Delta Base North Checkpoint"
+              placeholder="e.g. North delta stop"
               onChange={(event) => useMissionStore.setState({ draftStop: { ...draft, name: event.target.value } })}
             />
           </label>
           {!validation ? (
             <div className="flex items-center gap-2 text-xs text-slate-300 font-mono">
-              <span className="spinner" /> Analyzing local terrain traversability…
+              <span className="spinner" /> Checking terrain…
             </div>
           ) : (
             <div className="rounded-lg border border-white/20 bg-[#161b22] p-3 text-xs">
               <strong className={`block font-semibold ${validation.valid ? 'text-emerald-400' : 'text-rose-400'}`}>
-                {validation.valid ? '✓ Traversable Location Verified' : '✕ Hazardous Location Detected'}
+                {validation.valid ? '✓ This location is traversable' : '✕ Choose another location'}
               </strong>
               <p className="mt-1 font-mono text-[11px] text-slate-300">
                 Elev: {validation.terrain.elevation_m?.toFixed(1)} m · Slope: {validation.terrain.slope_deg?.toFixed(1)}° · Geology: {validation.science_context.geology_symbol ?? 'Nili Planum'}

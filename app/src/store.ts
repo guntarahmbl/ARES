@@ -11,7 +11,7 @@ type MissionStore = {
   emergencyRoute: RouteCandidate | null; waypointValidation: WaypointValidation | null; draftStop: CustomRouteStop | null
   view: ViewMode; state: LoadState; error: string | null; selectedWaypoint: string | null; hoveredWaypoint: string | null
   activeRoute: 'primary' | 'alternative'; layerVisibility: Record<string, boolean>; layerOpacity: number
-  placementMode: PlacementMode; sidebarOpen: boolean; detailsOpen: boolean
+  placementMode: PlacementMode; sidebarOpen: boolean; detailsOpen: boolean; routeDirty: boolean
   guided: boolean; playing: boolean; speed: number; reducedMotion: boolean; progress: number
   initialize: () => Promise<void>; calculate: () => Promise<void>; previewStop: (coordinate: Coordinate) => Promise<void>
   commitDraftStop: () => void; cancelPlacement: () => void; updateStop: (id: string, patch: Partial<CustomRouteStop>) => void
@@ -35,7 +35,7 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
   bootstrap: null, mission: null, plan: null, emergencyRoute: null, waypointValidation: null, draftStop: null,
   view: 'planner', state: 'idle', error: null, selectedWaypoint: null, hoveredWaypoint: null, activeRoute: 'primary',
   layerVisibility: { imagery: true, slope: false, hazard: true, crism: false, geology: true, traverse: true },
-  layerOpacity: 0.55, placementMode: null, sidebarOpen: sidebarPreference !== 'closed', detailsOpen: false,
+  layerOpacity: 0.55, placementMode: null, sidebarOpen: sidebarPreference !== 'closed', detailsOpen: false, routeDirty: true,
   guided: true, playing: false, speed: 8, reducedMotion: false, progress: 0,
   initialize: async () => {
     set({ state: 'loading', error: null })
@@ -55,7 +55,7 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
     try {
       const plan = await api.plan(mission)
       if (requestId === activeRequest) {
-        set({ plan, emergencyRoute: null, state: 'ready', error: plan.warnings[0] ?? null })
+        set({ plan, emergencyRoute: null, state: 'ready', routeDirty: false, error: plan.warnings[0] ?? null })
       }
     } catch (error) {
       if (requestId === activeRequest) {
@@ -96,16 +96,16 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
   commitDraftStop: () => {
     const { draftStop, waypointValidation, mission } = get()
     if (!draftStop || !waypointValidation?.valid || !mission) return
-    set({ mission: { ...mission, route_stops: [...mission.route_stops, draftStop] }, draftStop: null, waypointValidation: null, placementMode: null })
+    set({ mission: { ...mission, route_stops: [...mission.route_stops, draftStop] }, draftStop: null, waypointValidation: null, placementMode: null, routeDirty: true })
     queueMicrotask(() => void get().calculate())
   },
   cancelPlacement: () => set({ placementMode: null, draftStop: null, waypointValidation: null }),
-  updateStop: (id, patch) => set((state) => state.mission ? ({ mission: { ...state.mission, route_stops: replaceStop(state.mission.route_stops, id, patch) } }) : state),
+  updateStop: (id, patch) => set((state) => state.mission ? ({ mission: { ...state.mission, route_stops: replaceStop(state.mission.route_stops, id, patch) }, routeDirty: true }) : state),
   removeStop: (id) => set((state) => {
     if (!state.mission || state.mission.route_stops.length <= 1) return state
     const mission = { ...state.mission, route_stops: state.mission.route_stops.filter((stop) => stop.id !== id) }
     queueMicrotask(() => void get().calculate())
-    return { mission }
+    return { mission, routeDirty: true }
   }),
   reorderStop: (id, direction) => set((state) => {
     if (!state.mission) return state
@@ -114,7 +114,7 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
     if (index < 0 || target < 0 || target >= route_stops.length) return state
     ;[route_stops[index], route_stops[target]] = [route_stops[target], route_stops[index]]
     queueMicrotask(() => void get().calculate())
-    return { mission: { ...state.mission, route_stops } }
+    return { mission: { ...state.mission, route_stops }, routeDirty: true }
   }),
   moveStop: (fromIndex, toIndex) => {
     const { mission, calculate } = get()
@@ -123,7 +123,7 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
     if (fromIndex < 0 || fromIndex >= route_stops.length || toIndex < 0 || toIndex >= route_stops.length || fromIndex === toIndex) return
     const [moved] = route_stops.splice(fromIndex, 1)
     route_stops.splice(toIndex, 0, moved)
-    set({ mission: { ...mission, route_stops } })
+    set({ mission: { ...mission, route_stops }, routeDirty: true })
     queueMicrotask(() => void calculate())
   },
   toggleScienceStop: (id) => set((state) => {
@@ -132,7 +132,7 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
     if (selected && state.mission.route_stops.length === 1) return state
     const route_stops = selected ? state.mission.route_stops.filter((stop) => stop.id !== id) : [...state.mission.route_stops, { type: 'science' as const, id }]
     queueMicrotask(() => void get().calculate())
-    return { mission: { ...state.mission, route_stops } }
+    return { mission: { ...state.mission, route_stops }, routeDirty: true }
   }),
   applyEnergyLoss: async () => {
     const mission = get().mission
@@ -149,10 +149,10 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
   setMission: (patch) => {
     const current = get().mission
     if (!current) return
-    set({ mission: { ...current, ...patch } })
+    set({ mission: { ...current, ...patch }, routeDirty: true })
     queueMicrotask(() => void get().calculate())
   },
-  setHabitat: (habitat) => set((state) => state.mission ? ({ mission: { ...state.mission, habitat } }) : state),
+  setHabitat: (habitat) => set((state) => state.mission ? ({ mission: { ...state.mission, habitat }, routeDirty: true }) : state),
   setPlacementMode: (placementMode) => set({ placementMode }),
   setView: (view) => set({ view }),
   setLayerVisibility: (id, visible) => set((state) => ({ layerVisibility: { ...state.layerVisibility, [id]: visible } })),
@@ -169,7 +169,7 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
   reset: async () => {
     const bootstrap = get().bootstrap
     if (!bootstrap) return
-    set({ mission: structuredClone(bootstrap.default_mission), activeRoute: 'primary', emergencyRoute: null, progress: 0, playing: false })
+    set({ mission: structuredClone(bootstrap.default_mission), activeRoute: 'primary', emergencyRoute: null, progress: 0, playing: false, routeDirty: true })
     await get().calculate()
   },
 }))
