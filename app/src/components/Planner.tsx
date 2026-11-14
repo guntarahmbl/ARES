@@ -1,8 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import {
   Activity, ArrowDown, ArrowUp, Check, ChevronLeft, ChevronRight,
-  Compass, Layers3, MapPin, Menu, Mountain, Navigation, Plus, ShieldCheck, Trash2, Zap
+  Compass, GripVertical, Layers3, MapPin, Menu, Mountain, Navigation, Plus, ShieldCheck, Target, Trash2, X, Zap
 } from 'lucide-react'
 import { useMissionStore } from '../store'
 import type { RouteCandidate, RouteStop } from '../types'
@@ -10,12 +10,120 @@ import { MarsMap } from './MarsMap'
 import { Button } from './ui/button'
 import { Sheet } from './ui/sheet'
 
-const formatDistance = (meters: number) => meters >= 1000 ? `${(meters / 1000).toFixed(2)} km` : `${Math.round(meters)} m`
+const formatDistance = (meters: number) => meters >= 1000 ? `${(meters / 1000).toFixed(1)} km` : `${Math.round(meters)} m`
 
 function stopName(stop: RouteStop) {
   if (stop.type === 'custom') return stop.name
   const feature = useMissionStore.getState().bootstrap?.waypoints.features.find((item) => item.properties.id === stop.id)
   return feature?.properties.name ?? stop.id
+}
+
+function PlacementBanner() {
+  const mode = useMissionStore((state) => state.placementMode)
+  const cancel = useMissionStore((state) => state.cancelPlacement)
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && mode) cancel()
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [mode, cancel])
+
+  if (!mode) return null
+
+  return (
+    <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 flex items-center gap-3 rounded-lg border border-route bg-[#0d1117] px-4 py-2 text-xs shadow-2xl">
+      <span className="flex items-center gap-1.5 font-medium text-route">
+        <MapPin size={15} className="animate-bounce" />
+        {mode === 'habitat'
+          ? 'Click within the approved 250 m landing zone (dashed circle) to relocate HAB'
+          : 'Click anywhere on Jezero crater map to position a checkpoint'}
+      </span>
+      <button className="rounded bg-white/10 px-2 py-0.5 text-white hover:bg-white/20 font-mono text-[11px]" onClick={cancel}>
+        Cancel (Esc)
+      </button>
+    </div>
+  )
+}
+
+function WaypointInspector2D() {
+  const selectedId = useMissionStore((state) => state.selectedWaypoint)
+  const hoveredId = useMissionStore((state) => state.hoveredWaypoint)
+  const setSelected = useMissionStore((state) => state.setSelectedWaypoint)
+  const setHovered = useMissionStore((state) => state.setHoveredWaypoint)
+  const bootstrap = useMissionStore((state) => state.bootstrap)
+  const mission = useMissionStore((state) => state.mission)
+  const toggleScience = useMissionStore((state) => state.toggleScienceStop)
+
+  const id = selectedId ?? hoveredId
+  const isPinned = Boolean(selectedId)
+
+  if (!id || !bootstrap) return null
+  const waypoint = bootstrap.waypoints.features.find((f) => f.properties.id === id)
+  if (!waypoint) return null
+  const images = bootstrap.surface_images.filter((img) => img.waypoint_id === id)
+  const evidence = bootstrap.science_evidence[id]
+  const isSelected = mission?.route_stops.some((s) => s.id === id)
+
+  return (
+    <aside
+      className="absolute right-3 top-14 z-20 w-80 max-h-[80svh] overflow-y-auto rounded-xl border border-white/20 bg-[#0d1117]/95 backdrop-blur p-4 shadow-2xl transition-all"
+      onMouseEnter={() => setHovered(id)}
+      onMouseLeave={() => setHovered(null)}
+    >
+      <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
+        <span className="flex items-center gap-1.5 font-mono text-[11px] font-semibold uppercase tracking-wider text-sky-400">
+          <Target size={13} /> Target · Sol {waypoint.properties.sol}
+        </span>
+        <button
+          className="grid size-6 place-items-center rounded text-slate-400 hover:bg-white/10 hover:text-white"
+          onClick={() => { setSelected(null); setHovered(null) }}
+          aria-label="Close inspector"
+        >
+          <X size={14} />
+        </button>
+      </div>
+
+      <h3 className="mt-2.5 text-sm font-semibold text-white">{waypoint.properties.name}</h3>
+      <p className="mt-1 text-xs leading-relaxed text-slate-300">{waypoint.properties.science_rationale}</p>
+
+      {images[0] && (
+        <div className="mt-3 overflow-hidden rounded-lg border border-white/10">
+          <img className="aspect-video w-full object-cover" src={`/assets/thumbnails/surface/${images[0].product_id}.jpg`} alt={waypoint.properties.name} />
+          <div className="bg-[#12161f] px-2 py-1 text-[10px] font-mono text-slate-300">
+            Perseverance Mastcam-Z / Navcam Observation
+          </div>
+        </div>
+      )}
+
+      <dl className="mt-3 grid grid-cols-3 gap-1.5 font-mono text-xs">
+        <div className="rounded border border-white/10 bg-[#161b22] p-1.5">
+          <dt className="text-[10px] text-slate-400">Priority</dt>
+          <dd className="font-semibold text-sky-400">{waypoint.properties.priority}/3</dd>
+        </div>
+        <div className="rounded border border-white/10 bg-[#161b22] p-1.5">
+          <dt className="text-[10px] text-slate-400">Geology</dt>
+          <dd className="font-semibold text-white">{evidence?.geology_symbol ?? 'Nili'}</dd>
+        </div>
+        <div className="rounded border border-white/10 bg-[#161b22] p-1.5">
+          <dt className="text-[10px] text-slate-400">OLINDEX3</dt>
+          <dd className="font-semibold text-white">{evidence?.crism.olindex3?.toFixed(3) ?? 'nodata'}</dd>
+        </div>
+      </dl>
+
+      <div className="mt-3.5 flex gap-2">
+        <Button
+          variant={isSelected ? 'secondary' : 'default'}
+          size="sm"
+          className="w-full text-xs font-semibold"
+          onClick={() => toggleScience(id)}
+        >
+          {isSelected ? '✓ In Active Mission' : '+ Add to Mission Route'}
+        </Button>
+      </div>
+    </aside>
+  )
 }
 
 function MissionSidebar() {
@@ -26,30 +134,29 @@ function MissionSidebar() {
   const setOpen = useMissionStore((state) => state.setSidebarOpen)
   const setPlacement = useMissionStore((state) => state.setPlacementMode)
   const toggleScience = useMissionStore((state) => state.toggleScienceStop)
-  const reorder = useMissionStore((state) => state.reorderStop)
   const remove = useMissionStore((state) => state.removeStop)
+  const moveStop = useMissionStore((state) => state.moveStop)
   const setMission = useMissionStore((state) => state.setMission)
   const calculate = useMissionStore((state) => state.calculate)
 
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
+
   if (!open) return (
-    <Button variant="secondary" size="icon" className="absolute left-3 top-3 z-20 hidden border border-white/15 bg-[#0d1117]/90 shadow-xl backdrop-blur lg:flex hover:bg-white/10" onClick={() => setOpen(true)} aria-label="Expand mission panel">
+    <Button variant="secondary" size="icon" className="absolute left-3 top-3 z-20 hidden border border-white/20 bg-[#0d1117] shadow-xl lg:flex hover:bg-white/10" onClick={() => setOpen(true)} aria-label="Expand mission panel">
       <Menu />
     </Button>
   )
 
   return (
-    <aside className="absolute inset-x-2 bottom-2 z-20 flex max-h-[52svh] flex-col overflow-hidden rounded-xl border border-white/15 bg-[#0d1117]/95 shadow-2xl backdrop-blur sm:bottom-3 sm:left-3 sm:right-auto sm:top-3 sm:max-h-none sm:w-96 lg:w-[380px]">
-      <div className="flex items-center gap-3 border-b border-white/10 px-4 py-3 bg-white/[0.02]">
+    <aside className="absolute inset-x-2 bottom-2 z-20 flex max-h-[52svh] flex-col overflow-hidden rounded-xl border border-white/20 bg-[#0d1117] shadow-2xl sm:bottom-3 sm:left-3 sm:right-auto sm:top-3 sm:max-h-none sm:w-96 lg:w-[380px]">
+      <div className="flex items-center gap-3 border-b border-white/10 px-4 py-3 bg-[#12161f]">
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <span className="size-2 rounded-full bg-mars animate-pulse" />
-            <h1 className="text-sm font-semibold tracking-wide uppercase text-white/90">Mission EVA Planning</h1>
-          </div>
-          <p className="mt-0.5 text-xs text-muted">Jezero crater exploration & safety routing</p>
+          <h1 className="text-xs font-mono font-bold tracking-wider uppercase text-white">Mission EVA Planning</h1>
+          <p className="mt-0.5 font-mono text-[11px] text-slate-300">Jezero Crater · Surface Route & Safety Solver</p>
         </div>
         <Button variant="ghost" size="icon" onClick={() => setOpen(false)} aria-label="Collapse mission panel">
-          <ChevronLeft className="hidden lg:block" />
-          <span className="lg:hidden text-lg">✕</span>
+          <ChevronLeft className="hidden lg:block text-slate-300" />
+          <span className="lg:hidden text-lg text-slate-300">✕</span>
         </Button>
       </div>
 
@@ -57,57 +164,112 @@ function MissionSidebar() {
         {/* Stops section */}
         <section>
           <div className="mb-2 flex items-center justify-between">
-            <h2 className="text-xs font-mono uppercase tracking-wider text-white/70">Route Waypoints</h2>
-            <span className="font-mono text-xs text-mars">{mission.route_stops.length} / 12 STOPS</span>
+            <h2 className="text-xs font-mono uppercase tracking-wider text-slate-300">Route Trajectory</h2>
+            <span className="font-mono text-xs font-bold text-sky-400">{mission.route_stops.length} STOPS · SORTIE LOOP</span>
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-1.5">
+            {/* Departure Origin */}
+            <div className="flex items-center gap-2.5 rounded-lg border border-white/10 bg-[#161b22] p-2 text-xs">
+              <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded bg-[#21262d] text-white border border-white/20">
+                DEP
+              </span>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center justify-between">
+                  <strong className="text-white text-xs font-mono">HABITAT BASE (ORIGIN)</strong>
+                  <button
+                    className="text-[10px] font-mono text-sky-400 hover:text-sky-200 underline"
+                    onClick={() => useMissionStore.getState().setPlacementMode('habitat')}
+                    title="Relocate Habitat Base within approved 250 m zone"
+                  >
+                    Relocate
+                  </button>
+                </div>
+                <span className="font-mono text-[10px] text-slate-300">Sol 018 Staging Base</span>
+              </div>
+            </div>
+
+            {/* Draggable Checkpoints List */}
             {mission.route_stops.map((stop, index) => (
-              <div className="flex min-h-12 items-center gap-2.5 rounded-lg border border-white/10 bg-white/[0.03] p-2 hover:border-white/20 transition" key={stop.id}>
-                <span className={`grid size-7 shrink-0 place-items-center rounded border font-mono text-xs font-semibold ${stop.type === 'science' ? 'border-mars/40 bg-mars/15 text-mars' : 'border-route/40 bg-route/15 text-route'}`}>
+              <div
+                key={stop.id}
+                draggable
+                onMouseEnter={() => stop.type === 'science' && useMissionStore.getState().setHoveredWaypoint(stop.id)}
+                onMouseLeave={() => stop.type === 'science' && useMissionStore.getState().setHoveredWaypoint(null)}
+                onDragStart={() => setDraggedIndex(index)}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={() => {
+                  if (draggedIndex !== null && draggedIndex !== index) {
+                    moveStop(draggedIndex, index)
+                  }
+                  setDraggedIndex(null)
+                }}
+                className={`flex min-h-11 items-center gap-2.5 rounded-lg border bg-[#161b22] px-2.5 py-1.5 transition cursor-grab active:cursor-grabbing ${draggedIndex === index ? 'opacity-40 border-sky-400 border-dashed' : 'border-white/10 hover:border-white/20'}`}
+              >
+                <div className="grid place-items-center text-slate-400 hover:text-white" title="Drag to reorder waypoint">
+                  <GripVertical size={14} />
+                </div>
+                <span className="font-mono text-xs font-bold text-slate-200">
                   {String(index + 1).padStart(2, '0')}
                 </span>
                 <button className="min-w-0 flex-1 text-left" onClick={() => stop.type === 'science' && useMissionStore.getState().setSelectedWaypoint(stop.id)}>
-                  <strong className="block truncate text-xs font-medium text-white/95">{stopName(stop)}</strong>
-                  <small className="text-[10px] text-muted font-mono">{stop.type === 'science' ? 'Curated Science Target' : 'Custom Checkpoint'}</small>
+                  <strong className="block truncate text-xs font-medium text-white">{stopName(stop)}</strong>
+                  <span className="text-[10px] text-slate-300 font-mono">{stop.type === 'science' ? 'Science Target' : 'Checkpoint'}</span>
                 </button>
-                <div className="flex items-center">
-                  <button className="grid size-7 place-items-center rounded text-white/60 hover:text-white hover:bg-white/10 disabled:opacity-20" disabled={index === 0} onClick={() => reorder(stop.id, -1)} aria-label={`Move ${stop.id} up`}>
-                    <ArrowUp size={13} />
-                  </button>
-                  <button className="grid size-7 place-items-center rounded text-white/60 hover:text-white hover:bg-white/10 disabled:opacity-20" disabled={index === mission.route_stops.length - 1} onClick={() => reorder(stop.id, 1)} aria-label={`Move ${stop.id} down`}>
-                    <ArrowDown size={13} />
-                  </button>
-                  <button className="grid size-7 place-items-center rounded text-muted hover:text-danger hover:bg-danger/10 disabled:opacity-20" disabled={mission.route_stops.length === 1} onClick={() => remove(stop.id)} aria-label={`Remove ${stop.id}`}>
-                    <Trash2 size={13} />
-                  </button>
-                </div>
+                <button className="grid size-7 place-items-center rounded text-slate-400 hover:text-rose-400 hover:bg-rose-950/40 disabled:opacity-20" disabled={mission.route_stops.length === 1} onClick={() => remove(stop.id)} aria-label={`Remove ${stop.id}`}>
+                  <Trash2 size={13} />
+                </button>
               </div>
             ))}
+
+            {/* Return Destination */}
+            <div className="flex items-center gap-2.5 rounded-lg border border-white/10 bg-[#161b22] p-2 text-xs">
+              <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded bg-[#21262d] text-white border border-white/20">
+                RET
+              </span>
+              <div className="min-w-0 flex-1">
+                <strong className="block text-white text-xs font-mono">HABITAT BASE (RETURN)</strong>
+                <span className="font-mono text-[10px] text-slate-300">Closed-Loop Envelope Verified</span>
+              </div>
+            </div>
           </div>
 
-          <Button variant="secondary" className="mt-2.5 w-full border-dashed border-white/20 text-xs font-medium" disabled={mission.route_stops.length >= 12} onClick={() => setPlacement('stop')}>
+          <Button
+            variant="secondary"
+            className="mt-2.5 w-full border border-white/20 text-xs font-medium"
+            disabled={mission.route_stops.length >= 12}
+            onClick={() => {
+              setPlacement('stop')
+              if (window.innerWidth < 1024) setOpen(false)
+            }}
+          >
             <Plus size={15} /> Add Waypoint on Map
           </Button>
         </section>
 
         {/* Science Targets accordion */}
-        <details className="group rounded-lg border border-white/10 bg-white/[0.02]">
-          <summary className="flex min-h-10 cursor-pointer items-center justify-between px-3 text-xs font-medium text-white/80">
+        <details className="group rounded-lg border border-white/10 bg-[#161b22]">
+          <summary className="flex min-h-10 cursor-pointer items-center justify-between px-3 text-xs font-medium text-slate-200">
             <span>Curated Science Targets</span>
-            <ChevronRight size={14} className="transition group-open:rotate-90 text-muted" />
+            <ChevronRight size={14} className="transition group-open:rotate-90 text-slate-400" />
           </summary>
           <div className="space-y-1 border-t border-white/10 p-2">
             {bootstrap.waypoints.features.map((feature) => {
               const selected = mission.route_stops.some((stop) => stop.id === feature.properties.id)
               return (
-                <button key={feature.properties.id} className="flex min-h-10 w-full items-center gap-2.5 rounded-md px-2 text-left hover:bg-white/5 transition" onClick={() => toggleScience(feature.properties.id)}>
-                  <span className={`grid size-5 place-items-center rounded border ${selected ? 'border-safe bg-safe/20 text-safe' : 'border-white/20 text-transparent'}`}>
+                <button
+                  key={feature.properties.id}
+                  className="flex min-h-10 w-full items-center gap-2.5 rounded-md px-2 text-left hover:bg-white/5 transition"
+                  onMouseEnter={() => useMissionStore.getState().setHoveredWaypoint(feature.properties.id)}
+                  onMouseLeave={() => useMissionStore.getState().setHoveredWaypoint(null)}
+                  onClick={() => toggleScience(feature.properties.id)}
+                >
+                  <span className={`grid size-5 place-items-center rounded border ${selected ? 'border-white/40 bg-[#1f6feb] text-white' : 'border-white/20 bg-[#161b22] text-transparent'}`}>
                     {selected && <Check size={12} />}
                   </span>
                   <span className="min-w-0 flex-1">
-                    <strong className="block truncate text-xs text-white/90">{feature.properties.name}</strong>
-                    <small className="font-mono text-[10px] text-muted">{feature.properties.id} · Sol {feature.properties.sol}</small>
+                    <strong className="block truncate text-xs text-white">{feature.properties.name}</strong>
+                    <small className="font-mono text-[10px] text-slate-400">{feature.properties.id} · Sol {feature.properties.sol}</small>
                   </span>
                 </button>
               )
@@ -116,10 +278,10 @@ function MissionSidebar() {
         </details>
 
         {/* Advanced Constraints accordion */}
-        <details className="group rounded-lg border border-white/10 bg-white/[0.02]">
-          <summary className="flex min-h-10 cursor-pointer items-center justify-between px-3 text-xs font-medium text-white/80">
+        <details className="group rounded-lg border border-white/10 bg-[#161b22]">
+          <summary className="flex min-h-10 cursor-pointer items-center justify-between px-3 text-xs font-medium text-slate-200">
             <span>Mission Constraints & Envelope</span>
-            <ChevronRight size={14} className="transition group-open:rotate-90 text-muted" />
+            <ChevronRight size={14} className="transition group-open:rotate-90 text-slate-400" />
           </summary>
           <div className="space-y-4 border-t border-white/10 p-3">
             {[
@@ -130,8 +292,8 @@ function MissionSidebar() {
             ].map(([label, key, min, max, step, value]) => (
               <label className="block text-xs" key={String(key)}>
                 <span className="mb-1.5 flex justify-between">
-                  <span className="text-white/70">{label}</span>
-                  <output className="font-mono text-mars font-medium">{value}</output>
+                  <span className="text-slate-300">{label}</span>
+                  <output className="font-mono text-mars font-semibold">{value}</output>
                 </span>
                 <input
                   className="h-1.5 w-full accent-mars"
@@ -148,11 +310,15 @@ function MissionSidebar() {
         </details>
       </div>
 
-      <div className="border-t border-white/10 p-3 bg-white/[0.02]">
-        <Button className="w-full text-xs font-semibold uppercase tracking-wider" disabled={state === 'loading'} onClick={() => calculate()}>
-          {state === 'loading' ? <span className="spinner" /> : <Navigation size={15} />}
-          {state === 'loading' ? 'Computing Optimal A* Trajectory…' : 'Compute Mission Route'}
-        </Button>
+      <div className="border-t border-white/10 p-3 bg-[#0d1117]">
+        <button
+          className="w-full h-11 flex items-center justify-center gap-2 rounded-lg bg-[#1f6feb] hover:bg-[#388bfd] text-white font-mono text-xs font-bold uppercase tracking-wider border border-[#58a6ff]/40 shadow-lg active:scale-[0.98] transition disabled:opacity-40 disabled:pointer-events-none"
+          disabled={state === 'loading'}
+          onClick={() => calculate()}
+        >
+          {state === 'loading' ? <span className="spinner" /> : <Navigation size={14} />}
+          {state === 'loading' ? 'COMPUTING A* TRAJECTORY…' : 'COMPUTE SORTIE TRAJECTORY'}
+        </button>
       </div>
     </aside>
   )
@@ -173,29 +339,65 @@ function LayerControl() {
 
   return (
     <div className="absolute right-3 top-3 z-20">
-      <Button variant="secondary" size="icon" className="border border-white/15 bg-[#0d1117]/90 shadow-xl backdrop-blur hover:bg-white/10" onClick={() => setOpen(!open)} aria-label="Map layers">
+      <Button variant="secondary" size="icon" className="border border-white/20 bg-[#0d1117] shadow-xl hover:bg-white/10" onClick={() => setOpen(!open)} aria-label="Map layers">
         <Layers3 />
       </Button>
       {open && (
-        <div className="absolute right-0 mt-2 w-72 rounded-xl border border-white/15 bg-[#0d1117]/95 p-3.5 shadow-2xl backdrop-blur">
+        <div className="absolute right-0 mt-2 w-72 rounded-xl border border-white/20 bg-[#0d1117] p-3.5 shadow-2xl">
           <div className="mb-2 flex items-center justify-between border-b border-white/10 pb-2">
-            <h2 className="text-xs font-mono uppercase tracking-wider text-white/80">Orbital Data Layers</h2>
-            <span className="text-[10px] text-muted">NASA PDS</span>
+            <h2 className="text-xs font-mono uppercase tracking-wider text-slate-200">Orbital Data Layers</h2>
+            <span className="text-[10px] text-slate-400">NASA PDS</span>
           </div>
           {layers.map((layer) => (
-            <label className="flex min-h-9 items-center gap-2.5 text-xs text-white/85 hover:text-white cursor-pointer" key={layer.id}>
+            <label className="flex min-h-9 items-center gap-2.5 text-xs text-slate-200 hover:text-white cursor-pointer" key={layer.id}>
               <input className="size-3.5 accent-mars" type="checkbox" checked={visibility[layer.id] ?? false} onChange={(event) => setVisibility(layer.id, event.target.checked)} />
               <span className="flex-1 truncate">{layer.label}</span>
-              <small className="font-mono text-[10px] text-muted uppercase">{layer.kind}</small>
+              <small className="font-mono text-[10px] text-slate-400 uppercase">{layer.kind}</small>
             </label>
           ))}
           <label className="mt-2.5 block border-t border-white/10 pt-2.5 text-xs">
             <span className="mb-1.5 flex justify-between">
-              <span className="text-muted">Overlay Opacity</span>
-              <output className="font-mono text-mars">{Math.round(opacity * 100)}%</output>
+              <span className="text-slate-300">Overlay Opacity</span>
+              <output className="font-mono text-mars font-bold">{Math.round(opacity * 100)}%</output>
             </span>
             <input className="w-full accent-mars" type="range" min="0.15" max="0.9" step="0.05" value={opacity} onChange={(event) => setOpacity(Number(event.target.value))} />
           </label>
+
+          {(visibility.slope || visibility.hazard || visibility.crism) && (
+            <div className="mt-3 border-t border-white/10 pt-2.5 space-y-2">
+              <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 block font-semibold">Active Layer Color Scale</span>
+              {visibility.slope && (
+                <div>
+                  <span className="text-slate-300 block mb-1 font-semibold text-[10px]">Slope Incline:</span>
+                  <div className="flex items-center gap-1.5 font-mono text-[10px]">
+                    <span className="text-emerald-400 font-bold">0°</span>
+                    <div className="h-1.5 flex-1 rounded bg-gradient-to-r from-emerald-500 via-yellow-400 to-rose-600" />
+                    <span className="text-rose-400 font-bold">25°+</span>
+                  </div>
+                </div>
+              )}
+              {visibility.hazard && (
+                <div>
+                  <span className="text-slate-300 block mb-1 font-semibold text-[10px]">Traversability:</span>
+                  <div className="flex items-center gap-1.5 font-mono text-[10px]">
+                    <span className="text-emerald-400">Regolith</span>
+                    <div className="h-1.5 flex-1 rounded bg-gradient-to-r from-emerald-500 via-amber-500 to-red-600" />
+                    <span className="text-rose-400">Rocky</span>
+                  </div>
+                </div>
+              )}
+              {visibility.crism && (
+                <div>
+                  <span className="text-slate-300 block mb-1 font-semibold text-[10px]">CRISM OLINDEX3:</span>
+                  <div className="flex items-center gap-1.5 font-mono text-[10px]">
+                    <span className="text-slate-400">Low</span>
+                    <div className="h-1.5 flex-1 rounded bg-gradient-to-r from-blue-900 via-cyan-400 to-amber-400" />
+                    <span className="text-mars font-bold">Clay/Olivine</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -207,33 +409,48 @@ function RouteSummary() {
   const active = useMissionStore((state) => state.activeRoute)
   const setActive = useMissionStore((state) => state.setActiveRoute)
   const setDetails = useMissionStore((state) => state.setDetailsOpen)
-  const setView = useMissionStore((state) => state.setView)
+  const sidebarOpen = useMissionStore((state) => state.sidebarOpen)
   if (!plan?.primary) return null
   const route = active === 'alternative' ? plan.alternative ?? plan.primary : plan.primary
 
+  // Dynamically adapt left positioning when sidebar is collapsed to avoid empty space
+  const leftPosition = sidebarOpen ? 'sm:left-[405px]' : 'sm:left-3'
+
   return (
-    <section className="absolute bottom-[calc(52svh+0.75rem)] left-2 right-2 z-10 rounded-xl border border-white/15 bg-[#0d1117]/95 p-3 shadow-2xl backdrop-blur sm:bottom-3 sm:left-[420px] sm:right-3 lg:left-[405px]">
+    <section className={`absolute bottom-3 left-2 right-2 z-10 rounded-xl border border-white/20 bg-[#0d1117]/95 p-3 shadow-2xl transition-all duration-300 ease-in-out ${leftPosition} sm:right-auto sm:max-w-xl md:max-w-2xl backdrop-blur`}>
       <div className="flex items-center gap-3">
-        <span className={`grid size-9 shrink-0 place-items-center rounded-lg border ${plan.feasible ? 'border-safe/40 bg-safe/15 text-safe' : 'border-caution/40 bg-caution/15 text-caution'}`}>
-          <ShieldCheck size={18} />
-        </span>
         <div className="min-w-0 flex-1">
-          <strong className="block text-xs font-semibold text-white/95">
-            {plan.feasible ? 'Route Confirmed: Return-Safe' : 'Review Constraints: Exceeds Safe Envelope'}
-          </strong>
-          <p className="truncate font-mono text-[11px] text-white/60">
+          <div className="flex items-center gap-2">
+            <span className={`font-mono text-[11px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border ${plan.feasible ? 'border-emerald-600 bg-[#21262d] text-emerald-400' : 'border-amber-600 bg-[#21262d] text-amber-400'}`}>
+              {plan.feasible ? 'NOMINAL' : 'CAUTION'}
+            </span>
+            <strong className="block text-xs font-mono font-bold uppercase tracking-wider text-white">
+              {plan.feasible ? 'TRAJECTORY CONFIRMED · RETURN SAFE' : 'CAUTION · ENVELOPE EXCEEDED'}
+            </strong>
+            <span className="hidden font-mono text-[10px] text-sky-400 font-semibold lg:inline-block">
+              SCI SCORE {route.metrics.science_score}/100
+            </span>
+          </div>
+          <p className="truncate font-mono text-xs text-slate-200 mt-0.5">
             {formatDistance(route.metrics.distance_m)} · {Math.round(route.metrics.duration_min)} min · {Math.round(route.metrics.energy_units).toLocaleString()} EU · Max slope {route.metrics.maximum_slope_deg}°
           </p>
+          {route.explanation[0] && (
+            <p className="hidden text-[11px] text-slate-300 truncate sm:block mt-0.5 font-mono">
+              <span className="text-sky-400 font-bold mr-1">NAV DECISION:</span>
+              {route.explanation[0]} {route.explanation[1]}
+            </p>
+          )}
         </div>
-        <Button variant="ghost" size="sm" className="hidden sm:flex text-xs" onClick={() => setActive(active === 'primary' ? 'alternative' : 'primary')}>
-          {active === 'primary' ? 'Alt Route' : 'Primary'}
-        </Button>
-        <Button variant="secondary" size="sm" className="text-xs" onClick={() => setDetails(true)}>
-          Telemetry
-        </Button>
-        <Button size="sm" className="hidden md:flex text-xs font-semibold uppercase tracking-wider" onClick={() => setView('marswalk')}>
-          Explore 3D
-        </Button>
+
+        {/* Clean, consolidated action buttons */}
+        <div className="flex items-center gap-2 shrink-0">
+          <Button variant="ghost" size="sm" className="hidden sm:flex text-xs font-mono border border-white/10 hover:border-white/20 bg-[#161b22]" onClick={() => setActive(active === 'primary' ? 'alternative' : 'primary')}>
+            {active === 'primary' ? 'Alt Route' : 'Primary'}
+          </Button>
+          <Button variant="secondary" size="sm" className="text-xs font-semibold bg-[#21262d] border border-white/20 hover:bg-[#30363d]" onClick={() => setDetails(true)}>
+            Route Details
+          </Button>
+        </div>
       </div>
     </section>
   )
@@ -248,7 +465,7 @@ function RouteDetails() {
   const route: RouteCandidate | null | undefined = active === 'alternative' ? plan?.alternative : plan?.primary
 
   return (
-    <Sheet open={open} onOpenChange={setOpen} title="Mission Telemetry & Profile" side="right">
+    <Sheet open={open} onOpenChange={setOpen} title="Mission Route Details" side="right">
       {route && (
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-2">
@@ -260,15 +477,15 @@ function RouteDetails() {
               ['Elevation Gain', `+${route.metrics.elevation_gain_m} m`],
               ['Science Score', `${route.metrics.science_score} / 100`],
             ].map(([label, value]) => (
-              <div className="rounded-lg border border-white/10 bg-white/[0.03] p-2.5 font-mono" key={label}>
-                <small className="block text-[10px] uppercase text-muted tracking-wider">{label}</small>
-                <strong className="mt-1 block text-sm text-white/95">{value}</strong>
+              <div className="rounded-lg border border-white/10 bg-[#161b22] p-2.5 font-mono" key={label}>
+                <small className="block text-[10px] uppercase text-slate-400 tracking-wider">{label}</small>
+                <strong className="mt-1 block text-sm text-white">{value}</strong>
               </div>
             ))}
           </div>
 
-          <div className="rounded-lg border border-white/10 bg-white/[0.02] p-2.5">
-            <h4 className="mb-2 text-[11px] font-mono uppercase tracking-wider text-white/70">Topographic Elevation Profile (HiRISE DTM)</h4>
+          <div className="rounded-lg border border-white/10 bg-[#161b22] p-2.5">
+            <h4 className="mb-2 text-[11px] font-mono uppercase tracking-wider text-slate-300">Topographic Elevation Profile (HiRISE DTM)</h4>
             <div className="h-44">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={route.elevation_profile}>
@@ -283,19 +500,19 @@ function RouteDetails() {
             </div>
           </div>
 
-          <div className="rounded-lg border border-white/10 bg-white/[0.02] p-3">
+          <div className="rounded-lg border border-white/10 bg-[#161b22] p-3">
             <h3 className="mb-2 flex items-center gap-2 text-xs font-mono font-semibold tracking-wider uppercase text-mars">
               <Activity size={14} /> Route Decision & Terrain Telemetry
             </h3>
             <div className="space-y-1.5">
               {route.explanation.map((line) => (
-                <p className="text-xs leading-relaxed text-white/75" key={line}>{line}</p>
+                <p className="text-xs leading-relaxed text-slate-300" key={line}>{line}</p>
               ))}
             </div>
           </div>
 
           <Button variant="secondary" className="w-full text-xs" onClick={() => applyEnergyLoss()}>
-            <Zap size={14} className="text-caution" /> Simulate Contingency: -20% Energy
+            <Zap size={14} className="text-amber-400" /> Simulate Contingency: -20% Energy
           </Button>
         </div>
       )}
@@ -313,27 +530,29 @@ function DraftStopSheet() {
     <Sheet open={Boolean(draft)} onOpenChange={(open) => !open && cancel()} title="Add Custom Checkpoint" side="bottom">
       {draft && (
         <div className="mx-auto max-w-xl space-y-4">
-          <label className="block text-xs font-medium text-white/80">
+          <label className="block text-xs font-medium text-slate-200">
             Checkpoint Label
             <input
-              className="mt-1.5 min-h-10 w-full rounded-lg border border-white/15 bg-background px-3 text-xs font-mono"
+              className="mt-1.5 min-h-10 w-full rounded-lg border border-white/20 bg-background px-3 text-xs font-mono text-white"
               value={draft.name}
               placeholder="e.g. Delta Base North Checkpoint"
               onChange={(event) => useMissionStore.setState({ draftStop: { ...draft, name: event.target.value } })}
             />
           </label>
           {!validation ? (
-            <div className="flex items-center gap-2 text-xs text-muted font-mono">
+            <div className="flex items-center gap-2 text-xs text-slate-300 font-mono">
               <span className="spinner" /> Analyzing local terrain traversability…
             </div>
           ) : (
-            <div className={`rounded-lg border p-3 text-xs ${validation.valid ? 'border-safe/40 bg-safe/10' : 'border-danger/40 bg-danger/10'}`}>
-              <strong className="block font-semibold">{validation.valid ? 'Traversable Location Verified' : 'Hazardous Location Detected'}</strong>
-              <p className="mt-1 font-mono text-[11px] text-white/70">
+            <div className="rounded-lg border border-white/20 bg-[#161b22] p-3 text-xs">
+              <strong className={`block font-semibold ${validation.valid ? 'text-emerald-400' : 'text-rose-400'}`}>
+                {validation.valid ? '✓ Traversable Location Verified' : '✕ Hazardous Location Detected'}
+              </strong>
+              <p className="mt-1 font-mono text-[11px] text-slate-300">
                 Elev: {validation.terrain.elevation_m?.toFixed(1)} m · Slope: {validation.terrain.slope_deg?.toFixed(1)}° · Geology: {validation.science_context.geology_symbol ?? 'Nili Planum'}
               </p>
               {validation.warnings.map((warning) => (
-                <p className="mt-1.5 text-[11px] text-caution" key={warning}>{warning}</p>
+                <p className="mt-1.5 text-[11px] text-amber-300 font-mono" key={warning}>{warning}</p>
               ))}
             </div>
           )}
@@ -351,15 +570,16 @@ function DraftStopSheet() {
 
 export function Planner() {
   return (
-    <div className="absolute inset-0 overflow-hidden bg-[#5a3021]">
+    <div className="absolute inset-0 overflow-hidden bg-[#090b0e]">
       <MarsMap />
+      <PlacementBanner />
+      <WaypointInspector2D />
       <MissionSidebar />
       <LayerControl />
       <RouteSummary />
       <RouteDetails />
       <DraftStopSheet />
-      <div className="pointer-events-none absolute bottom-3 right-3 hidden rounded-lg border border-white/10 bg-[#0d1117]/80 px-3 py-1.5 text-[11px] font-mono text-white/75 backdrop-blur md:block">
-        <span className="mr-2 inline-block size-2 rounded-full bg-route" />
+      <div className="pointer-events-none absolute bottom-3 right-3 hidden rounded-lg border border-white/10 bg-[#0d1117]/80 px-3 py-1.5 text-[11px] font-mono text-slate-300 backdrop-blur md:block">
         Jezero Delta Western Traverse · MRO HiRISE DTM
       </div>
     </div>

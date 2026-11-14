@@ -28,9 +28,19 @@ const routeStyle = (color: string, width: number, dash?: number[]) => new Style(
   stroke: new Stroke({ color, width, lineDash: dash }),
 })
 
-const waypointStyle = new Style({
-  image: new Circle({ radius: 7, fill: new Fill({ color: '#ffb86c' }), stroke: new Stroke({ color: '#17110c', width: 3 }) }),
-  text: new Text({ offsetY: -18, font: '600 12px Inter, sans-serif', fill: new Fill({ color: '#fff5e9' }), stroke: new Stroke({ color: '#111', width: 4 }) }),
+const createWaypointStyle = (id: string, isHovered: boolean, isSelected: boolean) => new Style({
+  image: new Circle({
+    radius: isHovered || isSelected ? 10 : 7,
+    fill: new Fill({ color: isHovered ? '#ffffff' : isSelected ? '#62c7e8' : '#ffb86c' }),
+    stroke: new Stroke({ color: isHovered ? '#00e5ff' : isSelected ? '#ffffff' : '#17110c', width: isHovered ? 4 : isSelected ? 3.5 : 3 }),
+  }),
+  text: new Text({
+    text: id,
+    offsetY: isHovered || isSelected ? -22 : -18,
+    font: isHovered || isSelected ? 'bold 13px Inter, sans-serif' : '600 12px Inter, sans-serif',
+    fill: new Fill({ color: isHovered ? '#00e5ff' : isSelected ? '#62c7e8' : '#fff5e9' }),
+    stroke: new Stroke({ color: '#111', width: 4 }),
+  }),
 })
 
 export function MarsMap() {
@@ -86,13 +96,47 @@ export function MarsMap() {
     const routeSource = new VectorSource()
     const routeLayer = new VectorLayer({ source: routeSource })
 
+    const bounds = bootstrap.bounds_projected
+    const centerX = (bounds[0] + bounds[2]) / 2
+    const centerY = (bounds[1] + bounds[3]) / 2
+    const extentW = bounds[2] - bounds[0]
+    const extentH = bounds[3] - bounds[1]
+
+    // Immersive full-viewport view without pillarboxing or empty borders
+    const view = new View({
+      projection,
+      center: [centerX, centerY],
+      zoom: 2.8,
+      minZoom: 2.2,
+      maxZoom: 7,
+      extent: [bounds[0] - 800, bounds[1] - 800, bounds[2] + 800, bounds[3] + 800],
+      smoothExtentConstraint: true,
+      showFullExtent: false,
+    })
+
     const map = new Map({
       target: target.current,
       layers: [...imageLayers, geologyLayer, traverseLayer, envelopeLayer, routeLayer, missionLayer],
-      view: new View({ projection, center: [(bootstrap.bounds_projected[0] + bootstrap.bounds_projected[2]) / 2, (bootstrap.bounds_projected[1] + bootstrap.bounds_projected[3]) / 2], zoom: 1.2, extent: bootstrap.bounds_projected, showFullExtent: true }),
+      view,
       controls: [],
     })
     mapRef.current = map
+
+    // Seamlessly fit to COVER the viewport so left/right/top/bottom are completely filled
+    const adjustCover = () => {
+      const size = map.getSize()
+      if (size && size[0] > 0 && size[1] > 0) {
+        const coverRes = Math.min(extentW / size[0], extentH / size[1])
+        const coverZoom = view.getZoomForResolution(coverRes) ?? 2.8
+        view.setMinZoom(Math.max(1.8, coverZoom - 0.25))
+        if ((view.getZoom() ?? 0) < coverZoom) {
+          view.setResolution(coverRes)
+          view.setCenter([centerX, centerY])
+        }
+      }
+    }
+    window.requestAnimationFrame(adjustCover)
+    window.addEventListener('resize', adjustCover)
 
     const addMissionFeatures = () => {
       missionSource.clear()
@@ -106,12 +150,13 @@ export function MarsMap() {
       const habitat = new Feature({ geometry: new Point(habitatPoint), kind: 'habitat' })
       habitat.setStyle(new Style({ image: new Circle({ radius: 9, fill: new Fill({ color: '#4cc9f0' }), stroke: new Stroke({ color: '#07141a', width: 4 }) }), text: new Text({ text: 'HAB', offsetY: -20, font: '700 11px Inter', fill: new Fill({ color: '#bdefff' }), stroke: new Stroke({ color: '#0a0d11', width: 4 }) }) }))
       missionSource.addFeature(habitat)
+      const initialHovered = useMissionStore.getState().hoveredWaypoint
+      const initialSelected = useMissionStore.getState().selectedWaypoint
       for (const featureData of bootstrap.waypoints.features) {
         const feature = new GeoJSON().readFeature(featureData, { dataProjection: 'EPSG:4326', featureProjection: projection }) as Feature
-        feature.set('waypointId', featureData.properties?.id)
-        const style = waypointStyle.clone()
-        style.getText()?.setText(featureData.properties?.id ?? '')
-        feature.setStyle(style)
+        const wid = featureData.properties?.id ?? ''
+        feature.set('waypointId', wid)
+        feature.setStyle(createWaypointStyle(wid, initialHovered === wid, initialSelected === wid))
         missionSource.addFeature(feature)
       }
       for (const stop of currentMission.route_stops) {
@@ -151,6 +196,28 @@ export function MarsMap() {
     }
     refreshRoutes()
 
+    map.on('pointermove', (event) => {
+      if (event.dragging) return
+      const mode = useMissionStore.getState().placementMode
+      if (mode) return
+
+      let hitId: string | null = null
+      map.forEachFeatureAtPixel(event.pixel, (feature) => {
+        const waypointId = feature.get('waypointId') as string | undefined
+        if (waypointId) {
+          hitId = waypointId
+          return true
+        }
+      })
+
+      const targetEl = map.getTargetElement()
+      if (targetEl) targetEl.style.cursor = hitId ? 'pointer' : ''
+      const currentHovered = useMissionStore.getState().hoveredWaypoint
+      if (currentHovered !== hitId) {
+        useMissionStore.getState().setHoveredWaypoint(hitId)
+      }
+    })
+
     map.on('singleclick', (event) => {
       const mode = useMissionStore.getState().placementMode
       if (mode) {
@@ -166,10 +233,16 @@ export function MarsMap() {
         }
         return
       }
+      let hitId: string | null = null
       map.forEachFeatureAtPixel(event.pixel, (feature) => {
         const waypointId = feature.get('waypointId') as string | undefined
-        if (waypointId) setSelectedWaypoint(waypointId)
+        if (waypointId) {
+          hitId = waypointId
+          return true
+        }
       })
+      const currentSelected = useMissionStore.getState().selectedWaypoint
+      setSelectedWaypoint(currentSelected === hitId ? null : hitId)
     })
 
     const translateInteraction = new Translate({ layers: [missionLayer], filter: (feature) => Boolean(feature.get('customStopId')) })
@@ -192,6 +265,16 @@ export function MarsMap() {
       if (state.mission !== previous.mission) {
         addMissionFeatures()
       }
+      if (state.hoveredWaypoint !== previous.hoveredWaypoint || state.selectedWaypoint !== previous.selectedWaypoint) {
+        missionSource.getFeatures().forEach((feature) => {
+          const wid = feature.get('waypointId') as string | undefined
+          if (wid) {
+            const isHovered = state.hoveredWaypoint === wid
+            const isSelected = state.selectedWaypoint === wid
+            feature.setStyle(createWaypointStyle(wid, isHovered, isSelected))
+          }
+        })
+      }
       if (state.draftStop !== previous.draftStop) addMissionFeatures()
       if (state.sidebarOpen !== previous.sidebarOpen) window.setTimeout(() => map.updateSize(), 220)
       if (state.plan !== previous.plan || state.emergencyRoute !== previous.emergencyRoute || state.activeRoute !== previous.activeRoute) {
@@ -200,6 +283,7 @@ export function MarsMap() {
     })
 
     return () => {
+      window.removeEventListener('resize', adjustCover)
       unsubscribe()
       map.setTarget(undefined)
       mapRef.current = null
