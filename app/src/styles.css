@@ -1,5 +1,6 @@
-@import '@fontsource-variable/hanken-grotesk';
-@import '@fontsource-variable/martian-mono/wdth.css';
+@import '@fontsource-variable/archivo/wdth.css';
+@import '@fontsource/ibm-plex-mono/500.css';
+@import '@fontsource/ibm-plex-mono/700.css';
 
 @tailwind base;
 @tailwind components;
@@ -8,7 +9,7 @@
 * {
   box-sizing: border-box;
   scrollbar-width: thin;
-  scrollbar-color: #343a38 transparent;
+  scrollbar-color: #c2c8c0 transparent;
 }
 
 ::-webkit-scrollbar {
@@ -19,8 +20,7 @@
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #343a38;
-  border-radius: 3px;
+  background: #c2c8c0;
 }
 
 html, body, #root {
@@ -31,25 +31,58 @@ html, body, #root {
 }
 
 body {
-  background: #101312;
-  color: #e9e8e3;
-  font-family: 'Hanken Grotesk Variable', system-ui, sans-serif;
+  background: #e2e5df;
+  color: #141c1a;
+  font-family: 'Archivo Variable', system-ui, sans-serif;
   font-size: 14px;
   -webkit-font-smoothing: antialiased;
 }
 
-button, input {
+button, input, textarea {
   font: inherit;
 }
 
-button:focus-visible, input:focus-visible, summary:focus-visible {
-  outline: 2px solid #e9e8e3;
+button:focus-visible, input:focus-visible, textarea:focus-visible, summary:focus-visible {
+  outline: 2px solid #0b6e8a;
   outline-offset: 2px;
+}
+
+/* Type roles. Width carries the hierarchy: wide for the sheet title,
+   condensed capitals for labels, normal width for prose. */
+.wordmark {
+  font-stretch: 125%;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+}
+
+.label {
+  font-stretch: 78%;
+  font-weight: 600;
+  font-size: 11px;
+  line-height: 1.2;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+/* Typewritten readouts, as on a flight plan */
+.num {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  font-stretch: 100%;
+  letter-spacing: -0.01em;
+  text-transform: none;
 }
 
 .mars-map, .marswalk-shell {
   position: absolute;
   inset: 0;
+}
+
+/* Past the edge of the imagery the sheet shows its dark neatline, not page grey */
+.mars-map {
+  background: #141c1a;
 }
 
 .mars-map.is-placing {
@@ -67,11 +100,6 @@ button:focus-visible, input:focus-visible, summary:focus-visible {
   overflow: clip;
 }
 
-::view-transition-old(mars-map),
-::view-transition-new(mars-map) {
-  border-radius: 4px;
-}
-
 ::view-transition-old(root),
 ::view-transition-new(root) {
   animation-duration: 320ms;
@@ -81,10 +109,6 @@ button:focus-visible, input:focus-visible, summary:focus-visible {
   position: absolute !important;
   inset: 0;
   touch-action: none;
-}
-
-.ol-viewport {
-  border-radius: inherit;
 }
 
 @media (max-width: 639px) and (orientation: landscape) {
@@ -110,85 +134,78 @@ button:focus-visible, input:focus-visible, summary:focus-visible {
 .spinner {
   width: 0.875rem;
   height: 0.875rem;
-  border: 2px solid #e9e8e355;
-  border-top-color: #e9e8e3;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
   border-radius: 999px;
+  opacity: 0.7;
   animation: spin .8s linear infinite;
 }
 
-/* Numerals line up in readouts */
-.num {
-  font-family: 'Martian Mono Variable', ui-monospace, monospace;
-  font-variant-numeric: tabular-nums;
-  font-size: 0.8125em;
-  letter-spacing: -0.02em;
-}
-
-/* Range inputs: hairline track, square ink thumb */
+/* Range inputs: ink hairline with a slide-rule cursor */
 input[type="range"] {
   -webkit-appearance: none;
   appearance: none;
   background: transparent;
-  height: 16px;
+  height: 18px;
   outline: none;
 }
 
 input[type="range"]::-webkit-slider-runnable-track {
-  height: 2px;
-  background: #4a514e;
+  height: 1px;
+  background: #141c1a;
 }
 input[type="range"]::-moz-range-track {
-  height: 2px;
-  background: #4a514e;
+  height: 1px;
+  background: #141c1a;
 }
 
 input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 10px;
-  height: 14px;
-  margin-top: -6px;
-  border-radius: 1px;
-  background: #e9e8e3;
+  width: 7px;
+  height: 16px;
+  margin-top: -8px;
+  border-radius: 0;
+  background: #141c1a;
   border: 0;
-  cursor: pointer;
+  cursor: ew-resize;
 }
 input[type="range"]::-moz-range-thumb {
-  width: 10px;
-  height: 14px;
-  border-radius: 1px;
-  background: #e9e8e3;
+  width: 7px;
+  height: 16px;
+  border-radius: 0;
+  background: #141c1a;
   border: 0;
-  cursor: pointer;
+  cursor: ew-resize;
 }
 
 input[type="range"]:focus-visible::-webkit-slider-thumb {
-  outline: 2px solid #e2784a;
+  outline: 2px solid #0b6e8a;
   outline-offset: 2px;
 }
 
-/* Checkboxes: square, ink fill when checked */
+/* Checkboxes: a box you tick in ink */
 input[type="checkbox"].check {
   -webkit-appearance: none;
   appearance: none;
+  flex: none;
   width: 14px;
   height: 14px;
-  border: 1px solid #838a86;
-  border-radius: 2px;
+  border: 1px solid #141c1a;
+  border-radius: 0;
   background: transparent;
   display: inline-grid;
   place-content: center;
   cursor: pointer;
 }
 input[type="checkbox"].check:checked {
-  background: #e9e8e3;
-  border-color: #e9e8e3;
+  background: #141c1a;
 }
 input[type="checkbox"].check:checked::after {
   content: '';
   width: 7px;
   height: 4px;
-  border-left: 2px solid #101312;
-  border-bottom: 2px solid #101312;
+  border-left: 2px solid #f4f5f1;
+  border-bottom: 2px solid #f4f5f1;
   transform: translateY(-1px) rotate(-45deg);
 }

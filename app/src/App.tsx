@@ -27,17 +27,17 @@ export default function App() {
 
   if (!bootstrap && state === 'loading') {
     return (
-      <div className="grid h-full place-content-center gap-2 bg-ground text-center">
-        <h1 className="text-lg font-semibold text-ink">ARES Path</h1>
-        <p className="text-sm text-ink-3">Loading Jezero terrain…</p>
+      <div className="grid h-full place-content-center gap-2 bg-panel text-center">
+        <h1 className="wordmark text-xl text-ink">ARES Path</h1>
+        <p className="flex items-center justify-center gap-2 text-sm text-ink-2"><span className="spinner" /> Loading Jezero terrain…</p>
       </div>
     )
   }
 
   if (!bootstrap) {
     return (
-      <div className="grid h-full place-content-center gap-3 bg-ground p-6 text-center">
-        <h1 className="text-lg font-semibold text-ink">Mission data unavailable</h1>
+      <div className="grid h-full place-content-center gap-3 bg-panel p-6 text-center">
+        <h1 className="text-lg font-bold text-ink">Mission data unavailable</h1>
         <p className="max-w-sm text-sm text-danger">{error}</p>
         <Button className="mx-auto" onClick={() => initialize()}>Try again</Button>
       </div>
@@ -45,20 +45,22 @@ export default function App() {
   }
 
   const tab = (active: boolean) =>
-    `relative flex h-14 items-center gap-1.5 px-3 text-[13px] font-medium transition-colors after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 ${active ? 'text-ink after:bg-rust' : 'text-ink-3 hover:text-ink after:bg-transparent'}`
-  const iconBtn = 'grid size-8 place-items-center rounded text-ink-3 transition-colors hover:bg-panel-2 hover:text-ink'
+    `relative flex h-12 items-center gap-1.5 px-3 text-[13px] transition-colors after:absolute after:inset-x-0 after:bottom-0 after:h-[3px] ${active ? 'font-bold text-ink after:bg-ink' : 'font-medium text-ink-3 hover:text-ink after:bg-transparent'}`
+  const iconBtn = 'grid size-8 place-items-center rounded text-ink-2 transition-colors hover:bg-panel-2 hover:text-ink'
 
   return (
     <ErrorBoundary>
       <div className="relative flex h-full flex-col overflow-hidden bg-ground">
-        <header className="relative z-40 flex h-14 shrink-0 items-center gap-3 border-b border-rule bg-panel px-3 md:px-5">
-          <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setSidebarOpen(true)} aria-label="Open mission panel">
-            <Menu size={18} />
-          </Button>
+        <header className="relative z-40 flex h-12 shrink-0 items-center gap-2 border-b border-ink bg-panel pl-2 pr-2 md:pl-4 md:pr-3">
+          {view === 'planner' && (
+            <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setSidebarOpen(true)} aria-label="Open mission panel">
+              <Menu size={18} />
+            </Button>
+          )}
 
-          <div className="flex min-w-0 items-baseline gap-2.5">
-            <strong className="truncate text-[15px] font-bold tracking-tight text-ink">ARES Path</strong>
-            <span className="hidden text-[13px] text-ink-3 sm:block">Jezero Crater</span>
+          <div className="flex min-w-0 items-baseline gap-3">
+            <strong className="wordmark truncate text-[15px] text-ink">ARES Path</strong>
+            <span className="hidden truncate text-[13px] text-ink-2 sm:block">Jezero Crater, Mars <span className="num hidden text-ink-3 lg:inline">18.4°N 77.5°E</span></span>
           </div>
 
           <nav className="ml-auto flex items-center" aria-label="Primary view selector">
@@ -84,7 +86,7 @@ export default function App() {
             </button>
           </nav>
 
-          <span className="h-5 w-px bg-rule" aria-hidden />
+          <span className="mx-1 h-5 w-px bg-rule" aria-hidden />
 
           <button onClick={() => setShowInfo(true)} className={iconBtn} title="Data and limitations" aria-label="Data and limitations">
             <Info size={16} />
@@ -95,9 +97,9 @@ export default function App() {
         </header>
 
         {error && (
-          <div className="absolute left-1/2 top-16 z-50 flex max-w-[90vw] -translate-x-1/2 items-center gap-3 rounded border border-danger/60 bg-panel px-4 py-2.5 text-[13px] text-ink">
-            <span className="text-danger">{error}</span>
-            <button className="font-medium underline underline-offset-2" onClick={() => useMissionStore.setState({ error: null })}>Dismiss</button>
+          <div role="alert" className="absolute left-1/2 top-14 z-50 flex max-w-[90vw] -translate-x-1/2 items-center gap-3 border border-danger bg-panel py-2 pl-4 pr-2 text-[13px] text-ink">
+            <span className="font-medium text-danger">{error}</span>
+            <button className="h-7 rounded px-2 font-semibold hover:bg-panel-2" onClick={() => useMissionStore.setState({ error: null })}>Dismiss</button>
           </div>
         )}
 
@@ -106,7 +108,7 @@ export default function App() {
             <Planner />
           ) : (
             <>
-              <Suspense fallback={<div className="grid h-full place-content-center text-sm text-ink-3">Loading MarsWalk terrain…</div>}>
+              <Suspense fallback={<div className="grid h-full place-content-center text-sm text-ink-2">Loading MarsWalk terrain…</div>}>
                 <MarsWalk />
               </Suspense>
               <MarsTrackingMap />
@@ -126,13 +128,13 @@ export default function App() {
                 ['Simulated', 'Astronaut walking speeds, suit energy units (EU), and return safety margin']
               ].map(([title, copy]) => (
                 <div className="grid grid-cols-[5.5rem_1fr] gap-3 py-2.5" key={title}>
-                  <dt className="font-semibold text-ink">{title}</dt>
+                  <dt className="label pt-0.5 text-ink">{title}</dt>
                   <dd>{copy}</dd>
                 </div>
               ))}
             </dl>
             <div>
-              <h4 className="mb-2 font-semibold text-ink">Known limitations</h4>
+              <h4 className="label mb-2 text-ink">Known limitations</h4>
               <ul className="list-disc space-y-1.5 pl-4 marker:text-ink-3">
                 {bootstrap.limitations.map((item) => (
                   <li key={item}>{item}</li>

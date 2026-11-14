@@ -5,7 +5,8 @@ import proj4 from 'proj4'
 import type { Coordinate, SceneManifest } from '../types'
 
 export const MARS_PROJECTION_CODE = 'MARS:EQC'
-export const MARS_PROJECTION_DEFINITION = '+proj=eqc +lat_ts=0 +lat_0=0 +lon_0=0 +R=3396190 +units=m +no_defs'
+export const MARS_RADIUS_M = 3396190
+export const MARS_PROJECTION_DEFINITION = `+proj=eqc +lat_ts=0 +lat_0=0 +lon_0=0 +R=${MARS_RADIUS_M} +units=m +no_defs`
 
 proj4.defs(MARS_PROJECTION_CODE, MARS_PROJECTION_DEFINITION)
 register(proj4)

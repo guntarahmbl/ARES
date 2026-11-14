@@ -401,7 +401,7 @@ function WaypointMarkers({ scene: _scene }: { scene: SceneManifest }) {
     return <group key={stop.id} position={[x, y + 0.2, z]}>
       <mesh position={[0, 6, 0]}><cylinderGeometry args={[0.18, 0.18, 12, 8]} /><meshBasicMaterial color={color} transparent opacity={0.65} /></mesh>
       <mesh position={[0, 12, 0]}><octahedronGeometry args={[1.2]} /><meshStandardMaterial color={color} emissive={stop.type === 'custom' ? '#16495a' : '#6b2d12'} /></mesh>
-      <Html position={[0, 14.5, 0]} center distanceFactor={22}><button className="rounded border border-rule bg-panel px-2.5 py-1 text-xs font-medium text-ink hover:border-ink-3" onClick={() => stop.type === 'science' && useMissionStore.getState().setSelectedWaypoint(stop.id)}>{label}</button></Html>
+      <Html position={[0, 14.5, 0]} center distanceFactor={22}><button className="rounded border border-ink bg-panel px-2.5 py-1 text-xs font-medium text-ink hover:bg-panel-2" onClick={() => stop.type === 'science' && useMissionStore.getState().setSelectedWaypoint(stop.id)}>{label}</button></Html>
     </group>
   })}</>
 }
@@ -580,12 +580,12 @@ export default function MarsWalk() {
     </Canvas>
 
     <div className="absolute left-3 top-3 z-10">
-      <button className="flex h-10 items-center gap-1.5 rounded border border-rule bg-panel pl-2 pr-3 text-[13px] font-medium text-ink hover:border-ink-3" onClick={() => transitionTo('planner')}>
+      <button className="flex h-10 items-center gap-1.5 rounded border border-ink bg-panel pl-2 pr-3 text-[13px] font-medium text-ink hover:bg-panel-2" onClick={() => transitionTo('planner')}>
         <ChevronLeft size={16} /> Planner
       </button>
     </div>
 
-    <div className="absolute inset-x-3 bottom-3 z-20 mx-auto max-w-3xl rounded border border-rule bg-panel p-3">
+    <div className="absolute inset-x-3 bottom-3 z-20 mx-auto max-w-3xl rounded border border-ink bg-panel p-3">
       <div className="mb-3 flex items-center gap-3">
         <span className="num w-9 text-right text-xs text-ink-2">{Math.round(progress * 100)}%</span>
         <input
@@ -608,7 +608,7 @@ export default function MarsWalk() {
 
       <div className="flex items-center justify-center gap-2 border-b border-rule pb-3">
         <button
-          className="flex h-9 items-center gap-1.5 rounded border border-rule px-3 text-[13px] font-medium text-ink hover:border-ink-3"
+          className="flex h-9 items-center gap-1.5 rounded border border-ink px-3 text-[13px] font-medium text-ink hover:bg-panel-2"
           onClick={() => setWalkState({ guided: !guided, playing: false })}
           title={guided ? 'Switch to free walking' : 'Switch to guided tour'}
         >
@@ -617,7 +617,7 @@ export default function MarsWalk() {
         </button>
 
         <button
-          className="grid size-10 place-items-center rounded bg-ink text-ground hover:bg-white"
+          className="grid size-10 place-items-center rounded bg-ink text-panel hover:bg-ink-2"
           onClick={() => setWalkState({ playing: !playing })}
           title={playing ? 'Pause' : 'Play'}
           aria-label={playing ? 'Pause' : 'Play'}
@@ -626,7 +626,7 @@ export default function MarsWalk() {
         </button>
 
         <button
-          className="flex h-9 items-center gap-1.5 rounded border border-rule px-3 text-ink hover:border-ink-3"
+          className="flex h-9 items-center gap-1.5 rounded border border-ink px-3 text-ink hover:bg-panel-2"
           onClick={cycleSpeed}
           title="Cycle playback speed"
         >
@@ -635,7 +635,7 @@ export default function MarsWalk() {
         </button>
 
         <button
-          className="grid size-9 place-items-center rounded border border-rule text-ink hover:border-ink-3"
+          className="grid size-9 place-items-center rounded border border-ink text-ink hover:bg-panel-2"
           onClick={() => setWalkState({ progress: 0, playing: false })}
           title="Reset to mission origin"
           aria-label="Reset to mission origin"
@@ -645,10 +645,10 @@ export default function MarsWalk() {
       </div>
 
       <div className="flex flex-col items-center justify-between gap-3 pt-3 sm:flex-row">
-        <div className="flex w-full items-center justify-between gap-3 sm:w-auto sm:justify-start">
-          <div className="flex items-baseline gap-2">
-            <span className="text-xs text-ink-3">Suit energy</span>
-            <strong className="num text-[13px] font-medium text-ink">{Math.round(remaining).toLocaleString()} EU</strong>
+        <div className="flex w-full flex-wrap items-center justify-between gap-x-3 gap-y-2 sm:w-auto sm:justify-start">
+          <div className="flex items-baseline gap-2 whitespace-nowrap">
+            <span className="label text-ink-3">Suit energy</span>
+            <strong className="num text-[15px] font-bold text-ink">{Math.round(remaining).toLocaleString()} EU</strong>
             <span className={`text-xs font-medium ${remaining > mission.energy_budget * mission.return_reserve_pct / 100 ? 'text-safe' : 'text-caution'}`}>
               {remaining > mission.energy_budget * mission.return_reserve_pct / 100 ? 'Above reserve' : 'Below reserve'}
             </span>
@@ -656,14 +656,14 @@ export default function MarsWalk() {
 
           <div className="flex items-center gap-1.5">
             <button
-              className="h-8 rounded border border-rule px-2 text-xs text-ink-2 hover:border-ink-3 hover:text-ink"
+              className="h-8 rounded border border-ink px-2 text-xs text-ink-2 hover:bg-panel-2 hover:text-ink"
               onClick={() => applyEnergyLoss()}
               title="Simulate 20% suit energy loss"
             >
               <span className="num">−20%</span>
             </button>
             <button
-              className="flex h-8 items-center gap-1.5 rounded bg-danger px-3 text-[13px] font-semibold text-ground hover:bg-[#f08791]"
+              className="flex h-8 items-center gap-1.5 rounded bg-danger px-3 text-[13px] font-semibold text-panel hover:bg-danger/85"
               onClick={() => requestEmergency(coordinate)}
               title="Emergency abort path to habitat"
             >
@@ -674,7 +674,7 @@ export default function MarsWalk() {
         </div>
 
         <div className="flex w-full items-center justify-between gap-2 sm:w-auto sm:justify-end">
-          <div className="flex items-center rounded border border-rule">
+          <div className="flex items-center rounded border border-ink">
             <button
               className="grid size-8 place-items-center text-ink-2 hover:text-ink"
               onClick={handleZoomIn}
@@ -684,7 +684,7 @@ export default function MarsWalk() {
               <Plus size={13} />
             </button>
             <button
-              className="grid size-8 place-items-center border-l border-rule text-ink-2 hover:text-ink"
+              className="grid size-8 place-items-center border-l border-ink text-ink-2 hover:text-ink"
               onClick={handleZoomOut}
               title="Zoom camera out"
               aria-label="Zoom out"
@@ -693,12 +693,12 @@ export default function MarsWalk() {
             </button>
           </div>
 
-          <div className="flex items-center rounded border border-rule">
+          <div className="flex items-center rounded border border-ink">
             {(['chase', 'drone', 'pov'] as const).map((mode) => (
               <button
                 key={mode}
                 className={`h-8 px-2.5 text-xs font-medium capitalize ${
-                  cameraMode === mode ? 'bg-ink text-ground' : 'text-ink-2 hover:text-ink'
+                  cameraMode === mode ? 'bg-ink text-panel' : 'text-ink-2 hover:text-ink'
                 }`}
                 onClick={() => cameraControllerRef.current.setPreset(mode)}
                 title={`Switch camera view to ${mode}`}
@@ -707,7 +707,7 @@ export default function MarsWalk() {
               </button>
             ))}
             <button
-              className="grid size-8 place-items-center border-l border-rule text-ink-2 hover:text-ink"
+              className="grid size-8 place-items-center border-l border-ink text-ink-2 hover:text-ink"
               onClick={() => cameraControllerRef.current.resetCamera()}
               title="Reset view to chase angle"
               aria-label="Reset Camera View"
@@ -720,7 +720,7 @@ export default function MarsWalk() {
     </div>
 
     {!guided && compact && (
-      <div className="absolute bottom-24 left-4 z-20 size-28 touch-none rounded-full border border-rule bg-ground/60" onPointerDown={(event) => { event.currentTarget.setPointerCapture(event.pointerId); updateJoystick(event) }} onPointerMove={(event) => event.currentTarget.hasPointerCapture(event.pointerId) && updateJoystick(event)} onPointerUp={() => setTouchInput({ forward: 0, turn: 0 })} onPointerCancel={() => setTouchInput({ forward: 0, turn: 0 })}>
+      <div className="absolute bottom-24 left-4 z-20 size-28 touch-none rounded-full border border-ink bg-panel/60" onPointerDown={(event) => { event.currentTarget.setPointerCapture(event.pointerId); updateJoystick(event) }} onPointerMove={(event) => event.currentTarget.hasPointerCapture(event.pointerId) && updateJoystick(event)} onPointerUp={() => setTouchInput({ forward: 0, turn: 0 })} onPointerCancel={() => setTouchInput({ forward: 0, turn: 0 })}>
         <span className="absolute left-1/2 top-1/2 size-10 -translate-x-1/2 -translate-y-1/2 rounded-full bg-ink/60" />
       </div>
     )}
@@ -730,7 +730,7 @@ export default function MarsWalk() {
 }
 
 function SuspenseFallback() {
-  return <Html center><div className="terrain-loader flex min-w-48 items-center gap-3 rounded border border-rule bg-panel px-4 py-3"><span className="spinner" /><strong className="text-[13px] font-medium text-ink">Streaming Jezero terrain…</strong></div></Html>
+  return <Html center><div className="terrain-loader flex min-w-48 items-center gap-3 rounded border border-ink bg-panel px-4 py-3"><span className="spinner" /><strong className="text-[13px] font-medium text-ink">Streaming Jezero terrain…</strong></div></Html>
 }
 
 function WaypointOverlay() {
@@ -743,14 +743,14 @@ function WaypointOverlay() {
   if (!waypoint) return null
   const stat = (label: string, value: string) => (
     <div>
-      <dt className="text-xs text-ink-3">{label}</dt>
-      <dd className="num mt-0.5 text-[13px] text-ink">{value}</dd>
+      <dt className="label text-ink-3">{label}</dt>
+      <dd className="num mt-1 text-[15px] font-bold leading-none text-ink">{value}</dd>
     </div>
   )
-  return <aside className="absolute inset-x-3 bottom-3 z-30 max-h-[70svh] overflow-auto rounded border border-rule bg-panel p-5 md:inset-auto md:right-4 md:top-4 md:w-84">
+  return <aside className="absolute inset-x-3 bottom-3 z-30 max-h-[70svh] overflow-auto rounded border border-ink bg-panel p-5 md:inset-auto md:right-4 md:top-4 md:w-84">
     <button className="absolute right-3 top-3 grid size-8 place-items-center rounded text-ink-3 hover:bg-panel-2 hover:text-ink" onClick={() => setSelected(null)} aria-label="Close target details"><X size={15} /></button>
-    <p className="text-xs text-ink-3">Science target · Sol <span className="num">{waypoint.properties.sol}</span></p>
-    <h2 className="mb-2 mt-1 pr-8 text-lg font-semibold leading-snug text-ink">{waypoint.properties.name}</h2>
+    <p className="label text-ink-3">Science target · Sol <span className="num">{waypoint.properties.sol}</span></p>
+    <h2 className="mb-2 mt-1 pr-8 text-lg font-bold leading-snug text-ink">{waypoint.properties.name}</h2>
     <p className="mb-3 text-[13px] leading-relaxed text-ink-2">{waypoint.properties.science_rationale}</p>
     {images[0] && <img className="aspect-video w-full rounded-sm object-cover" src={`/assets/thumbnails/surface/${images[0].product_id}.jpg`} alt="Rover observation" />}
     <dl className="mt-3 grid grid-cols-3 gap-3 border-y border-rule py-3">

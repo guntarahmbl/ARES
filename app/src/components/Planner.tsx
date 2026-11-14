@@ -1,18 +1,27 @@
-import { useEffect, useState } from 'react'
-import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
-import { ChevronLeft, ChevronRight, GripVertical, Layers3, Menu, Navigation, Plus, Trash2, X } from 'lucide-react'
+import { useEffect, useState, type ReactNode } from 'react'
+import { Check, ChevronLeft, ChevronRight, GripVertical, Layers3, PanelLeftOpen, Plus, Trash2, X } from 'lucide-react'
 import { useMissionStore } from '../store'
 import type { RouteCandidate, RouteStop } from '../types'
 import { MarsMap } from './MarsMap'
+import { TraverseProfile } from './TraverseProfile'
 import { Button } from './ui/button'
 import { Sheet } from './ui/sheet'
 
 const formatDistance = (meters: number) => meters >= 1000 ? `${(meters / 1000).toFixed(1)} km` : `${Math.round(meters)} m`
+const formatEnergy = (units: number) => `${Math.round(units).toLocaleString()} EU`
+const isNarrow = () => window.innerWidth < 768
 
 function stopName(stop: RouteStop) {
   if (stop.type === 'custom') return stop.name
   const feature = useMissionStore.getState().bootstrap?.waypoints.features.find((item) => item.properties.id === stop.id)
   return feature?.properties.name ?? stop.id
+}
+
+function useActiveRoute(): RouteCandidate | null {
+  const plan = useMissionStore((state) => state.plan)
+  const active = useMissionStore((state) => state.activeRoute)
+  if (!plan?.primary) return null
+  return active === 'alternative' ? plan.alternative ?? plan.primary : plan.primary
 }
 
 function PlacementBanner() {
@@ -30,24 +39,24 @@ function PlacementBanner() {
   if (!mode) return null
 
   return (
-    <div className="absolute left-1/2 top-4 z-30 flex -translate-x-1/2 items-center gap-3 rounded border border-rule bg-panel py-1.5 pl-4 pr-1.5 text-[13px]">
-      <span className="text-ink">
+    <div className="absolute left-1/2 top-3 z-30 flex max-w-[calc(100%-1.5rem)] -translate-x-1/2 items-center gap-3 bg-ink py-1.5 pl-4 pr-1.5 text-[13px] text-panel">
+      <span>
         {mode === 'habitat'
           ? 'Click inside the dashed zone to move the habitat'
           : 'Click the map to place a checkpoint'}
       </span>
-      <Button variant="secondary" size="sm" onClick={cancel}>
-        Cancel <kbd className="num text-ink-3">Esc</kbd>
-      </Button>
+      <button className="flex h-7 shrink-0 items-center gap-1.5 rounded border border-panel/40 px-2 font-semibold hover:bg-panel/15" onClick={cancel}>
+        Cancel <kbd className="num text-xs text-panel/70">Esc</kbd>
+      </button>
     </div>
   )
 }
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div>
-      <dt className="text-xs text-ink-3">{label}</dt>
-      <dd className="num mt-0.5 text-[13px] text-ink">{value}</dd>
+    <div className="min-w-0">
+      <dt className="label truncate text-ink-3">{label}</dt>
+      <dd className="num mt-1 truncate text-[15px] font-bold leading-none text-ink">{value}</dd>
     </div>
   )
 }
@@ -72,17 +81,17 @@ function WaypointInspector2D() {
 
   return (
     <aside
-      className="absolute right-3 top-16 z-20 max-h-[80svh] w-80 overflow-y-auto rounded border border-rule bg-panel p-4"
+      className="absolute inset-x-3 top-14 z-20 max-h-[calc(100%-4.5rem)] overflow-y-auto border border-ink bg-panel sm:left-auto sm:w-80"
       onMouseEnter={() => setHovered(id)}
       onMouseLeave={() => setHovered(null)}
     >
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex items-start justify-between gap-3 px-4 pt-3">
         <div>
-          <p className="text-xs text-ink-3">Science target · Sol <span className="num">{waypoint.properties.sol}</span></p>
-          <h3 className="mt-1 text-base font-semibold leading-snug text-ink">{waypoint.properties.name}</h3>
+          <p className="label text-ink-3">{waypoint.properties.id} · Science target · Sol <span className="num">{waypoint.properties.sol}</span></p>
+          <h3 className="mt-1.5 text-base font-bold leading-snug text-ink">{waypoint.properties.name}</h3>
         </div>
         <button
-          className="grid size-7 shrink-0 place-items-center rounded text-ink-3 hover:bg-panel-2 hover:text-ink"
+          className="-mr-2 grid size-7 shrink-0 place-items-center rounded text-ink-2 hover:bg-panel-2 hover:text-ink"
           onClick={() => { setSelected(null); setHovered(null) }}
           aria-label="Close inspector"
         >
@@ -90,30 +99,56 @@ function WaypointInspector2D() {
         </button>
       </div>
 
-      <p className="mt-2 text-[13px] leading-relaxed text-ink-2">{waypoint.properties.science_rationale}</p>
+      <p className="mt-2 px-4 text-[13px] leading-relaxed text-ink-2">{waypoint.properties.science_rationale}</p>
 
       {images[0] && (
-        <figure className="mt-3">
-          <img className="aspect-video w-full rounded-sm object-cover" src={`/assets/thumbnails/surface/${images[0].product_id}.jpg`} alt={waypoint.properties.name} />
+        <figure className="mt-3 px-4">
+          <img className="aspect-video w-full object-cover" src={`/assets/thumbnails/surface/${images[0].product_id}.jpg`} alt={waypoint.properties.name} />
           <figcaption className="mt-1 text-xs text-ink-3">Perseverance Mastcam-Z / Navcam</figcaption>
         </figure>
       )}
 
-      <dl className="mt-3 grid grid-cols-3 gap-3 border-y border-rule py-3">
+      <dl className="mt-3 grid grid-cols-3 gap-3 border-y border-rule px-4 py-3">
         <Stat label="Priority" value={`${waypoint.properties.priority} of 3`} />
         <Stat label="Geology" value={evidence?.geology_symbol ?? 'Nili'} />
         <Stat label="OLINDEX3" value={evidence?.crism.olindex3?.toFixed(3) ?? 'nodata'} />
       </dl>
 
-      <Button
-        variant={isSelected ? 'secondary' : 'default'}
-        size="sm"
-        className="mt-3 w-full"
-        onClick={() => toggleScience(id)}
-      >
-        {isSelected ? 'Remove from route' : 'Add to route'}
-      </Button>
+      <div className="p-3">
+        <Button
+          variant={isSelected ? 'secondary' : 'default'}
+          size="sm"
+          className="w-full"
+          onClick={() => toggleScience(id)}
+        >
+          {isSelected ? 'Remove from route' : 'Add to route'}
+        </Button>
+      </div>
     </aside>
+  )
+}
+
+/** One line of the traverse table: station mark, name, and where the route stands on arrival. */
+function StationRow({ mark, name, kind, arrival, energy, children }: {
+  mark: string; name: string; kind: string; arrival?: string; energy?: string; children?: ReactNode
+}) {
+  return (
+    <>
+      <span className="num relative z-10 grid size-6 shrink-0 place-items-center border border-ink bg-panel text-[13px] font-bold leading-none text-ink">
+        <span className="translate-y-px">{mark}</span>
+      </span>
+      <div className="min-w-0 flex-1">
+        <strong className="block truncate text-[13px] font-semibold text-ink">{name}</strong>
+        <span className="block truncate text-xs text-ink-3">{kind}</span>
+      </div>
+      {arrival && (
+        <div className="shrink-0 text-right">
+          <span className="num block text-[13px] leading-tight text-ink">{arrival}</span>
+          <span className="num block text-[11px] leading-tight text-ink-3">{energy}</span>
+        </div>
+      )}
+      {children}
+    </>
   )
 }
 
@@ -131,120 +166,131 @@ function MissionSidebar() {
   const calculate = useMissionStore((state) => state.calculate)
   const plan = useMissionStore((state) => state.plan)
   const routeDirty = useMissionStore((state) => state.routeDirty)
+  const route = useActiveRoute()
 
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
 
-  if (!open) return (
-    <Button variant="secondary" size="icon" className="absolute left-3 top-3 z-20 hidden bg-panel lg:flex" onClick={() => setOpen(true)} aria-label="Expand mission panel">
-      <Menu size={16} />
-    </Button>
-  )
+  if (!open) return null
 
-  const disclosure = 'group rounded border border-rule'
-  const summary = 'flex min-h-10 cursor-pointer list-none items-center justify-between px-3 text-[13px] font-medium text-ink [&::-webkit-details-marker]:hidden'
+  const startPlacement = (mode: 'habitat' | 'stop') => {
+    setPlacement(mode)
+    if (isNarrow()) setOpen(false)
+  }
+
+  // Arrival figures only mean something while the plan matches the stop list.
+  const current = route && !routeDirty ? route : null
+  const scienceCount = mission.route_stops.filter((stop) => stop.type === 'science').length
+  const summary = 'flex h-11 cursor-pointer list-none items-center gap-2 px-4 text-[13px] font-semibold text-ink hover:bg-panel-2 [&::-webkit-details-marker]:hidden'
+  const chevron = <ChevronRight size={14} className="text-ink-2 transition-transform group-open:rotate-90" />
 
   return (
-    <aside className="absolute inset-x-2 bottom-2 z-20 flex max-h-[52svh] flex-col overflow-hidden rounded border border-rule bg-panel sm:bottom-3 sm:left-3 sm:right-auto sm:top-3 sm:max-h-none sm:w-96 lg:w-[380px]">
-      <div className="flex items-start gap-3 border-b border-rule px-4 py-3">
+    <aside className="absolute inset-0 z-30 flex flex-col bg-panel md:static md:z-auto md:w-[340px] md:shrink-0 md:border-r md:border-ink">
+      <div className="flex items-start gap-3 border-b border-ink py-3 pl-4 pr-2">
         <div className="min-w-0 flex-1">
-          <h1 className="text-base font-semibold text-ink">Plan an EVA</h1>
-          <p className="mt-0.5 text-[13px] text-ink-3">Choose stops and check a safe return route</p>
+          <h1 className="text-lg font-bold leading-tight text-ink">Plan an EVA</h1>
+          <p className="mt-0.5 text-[13px] text-ink-2">Choose stops and check a safe return route</p>
         </div>
         <Button variant="ghost" size="icon" onClick={() => setOpen(false)} aria-label="Collapse mission panel">
-          <ChevronLeft size={16} className="hidden lg:block" />
-          <X size={16} className="lg:hidden" />
+          <ChevronLeft size={16} className="hidden md:block" />
+          <X size={16} className="md:hidden" />
         </Button>
       </div>
 
-      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
-        <section>
-          <div className="mb-3 flex items-baseline justify-between">
-            <h2 className="text-[13px] font-semibold text-ink">Route stops</h2>
-            <span className="text-xs text-ink-3"><span className="num">{mission.route_stops.length}</span> stops · round trip</span>
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <section className="px-4 pb-4 pt-3">
+          <div className="mb-1 flex items-baseline justify-between">
+            <h2 className="label text-ink">Traverse</h2>
+            <span className="label text-ink-3">{current ? 'Arrival · energy used' : 'Round trip'}</span>
           </div>
 
           <ol className="relative">
-            <span className="absolute bottom-3 left-[9px] top-3 w-px bg-rule" aria-hidden />
+            <span className="absolute bottom-5 left-[11.5px] top-5 w-px bg-ink" aria-hidden />
 
-            <li className="relative flex min-h-11 items-center gap-3">
-              <span className="relative z-10 grid size-[19px] place-items-center bg-panel"><span className="size-2.5 rounded-full border-2 border-ink" /></span>
-              <div className="min-w-0 flex-1">
-                <strong className="block text-[13px] font-medium text-ink">Habitat</strong>
-                <span className="text-xs text-ink-3">Starting point</span>
-              </div>
-              <button
-                className="text-xs text-ink-2 underline underline-offset-2 hover:text-ink"
-                onClick={() => useMissionStore.getState().setPlacementMode('habitat')}
-                title="Relocate habitat within the approved 250 m zone"
-              >
-                Relocate
-              </button>
+            <li className="relative flex min-h-12 items-center gap-3">
+              <StationRow mark="H" name="Habitat" kind="Starting point">
+                <button
+                  className="text-xs font-medium text-ink underline underline-offset-2 hover:text-route"
+                  onClick={() => startPlacement('habitat')}
+                  title="Move the habitat within the approved 250 m zone"
+                >
+                  Relocate
+                </button>
+              </StationRow>
             </li>
 
-            {mission.route_stops.map((stop, index) => (
-              <li
-                key={stop.id}
-                draggable
-                onMouseEnter={() => stop.type === 'science' && useMissionStore.getState().setHoveredWaypoint(stop.id)}
-                onMouseLeave={() => stop.type === 'science' && useMissionStore.getState().setHoveredWaypoint(null)}
-                onDragStart={() => setDraggedIndex(index)}
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={() => {
-                  if (draggedIndex !== null && draggedIndex !== index) {
-                    moveStop(draggedIndex, index)
-                  }
-                  setDraggedIndex(null)
-                }}
-                className={`group/stop relative flex min-h-11 cursor-grab items-center gap-3 active:cursor-grabbing ${draggedIndex === index ? 'opacity-40' : ''}`}
-              >
-                <span className="num relative z-10 grid size-[19px] place-items-center rounded-full bg-ink text-[10px] font-semibold text-ground">
-                  {index + 1}
-                </span>
-                <button className="min-w-0 flex-1 text-left" onClick={() => stop.type === 'science' && useMissionStore.getState().setSelectedWaypoint(stop.id)}>
-                  <strong className="block truncate text-[13px] font-medium text-ink">{stopName(stop)}</strong>
-                  <span className="text-xs text-ink-3">{stop.type === 'science' ? 'Science target' : 'Checkpoint'}</span>
-                </button>
-                <GripVertical size={14} className="text-ink-3 opacity-0 transition-opacity group-hover/stop:opacity-100" aria-hidden />
-                <button className="grid size-7 place-items-center rounded text-ink-3 hover:bg-panel-2 hover:text-danger disabled:opacity-25" disabled={mission.route_stops.length === 1} onClick={() => remove(stop.id)} aria-label={`Remove ${stop.id}`}>
-                  <Trash2 size={13} />
-                </button>
-              </li>
-            ))}
+            {mission.route_stops.map((stop, index) => {
+              const visit = current?.stop_visits.find((item) => item.id === stop.id)
+              return (
+                <li
+                  key={stop.id}
+                  draggable
+                  onMouseEnter={() => stop.type === 'science' && useMissionStore.getState().setHoveredWaypoint(stop.id)}
+                  onMouseLeave={() => stop.type === 'science' && useMissionStore.getState().setHoveredWaypoint(null)}
+                  onDragStart={() => setDraggedIndex(index)}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={() => {
+                    if (draggedIndex !== null && draggedIndex !== index) {
+                      moveStop(draggedIndex, index)
+                    }
+                    setDraggedIndex(null)
+                  }}
+                  className={`group/stop relative flex min-h-12 cursor-grab items-center gap-3 active:cursor-grabbing ${draggedIndex === index ? 'opacity-40' : ''}`}
+                >
+                  <StationRow
+                    mark={String(index + 1)}
+                    name={stopName(stop)}
+                    kind={stop.type === 'science' ? `Science target · ${stop.id}` : 'Checkpoint'}
+                    arrival={visit ? formatDistance(visit.arrival_distance_m) : undefined}
+                    energy={visit ? formatEnergy(visit.arrival_energy_units) : undefined}
+                  >
+                    <div className="flex shrink-0 items-center">
+                      <GripVertical size={14} className="text-ink-3 opacity-0 transition-opacity group-hover/stop:opacity-100" aria-hidden />
+                      <button className="grid size-7 place-items-center rounded text-ink-3 hover:bg-panel-2 hover:text-danger disabled:opacity-30" disabled={mission.route_stops.length === 1} onClick={() => remove(stop.id)} aria-label={`Remove ${stopName(stop)}`}>
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  </StationRow>
+                  {stop.type === 'science' && (
+                    <button className="absolute inset-y-0 left-0 right-12" onClick={() => useMissionStore.getState().setSelectedWaypoint(stop.id)} aria-label={`Show ${stopName(stop)} on the map`} />
+                  )}
+                </li>
+              )
+            })}
 
-            <li className="relative flex min-h-11 items-center gap-3">
-              <span className="relative z-10 grid size-[19px] place-items-center bg-panel"><span className="size-2.5 rounded-full border-2 border-ink-3" /></span>
-              <div className="min-w-0 flex-1">
-                <strong className="block text-[13px] font-medium text-ink">Return to habitat</strong>
-                <span className="text-xs text-ink-3">Route ends at the starting point</span>
-              </div>
+            <li className="relative flex min-h-12 items-center gap-3">
+              <StationRow
+                mark="H"
+                name="Return to habitat"
+                kind="Route ends at the starting point"
+                arrival={current ? formatDistance(current.metrics.distance_m) : undefined}
+                energy={current ? formatEnergy(current.metrics.energy_units) : undefined}
+              />
             </li>
           </ol>
 
           <Button
             variant="secondary"
-            className="mt-3 w-full"
+            className="mt-2 w-full"
             disabled={mission.route_stops.length >= 12}
-            onClick={() => {
-              setPlacement('stop')
-              if (window.innerWidth < 1024) setOpen(false)
-            }}
+            onClick={() => startPlacement('stop')}
           >
             <Plus size={14} /> Add stop on map
           </Button>
         </section>
 
-        <details className={disclosure}>
+        <details className="group border-t border-rule">
           <summary className={summary}>
-            <span>Science targets</span>
-            <ChevronRight size={14} className="text-ink-3 transition-transform group-open:rotate-90" />
+            <span className="flex-1">Science targets</span>
+            <span className="num text-xs font-normal text-ink-3">{scienceCount} of {bootstrap.waypoints.features.length}</span>
+            {chevron}
           </summary>
-          <div className="border-t border-rule p-1.5">
+          <div className="pb-2">
             {bootstrap.waypoints.features.map((feature) => {
               const selected = mission.route_stops.some((stop) => stop.id === feature.properties.id)
               return (
                 <label
                   key={feature.properties.id}
-                  className="flex min-h-10 cursor-pointer items-center gap-3 rounded px-2 hover:bg-panel-2"
+                  className="flex min-h-11 cursor-pointer items-center gap-3 px-4 hover:bg-panel-2"
                   onMouseEnter={() => useMissionStore.getState().setHoveredWaypoint(feature.properties.id)}
                   onMouseLeave={() => useMissionStore.getState().setHoveredWaypoint(null)}
                 >
@@ -259,12 +305,13 @@ function MissionSidebar() {
           </div>
         </details>
 
-        <details className={disclosure}>
+        <details className="group border-y border-rule">
           <summary className={summary}>
-            <span>Route settings</span>
-            <ChevronRight size={14} className="text-ink-3 transition-transform group-open:rotate-90" />
+            <span className="flex-1">Route settings</span>
+            <span className="num text-xs font-normal text-ink-3 group-open:hidden">{mission.max_duration_min} min · {mission.return_reserve_pct}% reserve</span>
+            {chevron}
           </summary>
-          <div className="space-y-4 border-t border-rule p-3">
+          <div className="space-y-4 px-4 pb-4 pt-1">
             {[
               ['Maximum duration', 'max_duration_min', 240, 1000, 10, `${mission.max_duration_min} min`],
               ['Energy budget', 'energy_budget', 15000, 70000, 1000, `${mission.energy_budget.toLocaleString()} EU`],
@@ -272,12 +319,12 @@ function MissionSidebar() {
               ['Return reserve', 'return_reserve_pct', 10, 50, 5, `${mission.return_reserve_pct}%`],
             ].map(([label, key, min, max, step, value]) => (
               <label className="block text-[13px]" key={String(key)}>
-                <span className="mb-1 flex justify-between">
+                <span className="flex items-baseline justify-between">
                   <span className="text-ink-2">{label}</span>
-                  <output className="num text-ink">{value}</output>
+                  <output className="num font-bold text-ink">{value}</output>
                 </span>
                 <input
-                  className="w-full"
+                  className="mt-1 w-full"
                   type="range"
                   min={Number(min)}
                   max={Number(max)}
@@ -291,18 +338,29 @@ function MissionSidebar() {
         </details>
       </div>
 
-      <div className="border-t border-rule p-3">
+      <div className="border-t border-ink p-3">
         <Button
           data-testid="route-action"
           className="h-11 w-full"
           disabled={state === 'loading' || (Boolean(plan) && !routeDirty)}
           onClick={() => calculate()}
         >
-          {state === 'loading' ? <span className="spinner" style={{ borderColor: '#10131255', borderTopColor: '#101312' }} /> : <Navigation size={14} />}
+          {state === 'loading' ? <span className="spinner" /> : !routeDirty && plan ? <Check size={14} /> : null}
           {state === 'loading' ? 'Updating route…' : routeDirty ? (plan ? 'Update route' : 'Plan route') : 'Route up to date'}
         </Button>
       </div>
     </aside>
+  )
+}
+
+function SidebarExpand() {
+  const open = useMissionStore((state) => state.sidebarOpen)
+  const setOpen = useMissionStore((state) => state.setSidebarOpen)
+  if (open) return null
+  return (
+    <Button variant="secondary" size="icon" className="absolute left-3 top-3 z-20 hidden md:flex" onClick={() => setOpen(true)} aria-label="Expand mission panel">
+      <PanelLeftOpen size={16} />
+    </Button>
   )
 }
 
@@ -321,10 +379,10 @@ function LayerControl() {
 
   const scale = (label: string, from: string, to: string, gradient: string) => (
     <div>
-      <span className="mb-1 block text-xs text-ink-2">{label}</span>
-      <div className="flex items-center gap-2 text-xs text-ink-3">
+      <span className="label mb-1.5 block text-ink-2">{label}</span>
+      <div className="flex items-center gap-2 text-xs text-ink-2">
         <span>{from}</span>
-        <div className="h-1.5 flex-1 rounded-sm" style={{ background: gradient }} />
+        <div className="h-2 flex-1 border border-ink" style={{ background: gradient }} />
         <span>{to}</span>
       </div>
     </div>
@@ -332,29 +390,31 @@ function LayerControl() {
 
   return (
     <div className="absolute right-3 top-3 z-20">
-      <Button variant="secondary" size="icon" className="bg-panel" onClick={() => setOpen(!open)} aria-label="Map layers" aria-expanded={open}>
+      <Button variant="secondary" size="icon" className="ml-auto flex" onClick={() => setOpen(!open)} aria-label="Map layers" aria-expanded={open}>
         <Layers3 size={16} />
       </Button>
       {open && (
-        <div className="absolute right-0 mt-2 w-72 rounded border border-rule bg-panel p-3.5">
-          <h2 className="mb-1 text-[13px] font-semibold text-ink">Map layers</h2>
-          {layers.map((layer) => (
-            <label className="flex min-h-9 cursor-pointer items-center gap-2.5 text-[13px] text-ink" key={layer.id}>
-              <input className="check" type="checkbox" checked={visibility[layer.id] ?? false} onChange={(event) => setVisibility(layer.id, event.target.checked)} />
-              <span className="flex-1 truncate">{layer.label}</span>
-              <small className="text-xs capitalize text-ink-3">{layer.kind}</small>
-            </label>
-          ))}
-          <label className="mt-2 block border-t border-rule pt-3 text-[13px]">
-            <span className="mb-1 flex justify-between">
+        <div className="absolute right-0 mt-2 w-72 border border-ink bg-panel">
+          <h2 className="label border-b border-rule px-3.5 py-2.5 text-ink">Map layers</h2>
+          <div className="py-1">
+            {layers.map((layer) => (
+              <label className="flex min-h-9 cursor-pointer items-center gap-2.5 px-3.5 text-[13px] text-ink hover:bg-panel-2" key={layer.id}>
+                <input className="check" type="checkbox" checked={visibility[layer.id] ?? false} onChange={(event) => setVisibility(layer.id, event.target.checked)} />
+                <span className="flex-1 truncate">{layer.label}</span>
+                <small className="label text-ink-3">{layer.kind}</small>
+              </label>
+            ))}
+          </div>
+          <label className="block border-t border-rule px-3.5 py-3 text-[13px]">
+            <span className="flex items-baseline justify-between">
               <span className="text-ink-2">Overlay opacity</span>
-              <output className="num text-ink">{Math.round(opacity * 100)}%</output>
+              <output className="num font-bold text-ink">{Math.round(opacity * 100)}%</output>
             </span>
-            <input className="w-full" type="range" min="0.15" max="0.9" step="0.05" value={opacity} onChange={(event) => setOpacity(Number(event.target.value))} />
+            <input className="mt-1 w-full" type="range" min="0.15" max="0.9" step="0.05" value={opacity} onChange={(event) => setOpacity(Number(event.target.value))} />
           </label>
 
           {(visibility.slope || visibility.hazard || visibility.crism) && (
-            <div className="mt-3 space-y-3 border-t border-rule pt-3">
+            <div className="space-y-3 border-t border-rule px-3.5 py-3">
               {visibility.slope && scale('Slope', '0°', '25°+', 'linear-gradient(to right, #10b981, #facc15, #e11d48)')}
               {visibility.hazard && scale('Traversability', 'Regolith', 'Rocky', 'linear-gradient(to right, #10b981, #f59e0b, #dc2626)')}
               {visibility.crism && scale('CRISM OLINDEX3', 'Low', 'Clay / olivine', 'linear-gradient(to right, #1e3a8a, #22d3ee, #fbbf24)')}
@@ -366,68 +426,80 @@ function LayerControl() {
   )
 }
 
+/** Energy spent against the budget, with the return reserve hatched off at the far end. */
 function ReturnMargin({ used, budget, reservePct }: { used: number; budget: number; reservePct: number }) {
   const limit = 1 - reservePct / 100
   const ratio = Math.min(used / budget, 1)
   const over = used / budget > limit
   return (
     <div>
-      <div className="relative h-1.5 rounded-sm bg-panel-2" role="img" aria-label={`${Math.round(ratio * 100)}% of energy budget used; ${reservePct}% held in reserve`}>
-        <div className={`absolute inset-y-0 left-0 rounded-sm ${over ? 'bg-caution' : 'bg-ink'}`} style={{ width: `${ratio * 100}%` }} />
-        <span className="absolute -inset-y-1 w-px bg-rust" style={{ left: `${limit * 100}%` }} aria-hidden />
+      <div className="relative h-2.5 border border-ink" role="img" aria-label={`${Math.round(ratio * 100)}% of energy budget used; ${reservePct}% held in reserve`}>
+        <div
+          className="absolute inset-y-0 right-0 border-l border-rust"
+          style={{ left: `${limit * 100}%`, background: 'repeating-linear-gradient(135deg, #b8431b 0 1.5px, transparent 1.5px 5px)' }}
+          aria-hidden
+        />
+        <div className={`absolute inset-y-0 left-0 ${over ? 'bg-danger' : 'bg-ink'}`} style={{ width: `${ratio * 100}%` }} />
       </div>
-      <div className="mt-1.5 flex justify-between text-xs text-ink-3">
-        <span><span className="num text-ink-2">{Math.round(used).toLocaleString()}</span> of <span className="num">{Math.round(budget).toLocaleString()}</span> EU used</span>
-        <span>Reserve starts at <span className="num text-rust">{Math.round(budget * limit).toLocaleString()}</span></span>
+      <div className="mt-1.5 flex flex-wrap justify-between gap-x-3 text-xs text-ink-2">
+        <span className="whitespace-nowrap"><span className="num text-ink">{Math.round(used).toLocaleString()}</span> of <span className="num">{Math.round(budget).toLocaleString()}</span> EU</span>
+        <span className="whitespace-nowrap text-rust">reserve from <span className="num">{Math.round(budget * limit).toLocaleString()}</span></span>
       </div>
     </div>
   )
 }
 
-function RouteSummary() {
+function RouteStrip() {
   const plan = useMissionStore((state) => state.plan)
   const mission = useMissionStore((state) => state.mission)
   const active = useMissionStore((state) => state.activeRoute)
   const setActive = useMissionStore((state) => state.setActiveRoute)
   const setDetails = useMissionStore((state) => state.setDetailsOpen)
-  const sidebarOpen = useMissionStore((state) => state.sidebarOpen)
-  if (!plan?.primary || !mission) return null
-  const route = active === 'alternative' ? plan.alternative ?? plan.primary : plan.primary
-
-  const leftPosition = sidebarOpen ? 'sm:left-[405px]' : 'sm:left-3'
+  const loading = useMissionStore((state) => state.state === 'loading')
+  const route = useActiveRoute()
+  if (!plan || !route || !mission) return null
 
   return (
-    <section data-testid="route-status" aria-live="polite" className={`absolute bottom-3 left-2 right-2 z-10 rounded border border-rule bg-panel p-3.5 sm:right-auto sm:w-[34rem] ${leftPosition}`}>
-      <div className="flex items-center gap-2">
-        <span className={`size-2 rounded-full ${plan.feasible ? 'bg-safe' : 'bg-caution'}`} aria-hidden />
-        <strong className="text-sm font-semibold text-ink">
-          {plan.feasible ? 'Route is safe to return' : 'Route needs changes'}
+    <section
+      data-testid="route-status"
+      aria-live="polite"
+      className={`relative z-10 flex shrink-0 flex-wrap items-stretch border-t border-ink bg-panel transition-opacity xl:flex-nowrap ${loading ? 'opacity-60' : ''}`}
+    >
+      <div className="order-1 flex min-w-0 flex-1 items-center gap-3.5 px-4 py-3 xl:w-[21.5rem] xl:flex-none xl:border-r xl:border-rule">
+        <strong className={`wordmark shrink-0 text-[26px] leading-none ${plan.feasible ? 'text-safe' : 'text-danger'}`}>
+          {plan.feasible ? 'Go' : 'No-go'}
         </strong>
-        <span className="ml-auto text-xs text-ink-3">Science score <span className="num text-ink">{route.metrics.science_score}</span> / 100</span>
+        <div className="min-w-0 flex-1">
+          <p className="mb-1.5 truncate text-[13px] font-semibold text-ink">
+            {plan.feasible ? 'Route is safe to return' : 'Route needs changes'}
+            {active === 'alternative' && plan.alternative && <span className="font-normal text-ink-3"> · alternative</span>}
+          </p>
+          <ReturnMargin used={route.metrics.energy_units} budget={mission.energy_budget} reservePct={mission.return_reserve_pct} />
+        </div>
       </div>
 
-      <div className="mt-3">
-        <ReturnMargin used={route.metrics.energy_units} budget={mission.energy_budget} reservePct={mission.return_reserve_pct} />
-      </div>
+      <TraverseProfile
+        compact
+        route={route}
+        stops={mission.route_stops}
+        slopeLimitDeg={mission.preferred_max_slope_deg}
+        className="order-3 hidden h-[84px] flex-1 px-4 pb-2.5 pt-1.5 xl:flex"
+      />
 
-      <dl className="mt-3 grid grid-cols-3 gap-3 border-t border-rule pt-3">
+      <dl className="order-4 grid w-full grid-cols-4 gap-3 border-t border-rule px-4 py-2.5 xl:order-3 xl:w-auto xl:grid-cols-[repeat(4,4.25rem)] xl:content-center xl:border-l xl:border-t-0">
         <Stat label="Distance" value={formatDistance(route.metrics.distance_m)} />
         <Stat label="Duration" value={`${Math.round(route.metrics.duration_min)} min`} />
         <Stat label="Max slope" value={`${route.metrics.maximum_slope_deg}°`} />
+        <Stat label="Science" value={`${route.metrics.science_score}`} />
       </dl>
 
-      {route.explanation[0] && (
-        <p className="mt-3 hidden truncate text-xs text-ink-2 sm:block">
-          <span className="font-medium text-ink">Why: </span>
-          {route.explanation[0]} {route.explanation[1]}
-        </p>
-      )}
-
-      <div className="mt-3 flex items-center gap-2">
+      <div className="order-2 flex shrink-0 flex-col justify-center gap-1 py-2 pl-1 pr-3 xl:order-4 xl:border-l xl:border-rule xl:pl-3">
         <Button variant="secondary" size="sm" onClick={() => setDetails(true)}>Details</Button>
-        <Button variant="ghost" size="sm" className="hidden sm:flex" onClick={() => setActive(active === 'primary' ? 'alternative' : 'primary')}>
-          {active === 'primary' ? 'Show alternative' : 'Show primary'}
-        </Button>
+        {plan.alternative && (
+          <Button variant="ghost" size="sm" className="hidden sm:flex" onClick={() => setActive(active === 'primary' ? 'alternative' : 'primary')}>
+            {active === 'primary' ? 'Show alternative' : 'Show primary'}
+          </Button>
+        )}
       </div>
     </section>
   )
@@ -437,50 +509,32 @@ function RouteDetails() {
   const open = useMissionStore((state) => state.detailsOpen)
   const setOpen = useMissionStore((state) => state.setDetailsOpen)
   const plan = useMissionStore((state) => state.plan)
+  const mission = useMissionStore((state) => state.mission)
   const active = useMissionStore((state) => state.activeRoute)
   const applyEnergyLoss = useMissionStore((state) => state.applyEnergyLoss)
   const route: RouteCandidate | null | undefined = active === 'alternative' ? plan?.alternative : plan?.primary
 
   return (
     <Sheet open={open} onOpenChange={setOpen} title="Route details" side="right">
-      {route && (
-        <div className="space-y-5">
-          <dl className="grid grid-cols-2 border-b border-rule">
-            {[
-              ['Distance', formatDistance(route.metrics.distance_m)],
-              ['Max slope', `${route.metrics.maximum_slope_deg}°`],
-              ['Energy consumed', `${Math.round(route.metrics.energy_units).toLocaleString()} EU`],
-              ['Return reserve', `${Math.round(route.metrics.return_reserve_units).toLocaleString()} EU`],
-              ['Elevation gain', `+${route.metrics.elevation_gain_m} m`],
-              ['Science score', `${route.metrics.science_score} / 100`],
-            ].map(([label, value], i) => (
-              <div className={`py-2.5 ${i % 2 ? 'pl-3' : 'border-r border-rule pr-3'} ${i > 1 ? 'border-t border-rule' : ''}`} key={label}>
-                <dt className="text-xs text-ink-3">{label}</dt>
-                <dd className="num mt-0.5 text-sm text-ink">{value}</dd>
-              </div>
-            ))}
+      {route && mission && (
+        <div className="space-y-6">
+          <dl className="grid grid-cols-2 gap-x-4 gap-y-4 border-b border-rule pb-5">
+            <Stat label="Distance" value={formatDistance(route.metrics.distance_m)} />
+            <Stat label="Duration" value={`${Math.round(route.metrics.duration_min)} min`} />
+            <Stat label="Energy consumed" value={formatEnergy(route.metrics.energy_units)} />
+            <Stat label="Return reserve" value={formatEnergy(route.metrics.return_reserve_units)} />
+            <Stat label="Elevation gain" value={`+${route.metrics.elevation_gain_m} m`} />
+            <Stat label="Max slope" value={`${route.metrics.maximum_slope_deg}°`} />
+            <Stat label="Science score" value={`${route.metrics.science_score} / 100`} />
           </dl>
 
           <div>
-            <h4 className="mb-2 text-[13px] font-semibold text-ink">Elevation profile <span className="font-normal text-ink-3">· HiRISE DTM</span></h4>
-            <div className="h-44">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={route.elevation_profile}>
-                  <XAxis dataKey="distance_m" hide />
-                  <YAxis width={52} tickCount={4} tickFormatter={(v: number) => `${Math.round(v)}`} tick={{ fill: '#838a86', fontSize: 10, fontFamily: 'Martian Mono Variable, monospace' }} axisLine={false} tickLine={false} domain={['dataMin - 5', 'dataMax + 5']} />
-                  <Tooltip
-                    formatter={(v: number) => [`${Math.round(v)} m`, 'Elevation']}
-                    labelFormatter={(d: number) => `${Math.round(d)} m along route`}
-                    contentStyle={{ background: '#181b1a', borderColor: '#343a38', borderRadius: '3px', fontSize: '12px' }}
-                  />
-                  <Area type="monotone" baseValue="dataMin" dataKey="elevation_m" stroke="#e2784a" fill="#e2784a1f" strokeWidth={1.5} />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
+            <h3 className="label mb-2 text-ink">Elevation profile</h3>
+            <TraverseProfile route={route} stops={mission.route_stops} slopeLimitDeg={mission.preferred_max_slope_deg} className="h-56" />
           </div>
 
           <div>
-            <h3 className="mb-2 text-[13px] font-semibold text-ink">Why this route</h3>
+            <h3 className="label mb-2 text-ink">Why this route</h3>
             <div className="space-y-2">
               {route.explanation.map((line) => (
                 <p className="text-[13px] leading-relaxed text-ink-2" key={line}>{line}</p>
@@ -507,10 +561,10 @@ function DraftStopSheet() {
     <Sheet open={Boolean(draft)} onOpenChange={(open) => !open && cancel()} title="Add checkpoint" side="bottom">
       {draft && (
         <div className="mx-auto max-w-xl space-y-4">
-          <label className="block text-[13px] font-medium text-ink">
+          <label className="block text-[13px] font-semibold text-ink">
             Checkpoint name
             <input
-              className="mt-1.5 h-10 w-full rounded border border-rule bg-ground px-3 text-[13px] text-ink placeholder:text-ink-3 focus-visible:border-ink-3"
+              className="mt-1.5 h-10 w-full rounded border border-ink bg-white px-3 text-[13px] font-normal text-ink placeholder:text-ink-3"
               value={draft.name}
               placeholder="e.g. North delta stop"
               onChange={(event) => useMissionStore.setState({ draftStop: { ...draft, name: event.target.value } })}
@@ -521,14 +575,13 @@ function DraftStopSheet() {
               <span className="spinner" /> Checking terrain…
             </div>
           ) : (
-            <div className="rounded border border-rule p-3 text-[13px]">
-              <strong className={`flex items-center gap-2 font-semibold ${validation.valid ? 'text-safe' : 'text-danger'}`}>
-                <span className={`size-2 rounded-full ${validation.valid ? 'bg-safe' : 'bg-danger'}`} aria-hidden />
+            <div className="border-y border-rule py-3 text-[13px]">
+              <strong className={`block font-semibold ${validation.valid ? 'text-safe' : 'text-danger'}`}>
                 {validation.valid ? 'This location is traversable' : 'Choose another location'}
               </strong>
-              <dl className="mt-2 grid grid-cols-3 gap-3">
-                <Stat label="Elevation" value={`${validation.terrain.elevation_m?.toFixed(1)} m`} />
-                <Stat label="Slope" value={`${validation.terrain.slope_deg?.toFixed(1)}°`} />
+              <dl className="mt-3 grid grid-cols-3 gap-3">
+                <Stat label="Elevation" value={validation.terrain.elevation_m === undefined ? '—' : `${validation.terrain.elevation_m.toFixed(1)} m`} />
+                <Stat label="Slope" value={validation.terrain.slope_deg === undefined ? '—' : `${validation.terrain.slope_deg.toFixed(1)}°`} />
                 <Stat label="Geology" value={validation.science_context.geology_symbol ?? 'Nili Planum'} />
               </dl>
               {validation.warnings.map((warning) => (
@@ -550,13 +603,18 @@ function DraftStopSheet() {
 
 export function Planner() {
   return (
-    <div className="absolute inset-0 overflow-hidden bg-ground">
-      <MarsMap />
-      <PlacementBanner />
-      <WaypointInspector2D />
+    <div className="absolute inset-0 flex overflow-hidden bg-ground">
       <MissionSidebar />
-      <LayerControl />
-      <RouteSummary />
+      <div className="relative flex min-w-0 flex-1 flex-col">
+        <div className="relative min-h-0 flex-1 overflow-hidden">
+          <MarsMap />
+          <PlacementBanner />
+          <SidebarExpand />
+          <WaypointInspector2D />
+          <LayerControl />
+        </div>
+        <RouteStrip />
+      </div>
       <RouteDetails />
       <DraftStopSheet />
     </div>
