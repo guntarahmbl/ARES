@@ -2,8 +2,8 @@ import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame, useLoader, useThree } from '@react-three/fiber'
 import { Html, Line, Stars } from '@react-three/drei'
 import {
-  AlertTriangle, ChevronLeft, FastForward, Footprints, Gauge, Map, Pause, Play,
-  RotateCcw, ShieldCheck, Target, Zap, Activity,
+  Activity, AlertTriangle, BatteryCharging, ChevronLeft, Compass, FastForward, Footprints, Gauge, Map, Pause, Play,
+  RotateCcw, ShieldCheck, Target, Zap
 } from 'lucide-react'
 import * as THREE from 'three'
 import { useMissionStore } from '../store'
@@ -180,11 +180,35 @@ function routeInterpolator(points: number[][]) {
   }
 }
 
-function Scene({ route, scene, onPosition, touchInput, compact }: { route: RouteCandidate; scene: SceneManifest; onPosition: (position: Position, index: number) => void; touchInput: { forward: number; turn: number }; compact: boolean }) {
+interface CameraControllerState {
+  yaw: number
+  pitch: number
+  distance: number
+  mode: 'chase' | 'drone' | 'pov' | 'free'
+  setPreset: (preset: 'chase' | 'drone' | 'pov') => void
+  resetCamera: () => void
+}
+
+function Scene({
+  route,
+  scene,
+  onPosition,
+  touchInput,
+  compact,
+  cameraControllerRef,
+  onCameraModeChange,
+}: {
+  route: RouteCandidate
+  scene: SceneManifest
+  onPosition: (position: Position, index: number) => void
+  touchInput: { forward: number; turn: number }
+  compact: boolean
+  cameraControllerRef: React.MutableRefObject<CameraControllerState>
+  onCameraModeChange: (mode: 'chase' | 'drone' | 'pov' | 'free') => void
+}) {
   const guided = useMissionStore((state) => state.guided)
   const playing = useMissionStore((state) => state.playing)
   const speed = useMissionStore((state) => state.speed)
-  const reducedMotion = useMissionStore((state) => state.reducedMotion)
   const progress = useMissionStore((state) => state.progress)
   const setWalkState = useMissionStore((state) => state.setMarsWalkState)
   const emergencyRoute = useMissionStore((state) => state.emergencyRoute)
@@ -202,6 +226,38 @@ function Scene({ route, scene, onPosition, touchInput, compact }: { route: Route
   const lastStoreUpdate = useRef(0)
   const lastUiUpdate = useRef(0)
   const { camera } = useThree()
+
+  const controller = cameraControllerRef.current
+
+  useEffect(() => {
+    controller.setPreset = (preset: 'chase' | 'drone' | 'pov') => {
+      const facing = Math.atan2(direction.current.x, direction.current.z)
+      if (preset === 'chase') {
+        controller.yaw = facing + Math.PI
+        controller.pitch = 0.35
+        controller.distance = 12
+      } else if (preset === 'drone') {
+        controller.yaw = facing + Math.PI
+        controller.pitch = 1.15
+        controller.distance = 42
+      } else if (preset === 'pov') {
+        controller.yaw = facing + Math.PI
+        controller.pitch = 0.05
+        controller.distance = 0.2
+      }
+      controller.mode = preset
+      onCameraModeChange(preset)
+    }
+
+    controller.resetCamera = () => {
+      controller.setPreset('chase')
+    }
+
+    if (controller.yaw === 0) {
+      const facing = Math.atan2(direction.current.x, direction.current.z)
+      controller.yaw = facing + Math.PI
+    }
+  }, [controller, onCameraModeChange])
 
   useEffect(() => {
     const down = (event: KeyboardEvent) => keys.current.add(event.code)
@@ -249,25 +305,49 @@ function Scene({ route, scene, onPosition, touchInput, compact }: { route: Route
     }
     if (avatar.current) {
       avatar.current.position.set(...next)
-      avatar.current.rotation.y = Math.atan2(direction.current.x, direction.current.z)
+      // Rotate 180 deg so astronaut visor faces forward along movement trajectory (not moonwalking backwards)
+      avatar.current.rotation.y = Math.atan2(direction.current.x, direction.current.z) + Math.PI
     }
 
-    // DUAL-DAMPED STABLE CAMERA SYSTEM:
-    // 1. Smooth the height for camera placement to filter out rocky micro-bumps
+    // Always-on camera elevation stabilizer
     if (smoothedElevation.current === null) {
       smoothedElevation.current = next[1]
     } else {
       smoothedElevation.current = THREE.MathUtils.damp(smoothedElevation.current, next[1], 4.2, delta)
     }
 
-    // 2. Compute desired camera position with distance and smoothed elevation
-    const desired = new THREE.Vector3(next[0], smoothedElevation.current + 5.5, next[2]).addScaledVector(direction.current, -10)
-    camera.position.lerp(desired, reducedMotion ? 0.25 : 1 - Math.exp(-delta * 5.0))
+    const isPov = controller.mode === 'pov' || controller.distance <= 0.6
+    if (avatar.current) {
+      avatar.current.visible = !isPov
+    }
 
-    // 3. Smooth the lookAt target to eliminate pitch oscillations/jitter
-    const rawTarget = new THREE.Vector3(next[0], smoothedElevation.current + 1.4, next[2])
-    cameraTarget.current.lerp(rawTarget, reducedMotion ? 0.35 : 1 - Math.exp(-delta * 6.5))
-    camera.lookAt(cameraTarget.current)
+    const targetHeight = isPov ? 1.65 : 1.35
+    const rawTarget = new THREE.Vector3(next[0], smoothedElevation.current + targetHeight, next[2])
+    cameraTarget.current.lerp(rawTarget, 1 - Math.exp(-delta * 8.0))
+
+    if (isPov) {
+      // First person view from inside helmet facing in current yaw/pitch
+      const lookDir = new THREE.Vector3(
+        -Math.sin(controller.yaw),
+        Math.sin(-controller.pitch),
+        -Math.cos(controller.yaw)
+      ).normalize()
+      camera.position.lerp(rawTarget, 1 - Math.exp(-delta * 9.0))
+      camera.lookAt(rawTarget.clone().add(lookDir.multiplyScalar(10)))
+    } else {
+      // 360° orbit view with zero auto-realign
+      const cosPitch = Math.cos(controller.pitch)
+      const dx = controller.distance * cosPitch * Math.sin(controller.yaw)
+      const dy = controller.distance * Math.sin(controller.pitch)
+      const dz = controller.distance * cosPitch * Math.cos(controller.yaw)
+
+      const groundLimit = smoothedElevation.current + 0.35
+      const desiredY = Math.max(groundLimit, rawTarget.y + dy)
+      const desiredPos = new THREE.Vector3(next[0] + dx, desiredY, next[2] + dz)
+
+      camera.position.lerp(desiredPos, 1 - Math.exp(-delta * 7.5))
+      camera.lookAt(cameraTarget.current)
+    }
   })
 
   return <>
@@ -299,7 +379,7 @@ function WaypointMarkers({ scene: _scene }: { scene: SceneManifest }) {
     return <group key={stop.id} position={[x, y + 0.2, z]}>
       <mesh position={[0, 6, 0]}><cylinderGeometry args={[0.18, 0.18, 12, 8]} /><meshBasicMaterial color={color} transparent opacity={0.65} /></mesh>
       <mesh position={[0, 12, 0]}><octahedronGeometry args={[1.2]} /><meshStandardMaterial color={color} emissive={stop.type === 'custom' ? '#16495a' : '#6b2d12'} /></mesh>
-      <Html position={[0, 14.5, 0]} center distanceFactor={22}><button className="rounded-md border border-white/20 bg-[#0d1117]/85 px-2.5 py-1.5 text-xs font-mono font-medium text-white shadow-md backdrop-blur hover:bg-white/10" onClick={() => stop.type === 'science' && useMissionStore.getState().setSelectedWaypoint(stop.id)}>{label}</button></Html>
+      <Html position={[0, 14.5, 0]} center distanceFactor={22}><button className="rounded border border-white/20 bg-[#0d1117] px-2.5 py-1 text-xs font-mono font-medium text-white shadow-md hover:bg-white/10" onClick={() => stop.type === 'science' && useMissionStore.getState().setSelectedWaypoint(stop.id)}>{label}</button></Html>
     </group>
   })}</>
 }
@@ -313,7 +393,6 @@ export default function MarsWalk() {
   const guided = useMissionStore((state) => state.guided)
   const playing = useMissionStore((state) => state.playing)
   const speed = useMissionStore((state) => state.speed)
-  const reducedMotion = useMissionStore((state) => state.reducedMotion)
   const progress = useMissionStore((state) => state.progress)
   const setWalkState = useMissionStore((state) => state.setMarsWalkState)
   const setView = useMissionStore((state) => state.setView)
@@ -323,6 +402,17 @@ export default function MarsWalk() {
   const [routeIndex, setRouteIndex] = useState(0)
   const [compact, setCompact] = useState(() => window.innerWidth < 768)
   const [touchInput, setTouchInput] = useState({ forward: 0, turn: 0 })
+  const [cameraMode, setCameraMode] = useState<'chase' | 'drone' | 'pov'>('chase')
+  const cameraControllerRef = useRef<CameraControllerState>({
+    yaw: 0,
+    pitch: 0.35,
+    distance: 12,
+    mode: 'chase',
+    setPreset: () => {},
+    resetCamera: () => {},
+  })
+  const isDraggingRef = useRef(false)
+  const dragStartRef = useRef({ x: 0, y: 0 })
   const coordinate = route.coordinates[Math.min(routeIndex, route.coordinates.length - 1)]
   const remaining = Math.max(0, mission.energy_budget - route.metrics.energy_units * progress)
   const nextVisit = route.stop_visits.find((visit) => visit.route_vertex_index > routeIndex)
@@ -368,134 +458,205 @@ export default function MarsWalk() {
     setTouchInput({ forward: Math.max(-1, Math.min(1, -y)), turn: Math.max(-1, Math.min(1, -x)) })
   }
 
-  return <div className="marswalk-shell overflow-hidden bg-[#9b472c]">
+  const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    if ((event.target as HTMLElement).closest('button, input, aside, .pointer-events-auto')) return
+    isDraggingRef.current = true
+    dragStartRef.current = { x: event.clientX, y: event.clientY }
+  }
+
+  const handlePointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!isDraggingRef.current) return
+    const dx = event.clientX - dragStartRef.current.x
+    const dy = event.clientY - dragStartRef.current.y
+    dragStartRef.current = { x: event.clientX, y: event.clientY }
+
+    const ctrl = cameraControllerRef.current
+    ctrl.yaw += dx * 0.005
+    // Clamp pitch: -0.2 (low angle) to 1.45 (~83° steep top-down overhead)
+    ctrl.pitch = Math.max(-0.2, Math.min(1.45, ctrl.pitch + dy * 0.005))
+  }
+
+  const handlePointerUp = () => {
+    isDraggingRef.current = false
+  }
+
+  const handleWheel = (event: React.WheelEvent<HTMLDivElement>) => {
+    const ctrl = cameraControllerRef.current
+    const delta = event.deltaY * 0.015
+    ctrl.distance = Math.max(0.2, Math.min(80, ctrl.distance + delta))
+    if (ctrl.distance <= 0.6) {
+      if (cameraMode !== 'pov') setCameraMode('pov')
+    } else if (ctrl.distance > 30) {
+      if (cameraMode !== 'drone') setCameraMode('drone')
+    } else {
+      if (cameraMode !== 'chase') setCameraMode('chase')
+    }
+  }
+
+  return <div
+    className="marswalk-shell overflow-hidden bg-[#9b472c] select-none cursor-grab active:cursor-grabbing"
+    onPointerDown={handlePointerDown}
+    onPointerMove={handlePointerMove}
+    onPointerUp={handlePointerUp}
+    onPointerCancel={handlePointerUp}
+    onWheel={handleWheel}
+  >
     <Canvas shadows={false} dpr={compact ? 1 : [1, 1.5]} camera={{ fov: 52, near: 0.2, far: compact ? 3200 : 5000, position: [0, 8, 15] }} gl={{ antialias: !compact, powerPreference: 'high-performance' }}>
       <Suspense fallback={<SuspenseFallback />}>
-        <Scene route={route} scene={bootstrap.scene} onPosition={(_, index) => setRouteIndex(index)} touchInput={touchInput} compact={compact} />
+        <Scene
+          route={route}
+          scene={bootstrap.scene}
+          onPosition={(_, index) => setRouteIndex(index)}
+          touchInput={touchInput}
+          compact={compact}
+          cameraControllerRef={cameraControllerRef}
+          onCameraModeChange={(m) => m !== 'free' && setCameraMode(m)}
+        />
       </Suspense>
     </Canvas>
 
     {/* Top Mission Telemetry Bar */}
     <div className="pointer-events-none absolute inset-x-3 top-3 z-10 flex items-center gap-2">
-      <button className="pointer-events-auto flex min-h-10 items-center gap-2 rounded-lg border border-white/15 bg-[#0d1117]/85 px-3 text-xs font-medium text-white shadow-md backdrop-blur hover:bg-white/10" onClick={() => setView('planner')}>
+      <button className="pointer-events-auto flex min-h-10 items-center gap-2 rounded-lg border border-white/20 bg-[#0d1117] px-3 text-xs font-semibold text-white shadow-md hover:bg-white/10" onClick={() => setView('planner')}>
         <ChevronLeft size={16} /> Planner
       </button>
-      <span className="rounded-lg border border-white/15 bg-[#0d1117]/85 px-3 py-1.5 backdrop-blur shadow-md">
-        <small className="block text-[9px] uppercase tracking-wider text-white/50">MarsWalk · 3D EVA Reconstruction</small>
-        <strong className="block max-w-56 truncate text-xs font-semibold text-white">
+      <span className="rounded-lg border border-white/20 bg-[#0d1117] px-3 py-1.5 shadow-md">
+        <small className="block text-[9px] uppercase tracking-wider text-slate-400">MarsWalk · 3D EVA Reconstruction</small>
+        <strong className="block max-w-64 truncate text-xs font-semibold text-white">
           {nextWaypointId === 'HAB' ? 'Return to Habitat Base' : `En route to ${targetName}`}
         </strong>
       </span>
-      <span className="ml-auto hidden rounded-lg border border-white/10 bg-[#0d1117]/80 px-2.5 py-1 text-[10px] font-mono tracking-wide text-mars sm:block">
-        MRO HiRISE DTM · 1× ELEVATION
-      </span>
     </div>
 
-    {/* Bottom-left telemetry metrics */}
-    <div className="absolute inset-x-3 bottom-28 z-10 flex justify-center gap-2 sm:bottom-4 sm:left-3 sm:right-auto">
-      <div className="flex min-w-24 items-center gap-2 rounded-lg border border-white/15 bg-[#0d1117]/85 px-3 py-1.5 backdrop-blur shadow-md">
-        <Gauge size={16} className="text-mars" />
-        <span>
-          <small className="block text-[9px] font-mono uppercase tracking-wider text-white/50">Progress</small>
-          <strong className="font-mono text-xs">{Math.round(progress * 100)}%</strong>
+    {/* UNIFIED MISSION CONSOLE DOCK */}
+    <div className="absolute inset-x-3 bottom-3 z-20 mx-auto max-w-3xl rounded-xl border border-white/20 bg-[#0d1117] p-2.5 shadow-2xl">
+      {/* Interactive Timeline Scrubber Slider */}
+      <div className="flex items-center gap-3 px-1 mb-2">
+        <span className="min-w-8 text-right font-mono text-[10px] text-slate-300 font-bold">{Math.round(progress * 100)}%</span>
+        <input
+          type="range"
+          min="0"
+          max="1"
+          step="0.001"
+          value={progress}
+          onChange={(event) => {
+            const val = parseFloat(event.target.value)
+            setWalkState({ progress: val, playing: false })
+          }}
+          className="flex-1 cursor-pointer"
+          aria-label="Route timeline scrub"
+        />
+        <span className="min-w-24 font-mono text-[10px] text-slate-300 text-right font-bold">
+          {((route.metrics.distance_m * progress) / 1000).toFixed(2)} / {(route.metrics.distance_m / 1000).toFixed(2)} km
         </span>
       </div>
-      <div className="flex min-w-28 items-center gap-2 rounded-lg border border-white/15 bg-[#0d1117]/85 px-3 py-1.5 backdrop-blur shadow-md">
-        <Zap size={16} className="text-mars" />
-        <span>
-          <small className="block text-[9px] font-mono uppercase tracking-wider text-white/50">Energy</small>
-          <strong className="font-mono text-xs">{Math.round(remaining).toLocaleString()} EU</strong>
-        </span>
+
+      {/* Integrated Control & Telemetry Bar */}
+      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-white/10 pt-2">
+        {/* Vital Stats (Left) */}
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5 font-mono text-xs">
+            <BatteryCharging size={15} className="text-mars" />
+            <span className="text-[10px] text-slate-400 uppercase">Energy</span>
+            <strong className="text-white font-bold">{Math.round(remaining).toLocaleString()} EU</strong>
+          </div>
+          <div className="hidden sm:flex items-center gap-1.5 font-mono text-xs">
+            <span className="text-[10px] text-slate-400 uppercase">Return:</span>
+            <strong className={`font-mono text-xs font-bold ${remaining > mission.energy_budget * mission.return_reserve_pct / 100 ? 'text-emerald-400' : 'text-amber-400'}`}>
+              {remaining > mission.energy_budget * mission.return_reserve_pct / 100 ? 'SAFE' : 'CAUTION'}
+            </strong>
+          </div>
+        </div>
+
+        {/* Center Playback Console */}
+        <div className="flex items-center gap-1.5">
+          <button
+            className="flex h-8 items-center gap-1 rounded-md border border-white/10 bg-[#161b22] px-2 text-xs text-white hover:bg-white/10"
+            onClick={() => setWalkState({ guided: !guided, playing: false })}
+            title={guided ? 'Switch to free walking' : 'Switch to guided tour'}
+          >
+            <Footprints size={14} />
+            <span className="hidden md:inline font-medium text-[11px]">{guided ? 'Guided' : 'Free Walk'}</span>
+          </button>
+
+          <button
+            className="grid size-8 place-items-center rounded-md bg-[#1f6feb] text-white hover:bg-[#388bfd] transition shadow font-bold border border-[#58a6ff]/40"
+            onClick={() => setWalkState({ playing: !playing })}
+            title={playing ? 'Pause' : 'Play'}
+            aria-label={playing ? 'Pause' : 'Play'}
+          >
+            {playing ? <Pause size={15} /> : <Play size={15} />}
+          </button>
+
+          <button
+            className="flex h-8 items-center gap-1 rounded-md border border-white/10 bg-[#161b22] px-2 font-mono text-xs text-white hover:bg-white/10 font-bold"
+            onClick={cycleSpeed}
+            title="Cycle playback speed"
+          >
+            <FastForward size={13} className="text-sky-400" />
+            <span>{speed}×</span>
+          </button>
+
+          <button
+            className="h-8 w-8 grid place-items-center rounded-md border border-white/10 bg-[#161b22] text-white hover:bg-white/10"
+            onClick={() => setWalkState({ progress: 0, playing: false })}
+            title="Reset to mission origin"
+            aria-label="Reset to mission origin"
+          >
+            <RotateCcw size={14} />
+          </button>
+        </div>
+
+        {/* Camera View Presets & Compass Reset */}
+        <div className="flex items-center gap-1 rounded-md border border-white/10 bg-[#161b22] p-0.5">
+          {(['chase', 'drone', 'pov'] as const).map((mode) => (
+            <button
+              key={mode}
+              className={`px-2 py-1 text-[11px] font-mono font-semibold uppercase rounded transition ${
+                cameraMode === mode
+                  ? 'bg-[#1f6feb] text-white shadow-sm'
+                  : 'text-slate-400 hover:text-white hover:bg-white/5'
+              }`}
+              onClick={() => cameraControllerRef.current.setPreset(mode)}
+              title={`Switch camera view to ${mode.toUpperCase()}`}
+            >
+              {mode}
+            </button>
+          ))}
+          <button
+            className="grid size-7 place-items-center rounded text-slate-400 hover:text-white hover:bg-white/10 transition border-l border-white/10 ml-0.5 pl-0.5"
+            onClick={() => cameraControllerRef.current.resetCamera()}
+            title="Reset view to Chase angle"
+            aria-label="Reset Camera View"
+          >
+            <Compass size={14} />
+          </button>
+        </div>
+
+        {/* Contingency Actions (Right) */}
+        <div className="flex items-center gap-1.5">
+          <button
+            className="flex h-8 items-center gap-1.5 rounded-md border border-white/20 bg-[#21262d] px-2.5 text-xs font-mono font-bold text-white hover:bg-[#30363d] transition"
+            onClick={() => applyEnergyLoss()}
+            title="Simulate 20% Suit Energy Depletion"
+          >
+            <BatteryCharging size={13} className="text-amber-400" />
+            <span className="hidden sm:inline">-20% EU</span>
+          </button>
+          <button
+            className="flex h-8 items-center gap-1.5 rounded-md border border-red-700 bg-[#b91c1c] px-3 text-xs font-mono font-bold uppercase tracking-wider text-white hover:bg-[#dc2626] transition shadow-sm"
+            onClick={() => requestEmergency({ longitude: coordinate[0], latitude: coordinate[1] })}
+            title="Emergency Abort Path to Habitat Base"
+          >
+            <AlertTriangle size={13} className="text-white" />
+            <span>Abort</span>
+          </button>
+        </div>
       </div>
-      <div className="hidden min-w-24 items-center gap-2 rounded-lg border border-white/15 bg-[#0d1117]/85 px-3 py-1.5 backdrop-blur shadow-md sm:flex">
-        <ShieldCheck size={16} className="text-mars" />
-        <span>
-          <small className="block text-[9px] font-mono uppercase tracking-wider text-white/50">Return</small>
-          <strong className={`font-mono text-xs ${remaining > mission.energy_budget * mission.return_reserve_pct / 100 ? 'text-safe' : 'text-danger'}`}>
-            {remaining > mission.energy_budget * mission.return_reserve_pct / 100 ? 'SAFE' : 'CAUTION'}
-          </strong>
-        </span>
-      </div>
     </div>
-
-    {/* Interactive Timeline Scrubber Slider */}
-    <div className="absolute bottom-16 left-1/2 z-20 flex w-[92vw] max-w-lg -translate-x-1/2 items-center gap-3 rounded-lg border border-white/15 bg-[#0d1117]/85 px-3.5 py-1.5 backdrop-blur shadow-xl">
-      <span className="min-w-8 text-right font-mono text-[10px] text-white/60">{Math.round(progress * 100)}%</span>
-      <input
-        type="range"
-        min="0"
-        max="1"
-        step="0.001"
-        value={progress}
-        onChange={(event) => {
-          const val = parseFloat(event.target.value)
-          setWalkState({ progress: val, playing: false })
-        }}
-        className="flex-1 cursor-pointer"
-        aria-label="Route timeline progress"
-      />
-      <span className="min-w-20 font-mono text-[10px] text-white/60 text-right">
-        {((route.metrics.distance_m * progress) / 1000).toFixed(2)} / {(route.metrics.distance_m / 1000).toFixed(2)} km
-      </span>
-    </div>
-
-    {/* Center Playback Console */}
-    <div className="absolute bottom-3 left-1/2 z-20 flex -translate-x-1/2 items-center gap-1.5 rounded-xl border border-white/15 bg-[#0d1117]/90 p-1 backdrop-blur shadow-2xl">
-      <button
-        className="flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-xs text-white/80 hover:bg-white/10"
-        onClick={() => setWalkState({ guided: !guided, playing: false })}
-        title={guided ? 'Switch to free walking' : 'Switch to guided tour'}
-      >
-        <Footprints size={15} />
-        <span className="hidden sm:inline font-medium">{guided ? 'Guided' : 'Free walk'}</span>
-      </button>
-
-      <button
-        className="grid size-9 place-items-center rounded-lg bg-mars text-[#140b07] hover:bg-mars/90 transition shadow"
-        onClick={() => setWalkState({ playing: !playing })}
-        title={playing ? 'Pause' : 'Play'}
-        aria-label={playing ? 'Pause' : 'Play'}
-      >
-        {playing ? <Pause size={17} /> : <Play size={17} />}
-      </button>
-
-      <button
-        className="flex h-9 items-center gap-1 rounded-lg px-2.5 font-mono text-xs text-white/90 hover:bg-white/10"
-        onClick={cycleSpeed}
-        title="Cycle playback speed"
-      >
-        <FastForward size={14} className="text-mars" />
-        <span>{speed}×</span>
-      </button>
-
-      <button
-        className="hidden h-9 w-9 place-items-center rounded-lg text-white/80 hover:bg-white/10 sm:grid"
-        onClick={() => setWalkState({ progress: 0, playing: false })}
-        title="Reset to mission origin"
-        aria-label="Reset to mission origin"
-      >
-        <RotateCcw size={15} />
-      </button>
-    </div>
-
-    {/* Emergency Actions (Right side) */}
-    <div className="absolute bottom-3 right-3 z-20 hidden flex-col gap-2 sm:flex">
-      <button className="flex min-h-10 items-center gap-2 rounded-lg border border-white/15 bg-[#0d1117]/85 px-3 text-xs font-medium text-white hover:bg-white/10 shadow-md backdrop-blur" onClick={() => applyEnergyLoss()}>
-        <Zap size={15} className="text-caution" /> Simulate -20% EU
-      </button>
-      <button className="flex min-h-10 items-center gap-2 rounded-lg border border-danger/50 bg-[#2d1217]/85 px-3 text-xs font-medium text-danger hover:bg-danger/20 shadow-md backdrop-blur" onClick={() => requestEmergency({ longitude: coordinate[0], latitude: coordinate[1] })}>
-        <AlertTriangle size={15} /> Emergency Abort
-      </button>
-    </div>
-
-    {/* Reduced motion toggle */}
-    <label className="absolute right-3 top-16 z-10 hidden items-center rounded-lg border border-white/10 bg-[#0d1117]/80 px-2.5 py-1.5 text-xs text-white/70 backdrop-blur sm:flex cursor-pointer hover:bg-white/10">
-      <input className="mr-2 accent-mars" type="checkbox" checked={reducedMotion} onChange={(event) => setWalkState({ reducedMotion: event.target.checked })} />
-      Damped camera
-    </label>
 
     {!guided && compact && (
-      <div className="absolute bottom-20 left-4 z-20 size-28 touch-none rounded-full border border-white/20 bg-black/40" onPointerDown={(event) => { event.currentTarget.setPointerCapture(event.pointerId); updateJoystick(event) }} onPointerMove={(event) => event.currentTarget.hasPointerCapture(event.pointerId) && updateJoystick(event)} onPointerUp={() => setTouchInput({ forward: 0, turn: 0 })} onPointerCancel={() => setTouchInput({ forward: 0, turn: 0 })}>
+      <div className="absolute bottom-24 left-4 z-20 size-28 touch-none rounded-full border border-white/20 bg-black/40" onPointerDown={(event) => { event.currentTarget.setPointerCapture(event.pointerId); updateJoystick(event) }} onPointerMove={(event) => event.currentTarget.hasPointerCapture(event.pointerId) && updateJoystick(event)} onPointerUp={() => setTouchInput({ forward: 0, turn: 0 })} onPointerCancel={() => setTouchInput({ forward: 0, turn: 0 })}>
         <span className="absolute left-1/2 top-1/2 size-10 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/35" />
       </div>
     )}
@@ -505,7 +666,7 @@ export default function MarsWalk() {
 }
 
 function SuspenseFallback() {
-  return <Html center><div className="terrain-loader flex min-w-48 flex-col items-center gap-3 rounded-lg border border-white/15 bg-[#0d1117]/90 p-5 shadow-2xl backdrop-blur"><span className="spinner" /><strong className="font-mono text-xs text-white/80">Streaming Jezero DTM sectors…</strong></div></Html>
+  return <Html center><div className="terrain-loader flex min-w-48 flex-col items-center gap-3 rounded-lg border border-white/20 bg-[#0d1117] p-5 shadow-2xl"><span className="spinner" /><strong className="font-mono text-xs text-slate-200">Streaming Jezero DTM sectors…</strong></div></Html>
 }
 
 function WaypointOverlay() {
@@ -516,32 +677,32 @@ function WaypointOverlay() {
   const images = bootstrap.surface_images.filter((item) => item.waypoint_id === id)
   const evidence = bootstrap.science_evidence[id]
   if (!waypoint) return null
-  return <aside className="absolute inset-x-3 bottom-3 z-30 max-h-[70svh] overflow-auto rounded-xl border border-white/15 bg-[#0d1117]/95 p-5 shadow-2xl backdrop-blur md:inset-auto md:right-4 md:top-20 md:w-84">
-    <button className="absolute right-3 top-3 grid size-8 place-items-center rounded-lg text-white/60 hover:bg-white/10 hover:text-white" onClick={() => setSelected(null)}>✕</button>
+  return <aside className="absolute inset-x-3 bottom-3 z-30 max-h-[70svh] overflow-auto rounded-xl border border-white/20 bg-[#0d1117] p-5 shadow-2xl md:inset-auto md:right-4 md:top-20 md:w-84">
+    <button className="absolute right-3 top-3 grid size-8 place-items-center rounded-lg text-slate-400 hover:bg-white/10 hover:text-white" onClick={() => setSelected(null)}>✕</button>
     <span className="flex items-center gap-1.5 text-xs font-mono font-semibold tracking-wider text-mars uppercase">
       <Target size={13} /> Science Target · Sol {waypoint.properties.sol}
     </span>
     <h2 className="mb-2 mt-2 pr-6 text-lg font-semibold text-white">{waypoint.properties.name}</h2>
-    <p className="mb-3 text-xs leading-relaxed text-white/70">{waypoint.properties.science_rationale}</p>
+    <p className="mb-3 text-xs leading-relaxed text-slate-300">{waypoint.properties.science_rationale}</p>
     <div>
       {images[0] && <img className="aspect-video w-full rounded-lg border border-white/10 object-cover" src={`/assets/thumbnails/surface/${images[0].product_id}.jpg`} alt="Rover observation" />}
     </div>
     <dl className="mt-3 grid grid-cols-3 gap-1.5 text-xs font-mono">
-      <div className="rounded-md border border-white/5 bg-white/5 p-2">
-        <dt className="text-[10px] text-white/50">Priority</dt>
+      <div className="rounded-md border border-white/10 bg-[#161b22] p-2">
+        <dt className="text-[10px] text-slate-400">Priority</dt>
         <dd className="font-semibold text-mars">{waypoint.properties.priority}/3</dd>
       </div>
-      <div className="rounded-md border border-white/5 bg-white/5 p-2">
-        <dt className="text-[10px] text-white/50">Geology</dt>
-        <dd className="font-semibold text-white/90">{evidence?.geology_symbol ?? '—'}</dd>
+      <div className="rounded-md border border-white/10 bg-[#161b22] p-2">
+        <dt className="text-[10px] text-slate-400">Geology</dt>
+        <dd className="font-semibold text-white">{evidence?.geology_symbol ?? '—'}</dd>
       </div>
-      <div className="rounded-md border border-white/5 bg-white/5 p-2">
-        <dt className="text-[10px] text-white/50">OLINDEX3</dt>
-        <dd className="font-semibold text-white/90">{evidence?.crism.olindex3?.toFixed(3) ?? 'nodata'}</dd>
+      <div className="rounded-md border border-white/10 bg-[#161b22] p-2">
+        <dt className="text-[10px] text-slate-400">OLINDEX3</dt>
+        <dd className="font-semibold text-white">{evidence?.crism.olindex3?.toFixed(3) ?? 'nodata'}</dd>
       </div>
     </dl>
-    <div className="mt-3 flex items-center gap-2 border-t border-white/10 pt-2 text-[10px] text-white/40">
-      <Activity size={12} className="text-mars/80" />
+    <div className="mt-3 flex items-center gap-2 border-t border-white/10 pt-2 text-[10px] text-slate-400 font-mono">
+      <Activity size={12} className="text-mars" />
       <span>Measured Mastcam-Z/Navcam · CRISM & USGS Nili units</span>
     </div>
   </aside>
