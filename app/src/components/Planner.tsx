@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { Check, ChevronLeft, ChevronRight, GripVertical, Layers3, MapPin, PanelLeftOpen, Plus, Trash2, X } from 'lucide-react'
+import { Check, ChevronLeft, ChevronRight, GripVertical, Layers3, MapPin, PanelLeftOpen, Plus, RotateCcw, Trash2, X } from 'lucide-react'
 import { useMissionStore } from '../store'
 import type { CustomRouteStop, RouteCandidate, RouteStop, WaypointValidation } from '../types'
 import { api } from '../api'
@@ -266,7 +266,10 @@ function MissionSidebar() {
   const routeDirty = useMissionStore((state) => state.routeDirty)
   const route = useActiveRoute()
 
-  const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
+  const reset = useMissionStore((state) => state.reset)
+  // While a stop is dragged, `dragOrder` is the order shown; the mission only changes on drop.
+  const [draggedId, setDraggedId] = useState<string | null>(null)
+  const [dragOrder, setDragOrder] = useState<string[] | null>(null)
 
   if (!open) return null
 
@@ -277,6 +280,15 @@ function MissionSidebar() {
 
   // Arrival figures only mean something while the plan matches the stop list.
   const current = route && !routeDirty ? route : null
+  const shownStops = dragOrder
+    ? dragOrder.map((id) => mission.route_stops.find((stop) => stop.id === id)).filter((stop) => stop !== undefined)
+    : mission.route_stops
+  const isProposedRoute = JSON.stringify(mission) === JSON.stringify(bootstrap.default_mission)
+  const endDrag = () => { setDraggedId(null); setDragOrder(null) }
+  const commitDrag = () => {
+    if (draggedId && dragOrder) moveStop(mission.route_stops.findIndex((stop) => stop.id === draggedId), dragOrder.indexOf(draggedId))
+    endDrag()
+  }
   const scienceCount = mission.route_stops.filter((stop) => stop.type === 'science').length
   const summary = 'flex h-11 cursor-pointer list-none items-center gap-2 px-4 text-[13px] font-semibold text-ink hover:bg-panel-2 [&::-webkit-details-marker]:hidden'
   const chevron = <ChevronRight size={14} className="text-ink-2 transition-transform group-open:rotate-90" />
@@ -298,10 +310,10 @@ function MissionSidebar() {
         <section className="px-4 pb-4 pt-3">
           <div className="mb-1 flex items-baseline justify-between">
             <h2 className="label text-ink">Traverse</h2>
-            <span className="label text-ink-3">{current ? 'Arrival · energy used' : 'Round trip'}</span>
+            <span className="label text-ink-3">{dragOrder ? 'Drop to reorder' : current ? 'Arrival · energy used' : 'Round trip'}</span>
           </div>
 
-          <ol className="relative">
+          <ol className="relative" data-tour="traverse" onDragOver={(event) => { if (draggedId) event.preventDefault() }} onDrop={(event) => { event.preventDefault(); commitDrag() }}>
             <span className="absolute bottom-5 left-[11.5px] top-5 w-px bg-ink" aria-hidden />
 
             <li className="relative flex min-h-12 items-center gap-3">
@@ -316,23 +328,36 @@ function MissionSidebar() {
               </StationRow>
             </li>
 
-            {mission.route_stops.map((stop, index) => {
-              const visit = current?.stop_visits.find((item) => item.id === stop.id)
+            {shownStops.map((stop, index) => {
+              const visit = dragOrder ? undefined : current?.stop_visits.find((item) => item.id === stop.id)
               return (
                 <li
                   key={stop.id}
                   draggable
                   onMouseEnter={() => stop.type === 'science' && useMissionStore.getState().setHoveredWaypoint(stop.id)}
                   onMouseLeave={() => stop.type === 'science' && useMissionStore.getState().setHoveredWaypoint(null)}
-                  onDragStart={() => setDraggedIndex(index)}
-                  onDragOver={(e) => e.preventDefault()}
-                  onDrop={() => {
-                    if (draggedIndex !== null && draggedIndex !== index) {
-                      moveStop(draggedIndex, index)
-                    }
-                    setDraggedIndex(null)
+                  onDragStart={(event) => {
+                    event.dataTransfer.effectAllowed = 'move'
+                    event.dataTransfer.setData('text/plain', stop.id)
+                    setDraggedId(stop.id)
+                    setDragOrder(mission.route_stops.map((item) => item.id))
                   }}
-                  className={`group/stop relative flex min-h-12 cursor-grab items-center gap-3 active:cursor-grabbing ${draggedIndex === index ? 'opacity-40' : ''}`}
+                  onDragOver={(event) => {
+                    if (!draggedId || !dragOrder) return
+                    event.preventDefault()
+                    const from = dragOrder.indexOf(draggedId)
+                    if (from < 0 || from === index) return
+                    // Swap only once the pointer passes the row's midpoint, so rows do not flip back and forth.
+                    const rect = event.currentTarget.getBoundingClientRect()
+                    const pastMiddle = event.clientY > rect.top + rect.height / 2
+                    if (from < index ? !pastMiddle : pastMiddle) return
+                    const next = dragOrder.filter((id) => id !== draggedId)
+                    next.splice(index, 0, draggedId)
+                    setDragOrder(next)
+                  }}
+                  // Fires after a drop too; without one (Escape, released outside the list) the preview is discarded.
+                  onDragEnd={endDrag}
+                  className={`group/stop relative flex min-h-12 cursor-grab items-center gap-3 active:cursor-grabbing ${draggedId === stop.id ? 'rounded bg-panel-2 opacity-60 outline-dashed outline-1 outline-ink-3' : ''}`}
                 >
                   <StationRow
                     mark={String(index + 1)}
@@ -373,6 +398,16 @@ function MissionSidebar() {
             onClick={() => startPlacement('stop')}
           >
             <Plus size={14} /> Add stop on map
+          </Button>
+          <Button
+            variant="ghost"
+            className="mt-1 w-full"
+            data-tour="reset-route"
+            disabled={isProposedRoute || state === 'loading'}
+            onClick={() => void reset()}
+            title="Discard your changes and restore the route we propose"
+          >
+            <RotateCcw size={14} /> {isProposedRoute ? 'Showing our proposed route' : 'Reset to our proposed route'}
           </Button>
         </section>
 
@@ -706,7 +741,7 @@ export function Planner() {
     <div className="absolute inset-0 flex overflow-hidden bg-ground">
       <MissionSidebar />
       <div className="relative flex min-w-0 flex-1 flex-col">
-        <div className="relative min-h-0 flex-1 overflow-hidden">
+        <div className="relative min-h-0 flex-1 overflow-hidden" data-tour="map">
           <MarsMap />
           <PlacementBanner />
           <SidebarExpand />

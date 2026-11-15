@@ -1,13 +1,16 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
-import { Footprints, Info, Map, Menu, MessageSquareText, Moon, RotateCcw, Sun } from 'lucide-react'
+import { Footprints, Info, Map, Menu, MessageSquareText, Moon, Settings, Sun } from 'lucide-react'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { Advisor } from './components/Advisor'
+import { AppSettings } from './components/AppSettings'
+import { Tutorial } from './components/Tutorial'
 import { MarsTrackingMap } from './components/MarsTrackingMap'
 import { Planner } from './components/Planner'
 import { Button } from './components/ui/button'
 import { Sheet } from './components/ui/sheet'
 import { useAdvisorStore } from './advisorStore'
 import { useMissionStore } from './store'
+import { useSettingsStore } from './settingsStore'
 import { useTheme } from './hooks/useTheme'
 import { useViewTransition } from './hooks/useViewTransition'
 import { loadMarsWalk, preloadMarsWalk } from './lib/marsWalkLoader'
@@ -16,7 +19,6 @@ const MarsWalk = lazy(loadMarsWalk)
 
 export default function App() {
   const initialize = useMissionStore((state) => state.initialize)
-  const reset = useMissionStore((state) => state.reset)
   const view = useMissionStore((state) => state.view)
   const state = useMissionStore((state) => state.state)
   const error = useMissionStore((state) => state.error)
@@ -34,6 +36,10 @@ export default function App() {
 
   useEffect(() => { void initialize() }, [initialize])
   useEffect(() => { void checkAdvisor() }, [checkAdvisor])
+  // First visit: offer the tour once the app is usable. Automated browsers skip it so it cannot cover the UI under test.
+  useEffect(() => {
+    if (bootstrap && !navigator.webdriver && !useSettingsStore.getState().tutorialSeen) useSettingsStore.getState().startTutorial()
+  }, [bootstrap])
 
   if (!bootstrap && state === 'loading') {
     return (
@@ -73,7 +79,7 @@ export default function App() {
             <span className="hidden truncate text-[13px] text-ink-2 sm:block">Jezero Crater, Mars <span className="num hidden text-ink-3 lg:inline">18.4°N 77.5°E</span></span>
           </div>
 
-          <nav className="ml-auto flex items-center" aria-label="Primary view selector">
+          <nav className="ml-auto flex items-center" aria-label="Primary view selector" data-tour="views">
             <button
               className={tab(view === 'planner')}
               aria-label="Planner"
@@ -122,8 +128,8 @@ export default function App() {
           <button onClick={() => setShowInfo(true)} className={iconBtn} title="Data and limitations" aria-label="Data and limitations">
             <Info size={16} />
           </button>
-          <button onClick={() => reset()} className={iconBtn} title="Reset mission state" aria-label="Reset mission">
-            <RotateCcw size={15} />
+          <button onClick={() => useSettingsStore.getState().setSettingsOpen(true)} className={iconBtn} title="App settings and tutorial" aria-label="App settings" data-tour="settings">
+            <Settings size={16} />
           </button>
         </header>
 
@@ -176,6 +182,8 @@ export default function App() {
             <p className="text-ink-3">Decision-support prototype built for NASA Space Apps Challenge 2026.</p>
           </div>
         </Sheet>
+        <AppSettings />
+        <Tutorial />
       </div>
     </ErrorBoundary>
   )

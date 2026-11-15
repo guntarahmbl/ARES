@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame, useLoader, useThree } from '@react-three/fiber'
 import { Html, Line, Stars } from '@react-three/drei'
 import {
@@ -6,6 +6,7 @@ import {
 } from 'lucide-react'
 import * as THREE from 'three'
 import { useMissionStore } from '../store'
+import { useSettingsStore } from '../settingsStore'
 import { localToProjected, projectedToCoordinate } from '../lib/marsProjection'
 import { useViewTransition } from '../hooks/useViewTransition'
 import type { CustomRouteStop, RouteCandidate, SceneManifest, SceneTile, WalkTelemetry } from '../types'
@@ -16,6 +17,10 @@ const SPEED_STEPS = [1, 8, 32, 64, 128, 256]
 
 const BASE_LOD_M = 5
 const heightCache = new Map<string, Float32Array>()
+// Tile id -> height file of the mesh currently on screen, so walking follows what is drawn rather than a finer cached level.
+const shownLod = new Map<string, string>()
+const UP = new THREE.Vector3(0, 1, 0)
+const wrapAngle = (angle: number) => Math.atan2(Math.sin(angle), Math.cos(angle))
 
 function useBinary(url: string) {
   const [data, setData] = useState<Float32Array | null>(() => heightCache.get(url) ?? null)
@@ -58,7 +63,7 @@ function sampleHeights(heights: Float32Array, rows: number, cols: number, gridX:
     : h11 + (1 - fx) * (h10 - h11) + (1 - fz) * (h01 - h11)
 }
 
-/** Terrain height in scene units under (x, z), from the finest level already loaded. */
+/** Terrain height in scene units under (x, z): the level drawn for that tile, else the finest one already loaded. */
 function groundHeight(scene: SceneManifest, x: number, z: number): number | null {
   for (const tile of scene.tiles) {
     const [xMin, zMin, xMax, zMax] = tile.bounds_local
@@ -67,7 +72,8 @@ function groundHeight(scene: SceneManifest, x: number, z: number): number | null
     const cellsX = (x - xMin) / cellX - 0.5
     const cellsZ = (z - zMin) / cellZ - 0.5
     if (cellsX < 0 || cellsZ < 0) continue
-    for (const lod of [...tile.lods].sort((a, b) => a.resolution_m - b.resolution_m)) {
+    const shown = shownLod.get(tile.id)
+    for (const lod of [...tile.lods].sort((a, b) => Number(b.url === shown) - Number(a.url === shown) || a.resolution_m - b.resolution_m)) {
       const heights = heightCache.get(lod.url)
       if (!heights) continue
       const step = lod.resolution_m / base.resolution_m
@@ -85,6 +91,18 @@ function groundHeight(scene: SceneManifest, x: number, z: number): number | null
     ((x - scene.bounds_local[0]) / cellX - 0.5) / step, ((z - scene.bounds_local[1]) / cellZ - 0.5) / step,
   )
   return Number.isFinite(sampled) ? sampled - scene.origin.elevation : null
+}
+
+// Boots are ~0.35 m from the body centre; on a slope the uphill boot needs the higher ground.
+const FOOTPRINT = [[0.35, 0], [-0.35, 0], [0, 0.35], [0, -0.35]]
+function footingHeight(scene: SceneManifest, x: number, z: number): number | null {
+  let highest = groundHeight(scene, x, z)
+  if (highest === null) return null
+  for (const [dx, dz] of FOOTPRINT) {
+    const sampled = groundHeight(scene, x + dx, z + dz)
+    if (sampled !== null && sampled > highest) highest = sampled
+  }
+  return highest
 }
 
 function useOptionalTexture(url: string | undefined, anisotropy: number) {
@@ -149,7 +167,7 @@ function OverviewTerrain({ scene }: { scene: SceneManifest }) {
   return <mesh geometry={geometry} renderOrder={1}><meshStandardMaterial map={texture} roughness={1} metalness={0} stencilWrite stencilRef={1} stencilFunc={THREE.NotEqualStencilFunc} /></mesh>
 }
 
-function TerrainTile({ tile, lod, elevationOffset, compact }: { tile: SceneTile; lod: number; elevationOffset: number; compact: boolean }) {
+function TerrainTile({ tile, lod, elevationOffset, compact, onShown }: { tile: SceneTile; lod: number; elevationOffset: number; compact: boolean; onShown: () => void }) {
   const descriptor = tile.lods.find((item) => item.resolution_m === lod) ?? tile.lods.at(-1)!
   const heights = useBinary(descriptor.url)
   const texture = useLoader(THREE.TextureLoader, tile.texture_url)
@@ -188,6 +206,12 @@ function TerrainTile({ tile, lod, elevationOffset, compact }: { tile: SceneTile;
   }, [heights, descriptor, tile.bounds_local, elevationOffset])
 
   useEffect(() => () => geometry?.dispose(), [geometry])
+  useEffect(() => {
+    if (!geometry) return
+    shownLod.set(tile.id, descriptor.url)
+    onShown()
+    return () => { if (shownLod.get(tile.id) === descriptor.url) shownLod.delete(tile.id) }
+  }, [geometry, tile.id, descriptor.url, onShown])
   useEffect(() => { texture.colorSpace = THREE.SRGBColorSpace; texture.anisotropy = compact ? 4 : 16; texture.needsUpdate = true }, [texture, compact])
   if (!geometry) return null
   return <mesh geometry={geometry} receiveShadow>
@@ -195,21 +219,24 @@ function TerrainTile({ tile, lod, elevationOffset, compact }: { tile: SceneTile;
   </mesh>
 }
 
-function TerrainWorld({ scene, avatar, compact }: { scene: SceneManifest; avatar: Position; compact: boolean }) {
+function TerrainWorld({ scene, avatar, compact, onShown }: { scene: SceneManifest; avatar: Position; compact: boolean; onShown: () => void }) {
   const visible = useMemo(() => scene.tiles.map((tile) => {
     const [xMin, zMin, xMax, zMax] = tile.bounds_local
     const distance = Math.hypot((xMin + xMax) / 2 - avatar[0], (zMin + zMax) / 2 - avatar[2])
+    // Distance to the tile's edge (0 inside it), so the tile underfoot always gets the finest level.
+    const edge = Math.hypot(Math.max(xMin - avatar[0], 0, avatar[0] - xMax), Math.max(zMin - avatar[2], 0, avatar[2] - zMax))
     const wanted = compact
-      ? (distance < 450 ? 5 : distance < 800 ? 10 : 20)
-      : (distance < 400 ? 2 : distance < 900 ? 5 : distance < 1400 ? 10 : 20)
+      ? (edge < 60 || distance < 450 ? 5 : distance < 800 ? 10 : 20)
+      : (edge < 60 || distance < 400 ? 2 : distance < 900 ? 5 : distance < 1400 ? 10 : 20)
     // Older asset builds have no 2 m level: fall back to the finest level that is not finer than requested.
     const lod = tile.lods.reduce((best, item) => item.resolution_m >= wanted && item.resolution_m < best ? item.resolution_m : best, Infinity)
-    return { tile, distance, lod }
-  }).filter((item) => item.distance < (compact ? 1050 : 1600)), [scene.tiles, avatar[0], avatar[2], compact])
+    return { tile, distance, edge, lod }
+  }).filter((item) => item.edge < 60 || item.distance < (compact ? 1050 : 1600)), [scene.tiles, avatar[0], avatar[2], compact])
 
   return <group>
     <OverviewTerrain scene={scene} />
-    {visible.map(({ tile, lod }) => <TerrainTile key={`${tile.id}-${lod}`} tile={tile} lod={lod} elevationOffset={scene.origin.elevation} compact={compact} />)}
+    {/* Each tile suspends on its own texture, so a tile streaming in never blanks the rest of the scene. */}
+    {visible.map(({ tile, lod }) => <Suspense key={`${tile.id}-${lod}`} fallback={null}><TerrainTile tile={tile} lod={lod} elevationOffset={scene.origin.elevation} compact={compact} onShown={onShown} /></Suspense>)}
   </group>
 }
 
@@ -298,20 +325,31 @@ function routeInterpolator(points: number[][]) {
   }
 }
 
+type CameraMode = 'chase' | 'drone' | 'pov'
+type WalkInput = { forward: number; turn: number }
+
 interface CameraControllerState {
+  /** Orbit offset from the astronaut's heading: 0 sits behind them, or in POV looks straight ahead. */
   yaw: number
   pitch: number
   distance: number
-  mode: 'chase' | 'drone' | 'pov' | 'free'
-  setPreset: (preset: 'chase' | 'drone' | 'pov') => void
+  mode: CameraMode
+  setPreset: (preset: CameraMode) => void
   resetCamera: () => void
 }
+
+// POV can look up as well as down; the orbit camera stays above the ground.
+const clampPitch = (pitch: number, mode: CameraMode) => mode === 'pov'
+  ? THREE.MathUtils.clamp(pitch, -1.3, 1.3)
+  : THREE.MathUtils.clamp(pitch, -0.2, 1.45)
+
+const isTyping = (target: EventTarget | null) => target instanceof HTMLElement && (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName))
 
 function Scene({
   route,
   scene,
   onTelemetry,
-  touchInput,
+  inputRef,
   compact,
   cameraControllerRef,
   onCameraModeChange,
@@ -319,36 +357,45 @@ function Scene({
   route: RouteCandidate
   scene: SceneManifest
   onTelemetry: (telemetry: WalkTelemetry) => void
-  touchInput: { forward: number; turn: number }
+  inputRef: React.MutableRefObject<WalkInput>
   compact: boolean
   cameraControllerRef: React.MutableRefObject<CameraControllerState>
-  onCameraModeChange: (mode: 'chase' | 'drone' | 'pov' | 'free') => void
+  onCameraModeChange: (mode: CameraMode) => void
 }) {
   const guided = useMissionStore((state) => state.guided)
   const playing = useMissionStore((state) => state.playing)
   const speed = useMissionStore((state) => state.speed)
-  const progress = useMissionStore((state) => state.progress)
   const setWalkState = useMissionStore((state) => state.setMarsWalkState)
   const setWalkTelemetry = useMissionStore((state) => state.setWalkTelemetry)
   const emergencyRoute = useMissionStore((state) => state.emergencyRoute)
   const avatar = useRef<THREE.Group>(null)
   const cameraTarget = useRef(new THREE.Vector3())
+  const eyePoint = useRef(new THREE.Vector3())
+  const scratch = useRef(new THREE.Vector3())
   const smoothedElevation = useRef<number | null>(null)
+  const cameraHeading = useRef<number | null>(null)
   const keys = useRef(new Set<string>())
   const motion = useRef<AvatarMotion>({ speed: 0, turn: 0 })
   const routePath = useMemo(() => routeInterpolator(route.scene_coordinates), [route])
   useBinary(scene.overview.url)
-  const storedTelemetry = useMissionStore.getState().walkTelemetry
-  const [avatarPosition, setAvatarPosition] = useState<Position>(() => {
-    if (!guided && storedTelemetry?.mode === 'free') return storedTelemetry.localPosition
+  // Bumped whenever a terrain mesh appears, so draped overlays re-sample the surface that is drawn.
+  const [terrainRevision, setTerrainRevision] = useState(0)
+  const onTerrainShown = useCallback(() => setTerrainRevision((value) => value + 1), [])
+  // The astronaut moves every frame through a ref; React only re-renders when terrain detail has to follow.
+  const [lodAnchor, setLodAnchor] = useState<Position>(() => {
+    const { guided: startGuided, walkTelemetry, progress } = useMissionStore.getState()
+    if (!startGuided && walkTelemetry?.mode === 'free') return walkTelemetry.localPosition
     const initial = routePath.at(progress).position
     return [initial[0], initial[1] + 0.18, initial[2]]
   })
-  const direction = useRef(
-    !guided && storedTelemetry?.mode === 'free'
-      ? new THREE.Vector3(Math.sin(storedTelemetry.headingRad), 0, -Math.cos(storedTelemetry.headingRad))
-      : routePath.at(progress).direction,
-  )
+  const position = useRef<Position>(lodAnchor)
+  const direction = useRef<THREE.Vector3>(null!)
+  if (!direction.current) {
+    const { guided: startGuided, walkTelemetry, progress } = useMissionStore.getState()
+    direction.current = !startGuided && walkTelemetry?.mode === 'free'
+      ? new THREE.Vector3(Math.sin(walkTelemetry.headingRad), 0, -Math.cos(walkTelemetry.headingRad))
+      : routePath.at(progress).direction
+  }
   const lastStoreUpdate = useRef(0)
   const lastUiUpdate = useRef(0)
   const { camera } = useThree()
@@ -356,47 +403,33 @@ function Scene({
   const controller = cameraControllerRef.current
 
   useEffect(() => {
-    controller.setPreset = (preset: 'chase' | 'drone' | 'pov') => {
-      const facing = Math.atan2(direction.current.x, direction.current.z)
-      if (preset === 'chase') {
-        controller.yaw = facing + Math.PI
-        controller.pitch = 0.35
-        controller.distance = 12
-      } else if (preset === 'drone') {
-        controller.yaw = facing + Math.PI
-        controller.pitch = 1.15
-        controller.distance = 42
-      } else if (preset === 'pov') {
-        controller.yaw = facing + Math.PI
-        controller.pitch = 0.05
-        controller.distance = 0.2
-      }
+    controller.setPreset = (preset: CameraMode) => {
+      controller.yaw = 0
+      controller.pitch = preset === 'chase' ? 0.35 : preset === 'drone' ? 1.15 : 0
+      controller.distance = preset === 'chase' ? 12 : preset === 'drone' ? 42 : 0.2
       controller.mode = preset
       onCameraModeChange(preset)
     }
-
-    controller.resetCamera = () => {
-      controller.setPreset('chase')
-    }
-
-    if (controller.yaw === 0) {
-      const facing = Math.atan2(direction.current.x, direction.current.z)
-      controller.yaw = facing + Math.PI
-    }
+    controller.resetCamera = () => controller.setPreset('chase')
   }, [controller, onCameraModeChange])
 
   useEffect(() => {
-    const down = (event: KeyboardEvent) => keys.current.add(event.code)
+    const down = (event: KeyboardEvent) => { if (!isTyping(event.target)) keys.current.add(event.code) }
     const up = (event: KeyboardEvent) => keys.current.delete(event.code)
+    const release = () => keys.current.clear()
     window.addEventListener('keydown', down)
     window.addEventListener('keyup', up)
-    return () => { window.removeEventListener('keydown', down); window.removeEventListener('keyup', up) }
+    window.addEventListener('blur', release)
+    return () => { window.removeEventListener('keydown', down); window.removeEventListener('keyup', up); window.removeEventListener('blur', release) }
   }, [])
 
-  useFrame((_, delta) => {
-    let next = [...avatarPosition] as Position
+  useFrame((_, frameDelta) => {
+    const delta = Math.min(frameDelta, 0.1)
+    const previous = position.current
+    let next: Position = [previous[0], previous[1], previous[2]]
     let routeIndex = 0
     let currentProgress = useMissionStore.getState().progress
+    const pov = controller.mode === 'pov'
     if (guided) {
       let nextProgress = currentProgress
       if (playing) nextProgress = Math.min(1, nextProgress + (speed * delta) / routePath.total)
@@ -412,22 +445,33 @@ function Scene({
         lastStoreUpdate.current = performance.now()
       }
     } else {
-      const forward = Number(keys.current.has('KeyW') || keys.current.has('ArrowUp')) - Number(keys.current.has('KeyS') || keys.current.has('ArrowDown')) + touchInput.forward
-      const turn = Number(keys.current.has('KeyA') || keys.current.has('ArrowLeft')) - Number(keys.current.has('KeyD') || keys.current.has('ArrowRight')) + touchInput.turn
-      direction.current.applyAxisAngle(new THREE.Vector3(0, 1, 0), turn * delta * 1.6)
+      const held = (...codes: string[]) => Number(codes.some((code) => keys.current.has(code)))
+      const forward = THREE.MathUtils.clamp(held('KeyW', 'ArrowUp') - held('KeyS', 'ArrowDown') + inputRef.current.forward, -1, 1)
+      const turn = THREE.MathUtils.clamp(held('KeyA', 'ArrowLeft') - held('KeyD', 'ArrowRight') + inputRef.current.turn, -1, 1)
+      let steer = turn * delta * 1.6
+      // Forward always means "where the camera looks": in POV the body follows the view at once,
+      // in the orbit views the astronaut swings round to it as soon as they start walking.
+      if (controller.yaw !== 0 && (pov || forward !== 0)) {
+        const offset = wrapAngle(controller.yaw)
+        const step = pov ? offset : THREE.MathUtils.clamp(offset, -4 * delta, 4 * delta)
+        steer += step
+        controller.yaw = offset - step
+      }
+      direction.current.applyAxisAngle(UP, steer)
       next[0] += direction.current.x * forward * Math.min(speed, 32) * delta
       next[2] += direction.current.z * forward * Math.min(speed, 32) * delta
       const [xMin, zMin, xMax, zMax] = scene.bounds_local
       next[0] = THREE.MathUtils.clamp(next[0], xMin + 5, xMax - 5)
       next[2] = THREE.MathUtils.clamp(next[2], zMin + 5, zMax - 5)
-      const moved = Math.hypot(next[0] - avatarPosition[0], next[2] - avatarPosition[2])
+      const moved = Math.hypot(next[0] - previous[0], next[2] - previous[2])
       motion.current.speed = delta > 0 ? Math.sign(forward) * moved / delta : 0
       motion.current.turn = turn
     }
-    // Stand on the terrain that is actually drawn; +0.1 m keeps boots clear of sloped polygons.
-    const ground = groundHeight(scene, next[0], next[2])
-    next[1] = (ground ?? (guided ? next[1] : avatarPosition[1] - 0.1)) + 0.1
-    setAvatarPosition(next)
+    // Stand on the terrain that is actually drawn, taking the highest ground under the boots.
+    const ground = footingHeight(scene, next[0], next[2])
+    next[1] = ground !== null ? ground + 0.06 : guided ? next[1] + 0.1 : previous[1]
+    position.current = next
+    if (Math.hypot(next[0] - lodAnchor[0], next[2] - lodAnchor[2]) > 15) setLodAnchor(next)
     if (performance.now() - lastUiUpdate.current > 100) {
       const projectedPosition = localToProjected(scene, next)
       const telemetry: WalkTelemetry = {
@@ -444,10 +488,12 @@ function Scene({
       onTelemetry(telemetry)
       lastUiUpdate.current = performance.now()
     }
+    const facing = Math.atan2(direction.current.x, direction.current.z)
     if (avatar.current) {
       avatar.current.position.set(...next)
-      // Rotate 180 deg so astronaut visor faces forward along movement trajectory (not moonwalking backwards)
-      avatar.current.rotation.y = Math.atan2(direction.current.x, direction.current.z) + Math.PI
+      // The model's visor points down -Z, so turn it half a circle to face the walking direction.
+      avatar.current.rotation.y = facing + Math.PI
+      avatar.current.visible = !pov
     }
 
     // Always-on camera elevation stabilizer
@@ -457,36 +503,27 @@ function Scene({
       smoothedElevation.current = THREE.MathUtils.damp(smoothedElevation.current, next[1], 4.2, delta)
     }
 
-    const isPov = controller.mode === 'pov' || controller.distance <= 0.6
-    if (avatar.current) {
-      avatar.current.visible = !isPov
-    }
+    // The camera rides with the astronaut's heading. A guided route turns in sharp corners, so ease through them.
+    if (cameraHeading.current === null || !guided) cameraHeading.current = facing
+    else cameraHeading.current += wrapAngle(facing - cameraHeading.current) * (1 - Math.exp(-delta * 3.5))
+    const yaw = cameraHeading.current + Math.PI + controller.yaw
+    const cosPitch = Math.cos(controller.pitch)
 
-    const targetHeight = isPov ? 1.65 : 1.35
-    const rawTarget = new THREE.Vector3(next[0], smoothedElevation.current + targetHeight, next[2])
-    cameraTarget.current.lerp(rawTarget, 1 - Math.exp(-delta * 8.0))
-
-    if (isPov) {
-      // First person view from inside helmet facing in current yaw/pitch
-      const lookDir = new THREE.Vector3(
-        -Math.sin(controller.yaw),
-        Math.sin(-controller.pitch),
-        -Math.cos(controller.yaw)
-      ).normalize()
-      camera.position.lerp(rawTarget, 1 - Math.exp(-delta * 9.0))
-      camera.lookAt(rawTarget.clone().add(lookDir.multiplyScalar(10)))
+    if (pov) {
+      // Eyes sit in the helmet and move rigidly with the body; only small bumps are smoothed out.
+      const eyeY = Math.max(smoothedElevation.current, next[1] - 0.4) + 2.05
+      eyePoint.current.set(next[0], eyeY, next[2])
+      camera.position.copy(eyePoint.current)
+      camera.lookAt(scratch.current.set(next[0] - Math.sin(yaw) * cosPitch, eyeY - Math.sin(controller.pitch), next[2] - Math.cos(yaw) * cosPitch))
+      cameraTarget.current.copy(eyePoint.current)
     } else {
-      // 360° orbit view with zero auto-realign
-      const cosPitch = Math.cos(controller.pitch)
-      const dx = controller.distance * cosPitch * Math.sin(controller.yaw)
+      const targetY = smoothedElevation.current + 1.35
+      cameraTarget.current.lerp(scratch.current.set(next[0], targetY, next[2]), 1 - Math.exp(-delta * 8.0))
+      const dx = controller.distance * cosPitch * Math.sin(yaw)
       const dy = controller.distance * Math.sin(controller.pitch)
-      const dz = controller.distance * cosPitch * Math.cos(controller.yaw)
-
-      const groundLimit = smoothedElevation.current + 0.35
-      const desiredY = Math.max(groundLimit, rawTarget.y + dy)
-      const desiredPos = new THREE.Vector3(next[0] + dx, desiredY, next[2] + dz)
-
-      camera.position.lerp(desiredPos, 1 - Math.exp(-delta * 7.5))
+      const dz = controller.distance * cosPitch * Math.cos(yaw)
+      const desiredY = Math.max(smoothedElevation.current + 0.35, targetY + dy)
+      camera.position.lerp(scratch.current.set(next[0] + dx, desiredY, next[2] + dz), 1 - Math.exp(-delta * 7.5))
       // Keep the camera above whatever terrain it is over, not only above the astronaut's elevation.
       const cameraGround = groundHeight(scene, camera.position.x, camera.position.z)
       if (cameraGround !== null) camera.position.y = Math.max(camera.position.y, cameraGround + 0.8)
@@ -494,22 +531,31 @@ function Scene({
     }
   })
 
+  const routeLine = useMemo(() => drape(scene, route.scene_coordinates, 0.45), [scene, route, terrainRevision])
+  const emergencyLine = useMemo(() => emergencyRoute && drape(scene, emergencyRoute.scene_coordinates, 0.7), [scene, emergencyRoute, terrainRevision])
+
   return <>
     <color attach="background" args={['#c75f32']} />
     <fog attach="fog" args={['#b95a35', 800, 2600]} />
     <ambientLight intensity={1.25} />
     <directionalLight position={[600, 900, -500]} intensity={2.4} color="#ffe0b5" castShadow={false} />
     <hemisphereLight color="#ffd3ac" groundColor="#4d2118" intensity={0.65} />
-    <TerrainWorld scene={scene} avatar={avatarPosition} compact={compact} />
-    <Line points={route.scene_coordinates.map((point) => [point[0], point[1] + 0.45, point[2]] as Position)} color="#38d4f8" lineWidth={2.2} transparent opacity={0.85} />
-    {emergencyRoute && <Line points={emergencyRoute.scene_coordinates.map((point) => [point[0], point[1] + 0.7, point[2]] as Position)} color="#ff6579" lineWidth={3} dashed dashSize={12} gapSize={8} />}
+    <TerrainWorld scene={scene} avatar={lodAnchor} compact={compact} onShown={onTerrainShown} />
+    <Line points={routeLine} color="#38d4f8" lineWidth={2.2} transparent opacity={0.85} />
+    {emergencyLine && <Line points={emergencyLine} color="#ff6579" lineWidth={3} dashed dashSize={12} gapSize={8} />}
     <group ref={avatar}><Astronaut motion={motion} /></group>
-    <WaypointMarkers scene={scene} />
+    <WaypointMarkers scene={scene} terrainRevision={terrainRevision} />
     <Stars radius={2500} depth={200} count={400} factor={2} saturation={0.2} fade speed={0.1} />
   </>
 }
 
-function WaypointMarkers({ scene: _scene }: { scene: SceneManifest }) {
+/** Lays route points on the terrain that is drawn, which can differ from the routing grid's elevation. */
+function drape(scene: SceneManifest, points: number[][], lift: number) {
+  return points.map((point) => [point[0], (groundHeight(scene, point[0], point[2]) ?? point[1]) + lift, point[2]] as Position)
+}
+
+// `terrainRevision` is only a re-render trigger: marker bases follow the surface as finer terrain streams in.
+function WaypointMarkers({ scene, terrainRevision: _terrainRevision }: { scene: SceneManifest; terrainRevision: number }) {
   const mission = useMissionStore((state) => state.mission)!
   const bootstrap = useMissionStore((state) => state.bootstrap)!
   const route = useMissionStore((state) => state.plan?.primary)
@@ -517,7 +563,8 @@ function WaypointMarkers({ scene: _scene }: { scene: SceneManifest }) {
   return <>{mission.route_stops.map((stop) => {
     const visit = route.stop_visits.find((item) => item.id === stop.id)
     if (!visit) return null
-    const [x, y, z] = route.scene_coordinates[visit.route_vertex_index]
+    const [x, routeY, z] = route.scene_coordinates[visit.route_vertex_index]
+    const y = groundHeight(scene, x, z) ?? routeY
     const label = stop.type === 'custom' ? stop.name : (bootstrap.waypoints.features.find((f) => f.properties.id === stop.id)?.properties.name ?? stop.id)
     const color = stop.type === 'custom' ? '#62c7e8' : '#ffb86c'
     return <group key={stop.id} position={[x, y + 0.2, z]}>
@@ -546,8 +593,10 @@ export default function MarsWalk() {
   const { transitionTo } = useViewTransition()
   const [routeIndex, setRouteIndex] = useState(0)
   const [compact, setCompact] = useState(() => window.innerWidth < 768)
-  const [touchInput, setTouchInput] = useState({ forward: 0, turn: 0 })
-  const [cameraMode, setCameraMode] = useState<'chase' | 'drone' | 'pov'>('chase')
+  const [touch, setTouch] = useState(() => window.matchMedia('(pointer: coarse)').matches)
+  const joystickSide = useSettingsStore((state) => state.joystickSide)
+  const inputRef = useRef<WalkInput>({ forward: 0, turn: 0 })
+  const [cameraMode, setCameraMode] = useState<CameraMode>('chase')
   const cameraControllerRef = useRef<CameraControllerState>({
     yaw: 0,
     pitch: 0.35,
@@ -556,8 +605,8 @@ export default function MarsWalk() {
     setPreset: () => {},
     resetCamera: () => {},
   })
-  const isDraggingRef = useRef(false)
-  const dragStartRef = useRef({ x: 0, y: 0 })
+  // Fingers (or the mouse) currently dragging the view: one orbits, two pinch-zoom.
+  const pointers = useRef(new Map<number, { x: number; y: number }>())
   const routeCoordinate = route.coordinates[Math.min(routeIndex, route.coordinates.length - 1)]
   const coordinate = walkTelemetry?.coordinate ?? { longitude: routeCoordinate[0], latitude: routeCoordinate[1] }
   const remaining = Math.max(0, mission.energy_budget - route.metrics.energy_units * progress)
@@ -584,8 +633,11 @@ export default function MarsWalk() {
 
   useEffect(() => {
     const resize = () => setCompact(window.innerWidth < 768)
+    const coarse = window.matchMedia('(pointer: coarse)')
+    const pointerChange = () => setTouch(coarse.matches)
     window.addEventListener('resize', resize)
-    return () => window.removeEventListener('resize', resize)
+    coarse.addEventListener('change', pointerChange)
+    return () => { window.removeEventListener('resize', resize); coarse.removeEventListener('change', pointerChange) }
   }, [])
 
   useEffect(() => {
@@ -597,33 +649,47 @@ export default function MarsWalk() {
     }
   }, [coordinate, nextWaypointId, bootstrap.waypoints.features])
 
-  const updateJoystick = (event: React.PointerEvent<HTMLDivElement>) => {
-    const bounds = event.currentTarget.getBoundingClientRect()
-    const x = (event.clientX - (bounds.left + bounds.width / 2)) / (bounds.width / 2)
-    const y = (event.clientY - (bounds.top + bounds.height / 2)) / (bounds.height / 2)
-    setTouchInput({ forward: Math.max(-1, Math.min(1, -y)), turn: Math.max(-1, Math.min(1, -x)) })
-  }
+  // Leaving free walk must not leave a joystick deflection behind.
+  useEffect(() => { if (guided) inputRef.current = { forward: 0, turn: 0 } }, [guided])
+
+  // Below 3 m the orbit camera would sit inside the suit, so zooming in past it enters POV and zooming out leaves it.
+  const applyDistance = useCallback((requested: number) => {
+    const ctrl = cameraControllerRef.current
+    let distance = THREE.MathUtils.clamp(requested, 0.2, 80)
+    if (distance < 3) distance = distance < ctrl.distance ? 0.2 : 3
+    const mode: CameraMode = distance <= 0.6 ? 'pov' : distance > 30 ? 'drone' : 'chase'
+    ctrl.distance = distance
+    ctrl.mode = mode
+    ctrl.pitch = clampPitch(ctrl.pitch, mode)
+    setCameraMode(mode)
+  }, [])
 
   const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
     if ((event.target as HTMLElement).closest('button, input, aside, .pointer-events-auto')) return
-    isDraggingRef.current = true
-    dragStartRef.current = { x: event.clientX, y: event.clientY }
+    event.currentTarget.setPointerCapture(event.pointerId)
+    pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY })
   }
 
   const handlePointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (!isDraggingRef.current) return
-    const dx = event.clientX - dragStartRef.current.x
-    const dy = event.clientY - dragStartRef.current.y
-    dragStartRef.current = { x: event.clientX, y: event.clientY }
-
+    const last = pointers.current.get(event.pointerId)
+    if (!last) return
     const ctrl = cameraControllerRef.current
-    ctrl.yaw += dx * 0.005
-    // Clamp pitch: -0.2 (low angle) to 1.45 (~83° steep top-down overhead)
-    ctrl.pitch = Math.max(-0.2, Math.min(1.45, ctrl.pitch + dy * 0.005))
+    pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY })
+    if (pointers.current.size > 1) {
+      const other = [...pointers.current].find(([id]) => id !== event.pointerId)![1]
+      const before = Math.hypot(last.x - other.x, last.y - other.y)
+      const after = Math.hypot(event.clientX - other.x, event.clientY - other.y)
+      if (before > 0 && after > 0) applyDistance(ctrl.distance * before / after)
+      return
+    }
+    // Default: the view follows the drag (drag right to look right, drag down to look down). Settings can flip either axis.
+    const { invertLookX, invertLookY } = useSettingsStore.getState()
+    ctrl.yaw -= (event.clientX - last.x) * 0.005 * (invertLookX ? -1 : 1)
+    ctrl.pitch = clampPitch(ctrl.pitch + (event.clientY - last.y) * 0.005 * (invertLookY ? -1 : 1), ctrl.mode)
   }
 
-  const handlePointerUp = () => {
-    isDraggingRef.current = false
+  const handlePointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
+    pointers.current.delete(event.pointerId)
   }
 
   const containerRef = useRef<HTMLDivElement>(null)
@@ -632,50 +698,17 @@ export default function MarsWalk() {
   useEffect(() => {
     const el = containerRef.current
     if (!el) return
-
     const onWheel = (event: WheelEvent) => {
       event.preventDefault()
       event.stopPropagation()
-
-      const ctrl = cameraControllerRef.current
-      const delta = event.deltaY * 0.015
-      ctrl.distance = Math.max(0.2, Math.min(80, ctrl.distance + delta))
-      if (ctrl.distance <= 0.6) {
-        setCameraMode('pov')
-      } else if (ctrl.distance > 30) {
-        setCameraMode('drone')
-      } else {
-        setCameraMode('chase')
-      }
+      applyDistance(cameraControllerRef.current.distance + event.deltaY * 0.015)
     }
-
     el.addEventListener('wheel', onWheel, { passive: false })
     return () => el.removeEventListener('wheel', onWheel)
-  }, [])
+  }, [applyDistance])
 
-  const handleZoomIn = () => {
-    const ctrl = cameraControllerRef.current
-    ctrl.distance = Math.max(0.2, ctrl.distance * 0.75)
-    if (ctrl.distance <= 0.6) {
-      setCameraMode('pov')
-    } else if (ctrl.distance > 30) {
-      setCameraMode('drone')
-    } else {
-      setCameraMode('chase')
-    }
-  }
-
-  const handleZoomOut = () => {
-    const ctrl = cameraControllerRef.current
-    ctrl.distance = Math.min(80, Math.max(1.5, ctrl.distance * 1.35))
-    if (ctrl.distance <= 0.6) {
-      setCameraMode('pov')
-    } else if (ctrl.distance > 30) {
-      setCameraMode('drone')
-    } else {
-      setCameraMode('chase')
-    }
-  }
+  const handleZoomIn = () => applyDistance(cameraControllerRef.current.distance * 0.75)
+  const handleZoomOut = () => applyDistance(cameraControllerRef.current.distance * 1.35)
 
   return <div
     ref={containerRef}
@@ -693,10 +726,10 @@ export default function MarsWalk() {
           onTelemetry={(telemetry) => {
             if (telemetry.routeIndex !== null) setRouteIndex(telemetry.routeIndex)
           }}
-          touchInput={touchInput}
+          inputRef={inputRef}
           compact={compact}
           cameraControllerRef={cameraControllerRef}
-          onCameraModeChange={(m) => m !== 'free' && setCameraMode(m)}
+          onCameraModeChange={setCameraMode}
         />
       </Suspense>
     </Canvas>
@@ -707,8 +740,12 @@ export default function MarsWalk() {
       </button>
     </div>
 
-    <div className="absolute inset-x-3 bottom-3 z-20 mx-auto max-w-3xl rounded border border-ink bg-panel p-3">
-      <div className="mb-3 flex items-center gap-3">
+    {/* The joystick stacks on top of the control panel, so it can never cover it whatever height the panel wraps to. */}
+    <div className="pointer-events-none absolute inset-x-[max(.75rem,env(safe-area-inset-left))] bottom-[max(.75rem,env(safe-area-inset-bottom))] z-20 mx-auto flex max-w-3xl flex-col gap-2">
+      {!guided && touch && <Joystick inputRef={inputRef} side={joystickSide} />}
+      <div className="pointer-events-auto rounded border border-ink bg-panel p-3">
+      {!guided && !touch && <p className="mb-3 text-center text-xs text-ink-3"><span className="num text-ink-2">W/S</span> walk · <span className="num text-ink-2">A/D</span> turn · drag to look · scroll to zoom</p>}
+      {guided && <div className="mb-3 flex items-center gap-3">
         <span className="num w-9 text-right text-xs text-ink-2">{Math.round(progress * 100)}%</span>
         <input
           type="range"
@@ -726,9 +763,9 @@ export default function MarsWalk() {
         <span className="num min-w-28 text-right text-xs text-ink-2">
           {((route.metrics.distance_m * progress) / 1000).toFixed(2)} / {(route.metrics.distance_m / 1000).toFixed(2)} km
         </span>
-      </div>
+      </div>}
 
-      <div className="flex items-center justify-center gap-2 border-b border-rule pb-3">
+      <div className="flex items-center justify-center gap-2 border-b border-rule pb-3" data-tour="walk-mode">
         <button
           className="flex h-9 items-center gap-1.5 rounded border border-ink px-3 text-[13px] font-medium text-ink hover:bg-panel-2"
           onClick={() => setWalkState({ guided: !guided, playing: false })}
@@ -739,7 +776,8 @@ export default function MarsWalk() {
         </button>
 
         <button
-          className="grid size-10 place-items-center rounded bg-ink text-panel hover:bg-ink-2"
+          className="grid size-10 place-items-center rounded bg-ink text-panel hover:bg-ink-2 disabled:opacity-35"
+          disabled={!guided}
           onClick={() => setWalkState({ playing: !playing })}
           title={playing ? 'Pause' : 'Play'}
           aria-label={playing ? 'Pause' : 'Play'}
@@ -795,7 +833,7 @@ export default function MarsWalk() {
           </div>
         </div>
 
-        <div className="flex w-full items-center justify-between gap-2 sm:w-auto sm:justify-end">
+        <div className="flex w-full items-center justify-between gap-2 sm:w-auto sm:justify-end" data-tour="walk-camera">
           <div className="flex items-center rounded border border-ink">
             <button
               className="grid size-8 place-items-center text-ink-2 hover:text-ink"
@@ -841,14 +879,56 @@ export default function MarsWalk() {
       </div>
     </div>
 
-    {!guided && compact && (
-      <div className="absolute bottom-24 left-4 z-20 size-28 touch-none rounded-full border border-ink bg-panel/60" onPointerDown={(event) => { event.currentTarget.setPointerCapture(event.pointerId); updateJoystick(event) }} onPointerMove={(event) => event.currentTarget.hasPointerCapture(event.pointerId) && updateJoystick(event)} onPointerUp={() => setTouchInput({ forward: 0, turn: 0 })} onPointerCancel={() => setTouchInput({ forward: 0, turn: 0 })}>
-        <span className="absolute left-1/2 top-1/2 size-10 -translate-x-1/2 -translate-y-1/2 rounded-full bg-ink/60" />
-      </div>
-    )}
+    </div>
 
     {selectedWaypoint && <WaypointOverlay />}
   </div>
+}
+
+/** Thumb stick for free walk: push up/down to walk, sideways to turn. Writes straight to a ref so dragging never re-renders the scene. */
+function Joystick({ inputRef, side }: { inputRef: React.MutableRefObject<WalkInput>; side: 'left' | 'right' }) {
+  const knob = useRef<HTMLSpanElement>(null)
+  const active = useRef<number | null>(null)
+  const move = (event: React.PointerEvent<HTMLDivElement>) => {
+    const bounds = event.currentTarget.getBoundingClientRect()
+    const reach = bounds.width / 2 - 28
+    let x = event.clientX - (bounds.left + bounds.width / 2)
+    let y = event.clientY - (bounds.top + bounds.height / 2)
+    const length = Math.hypot(x, y)
+    if (length > reach) { x *= reach / length; y *= reach / length }
+    if (knob.current) knob.current.style.transform = `translate(${x}px, ${y}px)`
+    // A dead zone stops a resting thumb from drifting, and walking straight from turning by accident.
+    const axis = (value: number) => Math.abs(value) < 0.18 ? 0 : Math.sign(value) * (Math.abs(value) - 0.18) / 0.82
+    inputRef.current = { forward: axis(-y / reach), turn: axis(-x / reach) }
+  }
+  const release = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.pointerId !== active.current) return
+    active.current = null
+    if (knob.current) knob.current.style.transform = ''
+    inputRef.current = { forward: 0, turn: 0 }
+  }
+  useEffect(() => () => { inputRef.current = { forward: 0, turn: 0 } }, [inputRef])
+  return (
+    <div
+      className={`pointer-events-auto grid size-36 touch-none place-items-center rounded-full ${side === 'right' ? 'self-end' : 'self-start'}`}
+      role="application"
+      aria-label="Walk joystick"
+      onPointerDown={(event) => {
+        if (active.current !== null) return
+        active.current = event.pointerId
+        event.currentTarget.setPointerCapture(event.pointerId)
+        move(event)
+      }}
+      onPointerMove={(event) => { if (event.pointerId === active.current) move(event) }}
+      onPointerUp={release}
+      onPointerCancel={release}
+      onLostPointerCapture={release}
+    >
+      <span className="pointer-events-none grid size-28 place-items-center rounded-full border border-ink bg-panel/55">
+        <span ref={knob} className="size-12 rounded-full border border-panel bg-ink/75" />
+      </span>
+    </div>
+  )
 }
 
 function SuspenseFallback() {

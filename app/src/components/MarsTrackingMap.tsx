@@ -181,7 +181,7 @@ export function MarsTrackingMap() {
 
   const moveForEvidence = selectedWaypoint ? 'md:right-[22rem]' : ''
   return (
-    <section className={`map-transition-surface absolute right-[max(.75rem,env(safe-area-inset-right))] top-[max(.75rem,env(safe-area-inset-top))] z-20 aspect-[4/3] w-[clamp(8.75rem,42vw,11.25rem)] max-h-[42svh] overflow-hidden rounded border border-ink bg-panel transition-[right] sm:w-[220px] lg:w-[260px] 2xl:w-[300px] ${moveForEvidence}`} aria-label="Astronaut tracking map">
+    <section data-tour="minimap" className={`map-transition-surface absolute right-[max(.75rem,env(safe-area-inset-right))] top-[max(.75rem,env(safe-area-inset-top))] z-20 aspect-[4/3] w-[clamp(8.75rem,42vw,11.25rem)] max-h-[42svh] overflow-hidden rounded border border-ink bg-panel transition-[right] sm:w-[220px] lg:w-[260px] 2xl:w-[300px] ${moveForEvidence}`} aria-label="Astronaut tracking map">
       <div className="absolute inset-x-0 top-0 z-10 flex h-8 items-center justify-between border-b border-ink bg-panel px-2.5">
         <span className="label text-ink">Live position</span>
         <button className="grid size-7 place-items-center rounded text-ink-3 hover:bg-panel-2 hover:text-ink" onClick={() => setMinimapOpen(false)} aria-label="Collapse tracking map" title="Collapse map"><ChevronDown size={15} /></button>
