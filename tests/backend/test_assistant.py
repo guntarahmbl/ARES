@@ -284,6 +284,7 @@ def test_selected_location_evidence_separates_coverage_and_confidence() -> None:
     assert images and all(item.metadata.get("product_id") for item in images)
 
 
+@needs_rasters
 def test_message_limit_is_enforced() -> None:
     payload = {
         "message": "x" * 1001,
