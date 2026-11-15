@@ -92,7 +92,8 @@ class AnalystQuery(BaseModel):
     active_route: Literal["primary", "alternative"] = "primary"
     selected_waypoint_id: str | None = None
     selected_coordinate: Coordinate | None = None
-    mission_revision: str = Field(min_length=1, max_length=128)
+    # Accept the pre-hash frontend payload during the transition; new clients send a short digest.
+    mission_revision: str = Field(min_length=1, max_length=4096)
 
 
 class Evidence(BaseModel):
