@@ -14,13 +14,15 @@ type Step = {
 
 const STEPS: Step[] = [
   { title: 'Welcome to ARES Path', body: 'A one-minute tour of how to get around. Use Next and Back, or the arrow keys. You can replay it any time from Settings.' },
-  { view: 'planner', target: 'views', title: 'Two views', body: 'Planner is the map where you build an EVA route. MarsWalk lets you walk that route on the 3D terrain.' },
+  { view: 'planner', target: 'views', title: 'Two views', body: 'Use Planner to build and edit your EVA mission. Explore the route in MarsWalk, where you can open a full map without leaving the walk.' },
   { view: 'planner', sidebar: false, target: 'map', title: 'The mission map', body: 'Drag to pan and scroll or pinch to zoom. Select a science target to see why it matters.' },
   { view: 'planner', sidebar: true, target: 'traverse', title: 'Your traverse', body: 'Stops are visited in this order. Drag a stop to reorder it, remove it with the bin, or add your own stop on the map.' },
   { view: 'planner', sidebar: true, target: 'reset-route', title: 'Back to our proposed route', body: 'Changed too much? This restores the route we propose, in one click.' },
   { view: 'marswalk', target: 'walk-mode', title: 'Guided tour or free walk', body: 'Guided Tour plays the route for you. Switch to Free Walk to move yourself: W/S or the joystick to walk, A/D to turn.' },
   { view: 'marswalk', target: 'walk-camera', title: 'Camera', body: 'Drag anywhere on the terrain to look around. Pick Chase, Drone or POV, and zoom with the scroll wheel, a pinch, or the + and − buttons.' },
-  { view: 'marswalk', target: 'minimap', title: 'Where you are', body: 'The tracking map follows the astronaut along the route. Collapse it when you want a clear view.' },
+  { view: 'marswalk', title: 'Inspect a waypoint', body: 'Within 20 metres of a mission waypoint, its details open automatically once during this mission. After closing them, use View details near that waypoint to open them again.' },
+  { view: 'marswalk', target: 'minimap', title: 'Where you are', body: 'The minimap follows your position and heading. Use + and − to zoom, or collapse it for a clearer view.' },
+  { view: 'marswalk', target: 'expand-map', title: 'Open the full map', body: 'Click the minimap or press M for the full mission map. Movement pauses while it is open. Press M or Esc to return, then Play to resume Guided Tour. Use Open Planner when you want to edit the mission.' },
   { target: 'settings', title: 'Settings and help', body: 'Invert the Free Marswalk camera, move the joystick to the other side, or replay this tutorial from here.' },
 ]
 
@@ -45,6 +47,7 @@ export function Tutorial() {
     if (!open) return
     const mission = useMissionStore.getState()
     if (step.view && mission.view !== step.view) mission.setView(step.view)
+    if ((step.target === 'minimap' || step.target === 'expand-map') && !mission.minimapOpen) mission.setMinimapOpen(true)
     if (step.sidebar !== undefined && (step.sidebar || window.innerWidth < 768) && mission.sidebarOpen !== step.sidebar) mission.setSidebarOpen(step.sidebar)
   }, [open, step])
 
