@@ -14,16 +14,94 @@ type Position = [number, number, number]
 
 const SPEED_STEPS = [1, 8, 32, 64, 128, 256]
 
+const BASE_LOD_M = 5
+const heightCache = new Map<string, Float32Array>()
+
 function useBinary(url: string) {
-  const [data, setData] = useState<Float32Array | null>(null)
+  const [data, setData] = useState<Float32Array | null>(() => heightCache.get(url) ?? null)
   useEffect(() => {
+    const cached = heightCache.get(url)
+    if (cached) { setData(cached); return }
     let active = true
     fetch(url).then((response) => response.arrayBuffer()).then((buffer) => {
-      if (active) setData(new Float32Array(buffer))
+      const heights = new Float32Array(buffer)
+      heightCache.set(url, heights)
+      if (active) setData(heights)
     }).catch((error) => console.error(`Unable to load ${url}`, error))
     return () => { active = false }
   }, [url])
   return data
+}
+
+// Height samples sit on routing-grid cell centres, while tile bounds follow cell edges.
+function tileGrid(tile: SceneTile) {
+  const base = tile.lods.find((item) => item.resolution_m === BASE_LOD_M) ?? tile.lods[0]
+  const [xMin, zMin, xMax, zMax] = tile.bounds_local
+  return { base, cellX: (xMax - xMin) / base.cols, cellZ: (zMax - zMin) / base.rows }
+}
+
+// Interpolates on the same triangles the terrain meshes are built from.
+function sampleHeights(heights: Float32Array, rows: number, cols: number, gridX: number, gridZ: number) {
+  const x = THREE.MathUtils.clamp(gridX, 0, cols - 1)
+  const z = THREE.MathUtils.clamp(gridZ, 0, rows - 1)
+  const col = Math.min(cols - 2, Math.floor(x))
+  const row = Math.min(rows - 2, Math.floor(z))
+  if (col < 0 || row < 0) return heights[0]
+  const fx = x - col
+  const fz = z - row
+  const h00 = heights[row * cols + col]
+  const h01 = heights[row * cols + col + 1]
+  const h10 = heights[(row + 1) * cols + col]
+  const h11 = heights[(row + 1) * cols + col + 1]
+  return fx + fz <= 1
+    ? h00 + fx * (h01 - h00) + fz * (h10 - h00)
+    : h11 + (1 - fx) * (h10 - h11) + (1 - fz) * (h01 - h11)
+}
+
+/** Terrain height in scene units under (x, z), from the finest level already loaded. */
+function groundHeight(scene: SceneManifest, x: number, z: number): number | null {
+  for (const tile of scene.tiles) {
+    const [xMin, zMin, xMax, zMax] = tile.bounds_local
+    if (x < xMin || x > xMax || z < zMin || z > zMax) continue
+    const { base, cellX, cellZ } = tileGrid(tile)
+    const cellsX = (x - xMin) / cellX - 0.5
+    const cellsZ = (z - zMin) / cellZ - 0.5
+    if (cellsX < 0 || cellsZ < 0) continue
+    for (const lod of [...tile.lods].sort((a, b) => a.resolution_m - b.resolution_m)) {
+      const heights = heightCache.get(lod.url)
+      if (!heights) continue
+      const step = lod.resolution_m / base.resolution_m
+      if (cellsX / step > lod.cols - 1 || cellsZ / step > lod.rows - 1) continue
+      const sampled = sampleHeights(heights, lod.rows, lod.cols, cellsX / step, cellsZ / step)
+      if (Number.isFinite(sampled)) return sampled - scene.origin.elevation
+    }
+  }
+  const overview = heightCache.get(scene.overview.url)
+  if (!overview || !scene.tiles.length) return null
+  const { base, cellX, cellZ } = tileGrid(scene.tiles[0])
+  const step = Math.max(1, Math.round(scene.overview.resolution_m / base.resolution_m))
+  const sampled = sampleHeights(
+    overview, scene.overview.rows, scene.overview.cols,
+    ((x - scene.bounds_local[0]) / cellX - 0.5) / step, ((z - scene.bounds_local[1]) / cellZ - 0.5) / step,
+  )
+  return Number.isFinite(sampled) ? sampled - scene.origin.elevation : null
+}
+
+function useOptionalTexture(url: string | undefined, anisotropy: number) {
+  const [texture, setTexture] = useState<THREE.Texture | null>(null)
+  useEffect(() => {
+    if (!url) { setTexture(null); return }
+    let active = true
+    let loaded: THREE.Texture | null = null
+    new THREE.TextureLoader().load(url, (result) => {
+      if (!active) { result.dispose(); return }
+      result.anisotropy = anisotropy
+      loaded = result
+      setTexture(result)
+    }, undefined, (error) => console.error(`Unable to load ${url}`, error))
+    return () => { active = false; loaded?.dispose() }
+  }, [url, anisotropy])
+  return texture
 }
 
 function OverviewTerrain({ scene }: { scene: SceneManifest }) {
@@ -34,14 +112,16 @@ function OverviewTerrain({ scene }: { scene: SceneManifest }) {
     const [xMin, zMin, xMax, zMax] = scene.bounds_local
     const rows = scene.overview.rows
     const cols = scene.overview.cols
+    const grid = scene.tiles.length ? tileGrid(scene.tiles[0]) : null
+    const step = grid ? Math.max(1, Math.round(scene.overview.resolution_m / grid.base.resolution_m)) : 0
     const positions = new Float32Array(rows * cols * 3)
     const uvs = new Float32Array(rows * cols * 2)
     const indices: number[] = []
     for (let row = 0; row < rows; row += 1) {
       for (let col = 0; col < cols; col += 1) {
         const index = row * cols + col
-        const u = col / Math.max(1, cols - 1)
-        const v = row / Math.max(1, rows - 1)
+        const u = grid ? (0.5 + col * step) * grid.cellX / (xMax - xMin) : col / Math.max(1, cols - 1)
+        const v = grid ? (0.5 + row * step) * grid.cellZ / (zMax - zMin) : row / Math.max(1, rows - 1)
         positions[index * 3] = THREE.MathUtils.lerp(xMin, xMax, u)
         positions[index * 3 + 1] = (heights[index] ?? 0) - scene.origin.elevation - 0.6
         positions[index * 3 + 2] = THREE.MathUtils.lerp(zMin, zMax, v)
@@ -60,29 +140,33 @@ function OverviewTerrain({ scene }: { scene: SceneManifest }) {
     output.computeVertexNormals()
     output.computeBoundingSphere()
     return output
-  }, [heights, scene.bounds_local, scene.overview, scene.origin.elevation])
+  }, [heights, scene.bounds_local, scene.overview, scene.origin.elevation, scene.tiles])
 
   useEffect(() => () => geometry?.dispose(), [geometry])
   useEffect(() => { texture.colorSpace = THREE.SRGBColorSpace }, [texture])
   if (!geometry) return null
-  return <mesh geometry={geometry}><meshStandardMaterial map={texture} roughness={1} metalness={0} /></mesh>
+  // Backdrop only: detail tiles mark the stencil buffer and the coarse 20 m surface skips those pixels, so it cannot poke through them.
+  return <mesh geometry={geometry} renderOrder={1}><meshStandardMaterial map={texture} roughness={1} metalness={0} stencilWrite stencilRef={1} stencilFunc={THREE.NotEqualStencilFunc} /></mesh>
 }
 
 function TerrainTile({ tile, lod, elevationOffset, compact }: { tile: SceneTile; lod: number; elevationOffset: number; compact: boolean }) {
   const descriptor = tile.lods.find((item) => item.resolution_m === lod) ?? tile.lods.at(-1)!
   const heights = useBinary(descriptor.url)
   const texture = useLoader(THREE.TextureLoader, tile.texture_url)
+  const normalMap = useOptionalTexture(tile.normal_url, compact ? 4 : 16)
   const geometry = useMemo(() => {
     if (!heights) return null
     const [xMin, zMin, xMax, zMax] = tile.bounds_local
+    const { base, cellX, cellZ } = tileGrid(tile)
+    const step = descriptor.resolution_m / base.resolution_m
     const positions = new Float32Array(descriptor.rows * descriptor.cols * 3)
     const uvs = new Float32Array(descriptor.rows * descriptor.cols * 2)
     const indices: number[] = []
     for (let row = 0; row < descriptor.rows; row += 1) {
       for (let col = 0; col < descriptor.cols; col += 1) {
         const index = row * descriptor.cols + col
-        const u = col / Math.max(1, descriptor.cols - 1)
-        const v = row / Math.max(1, descriptor.rows - 1)
+        const u = (0.5 + col * step) * cellX / (xMax - xMin)
+        const v = (0.5 + row * step) * cellZ / (zMax - zMin)
         positions[index * 3] = THREE.MathUtils.lerp(xMin, xMax, u)
         positions[index * 3 + 1] = heights[index] - elevationOffset
         positions[index * 3 + 2] = THREE.MathUtils.lerp(zMin, zMax, v)
@@ -106,7 +190,9 @@ function TerrainTile({ tile, lod, elevationOffset, compact }: { tile: SceneTile;
   useEffect(() => () => geometry?.dispose(), [geometry])
   useEffect(() => { texture.colorSpace = THREE.SRGBColorSpace; texture.anisotropy = compact ? 4 : 16; texture.needsUpdate = true }, [texture, compact])
   if (!geometry) return null
-  return <mesh geometry={geometry} receiveShadow><meshStandardMaterial map={texture} roughness={1} metalness={0} /></mesh>
+  return <mesh geometry={geometry} receiveShadow>
+    <meshStandardMaterial key={normalMap ? 'relief' : 'plain'} map={texture} normalMap={normalMap} normalMapType={THREE.ObjectSpaceNormalMap} roughness={1} metalness={0} stencilWrite stencilRef={1} stencilZPass={THREE.ReplaceStencilOp} />
+  </mesh>
 }
 
 function TerrainWorld({ scene, avatar, compact }: { scene: SceneManifest; avatar: Position; compact: boolean }) {
@@ -127,19 +213,41 @@ function TerrainWorld({ scene, avatar, compact }: { scene: SceneManifest; avatar
   </group>
 }
 
-function Astronaut({ moving }: { moving: boolean }) {
+type AvatarMotion = { speed: number; turn: number }
+
+function Astronaut({ motion }: { motion: React.MutableRefObject<AvatarMotion> }) {
   const group = useRef<THREE.Group>(null)
-  const leftArm = useRef<THREE.Mesh>(null)
-  const rightArm = useRef<THREE.Mesh>(null)
-  const leftLeg = useRef<THREE.Mesh>(null)
-  const rightLeg = useRef<THREE.Mesh>(null)
-  useFrame(({ clock }) => {
-    const swing = moving ? Math.sin(clock.elapsedTime * 7) * 0.45 : 0
-    if (leftArm.current) leftArm.current.rotation.x = swing
-    if (rightArm.current) rightArm.current.rotation.x = -swing
-    if (leftLeg.current) leftLeg.current.rotation.x = -swing * 0.7
-    if (rightLeg.current) rightLeg.current.rotation.x = swing * 0.7
-    if (group.current) group.current.position.y = moving ? Math.abs(Math.sin(clock.elapsedTime * 7)) * 0.05 : 0
+  const leftArm = useRef<THREE.Group>(null)
+  const rightArm = useRef<THREE.Group>(null)
+  const leftLeg = useRef<THREE.Group>(null)
+  const rightLeg = useRef<THREE.Group>(null)
+  const gait = useRef({ phase: 0, amplitude: 0, lean: 0 })
+  useFrame((_, delta) => {
+    const { speed, turn } = motion.current
+    const pace = Math.abs(speed)
+    const walking = pace > 0.05
+    const backward = walking && speed < 0
+    const state = gait.current
+    // Backward steps are shorter and slower; turning in place is a small shuffle.
+    const targetAmplitude = walking ? (backward ? 0.55 : 1) : Math.abs(turn) > 0.05 ? 0.3 : 0
+    state.amplitude = THREE.MathUtils.damp(state.amplitude, targetAmplitude, 9, delta)
+    const cadence = walking ? THREE.MathUtils.clamp(1.15 + pace * 0.09, 1.15, 2.3) * (backward ? 0.8 : 1) : 1.3
+    if (targetAmplitude > 0) state.phase += delta * cadence * Math.PI * 2 * (backward ? -1 : 1)
+    const targetLean = walking ? (backward ? 0.07 : -0.05 - Math.min(pace, 32) / 32 * 0.08) : 0
+    state.lean = THREE.MathUtils.damp(state.lean, targetLean, 6, delta)
+
+    const swing = Math.sin(state.phase) * state.amplitude
+    const lift = Math.cos(state.phase) * state.amplitude
+    // Positive rotation swings a limb toward the visor (forward). The lifted foot is the one in the air.
+    if (leftLeg.current) { leftLeg.current.rotation.x = swing * 0.55; leftLeg.current.position.y = 0.98 + Math.max(0, lift) * 0.09 }
+    if (rightLeg.current) { rightLeg.current.rotation.x = -swing * 0.55; rightLeg.current.position.y = 0.98 + Math.max(0, -lift) * 0.09 }
+    const armReach = backward ? 0.25 : 0.42
+    if (leftArm.current) leftArm.current.rotation.x = -swing * armReach
+    if (rightArm.current) rightArm.current.rotation.x = swing * armReach
+    if (group.current) {
+      group.current.position.y = Math.abs(Math.cos(state.phase)) * 0.04 * state.amplitude
+      group.current.rotation.x = state.lean
+    }
   })
   const suit = '#e8e2d7'
   const joint = '#262b31'
@@ -148,12 +256,17 @@ function Astronaut({ moving }: { moving: boolean }) {
     <mesh position={[0, 2.15, 0]} castShadow><sphereGeometry args={[0.38, 24, 16]} /><meshStandardMaterial color="#e4e1d8" roughness={0.7} /></mesh>
     <mesh position={[0, 2.17, -0.27]} rotation={[0.12, 0, 0]}><sphereGeometry args={[0.29, 20, 12, 0, Math.PI * 2, 0, Math.PI / 2]} /><meshStandardMaterial color="#263846" metalness={0.45} roughness={0.25} /></mesh>
     <mesh position={[0, 1.55, 0.34]} castShadow><boxGeometry args={[0.58, 0.75, 0.28]} /><meshStandardMaterial color="#a8a59d" roughness={0.9} /></mesh>
-    <mesh ref={leftArm} position={[-0.48, 1.48, 0]} castShadow><capsuleGeometry args={[0.11, 0.65, 6, 10]} /><meshStandardMaterial color={suit} /></mesh>
-    <mesh ref={rightArm} position={[0.48, 1.48, 0]} castShadow><capsuleGeometry args={[0.11, 0.65, 6, 10]} /><meshStandardMaterial color={suit} /></mesh>
-    <mesh ref={leftLeg} position={[-0.19, 0.55, 0]} castShadow><capsuleGeometry args={[0.14, 0.72, 6, 10]} /><meshStandardMaterial color={suit} /></mesh>
-    <mesh ref={rightLeg} position={[0.19, 0.55, 0]} castShadow><capsuleGeometry args={[0.14, 0.72, 6, 10]} /><meshStandardMaterial color={suit} /></mesh>
-    <mesh position={[-0.19, 0.12, -0.09]}><boxGeometry args={[0.32, 0.16, 0.52]} /><meshStandardMaterial color={joint} /></mesh>
-    <mesh position={[0.19, 0.12, -0.09]}><boxGeometry args={[0.32, 0.16, 0.52]} /><meshStandardMaterial color={joint} /></mesh>
+    {/* Limbs pivot at the shoulder and hip, and each boot travels with its leg. */}
+    <group ref={leftArm} position={[-0.48, 1.86, 0]}><mesh position={[0, -0.38, 0]} castShadow><capsuleGeometry args={[0.11, 0.65, 6, 10]} /><meshStandardMaterial color={suit} /></mesh></group>
+    <group ref={rightArm} position={[0.48, 1.86, 0]}><mesh position={[0, -0.38, 0]} castShadow><capsuleGeometry args={[0.11, 0.65, 6, 10]} /><meshStandardMaterial color={suit} /></mesh></group>
+    <group ref={leftLeg} position={[-0.19, 0.98, 0]}>
+      <mesh position={[0, -0.43, 0]} castShadow><capsuleGeometry args={[0.14, 0.72, 6, 10]} /><meshStandardMaterial color={suit} /></mesh>
+      <mesh position={[0, -0.86, -0.09]}><boxGeometry args={[0.32, 0.16, 0.52]} /><meshStandardMaterial color={joint} /></mesh>
+    </group>
+    <group ref={rightLeg} position={[0.19, 0.98, 0]}>
+      <mesh position={[0, -0.43, 0]} castShadow><capsuleGeometry args={[0.14, 0.72, 6, 10]} /><meshStandardMaterial color={suit} /></mesh>
+      <mesh position={[0, -0.86, -0.09]}><boxGeometry args={[0.32, 0.16, 0.52]} /><meshStandardMaterial color={joint} /></mesh>
+    </group>
     <mesh position={[0, 1.55, -0.35]}><boxGeometry args={[0.22, 0.12, 0.03]} /><meshStandardMaterial color="#4cc9f0" emissive="#12657d" /></mesh>
   </group>
 }
@@ -222,8 +335,9 @@ function Scene({
   const cameraTarget = useRef(new THREE.Vector3())
   const smoothedElevation = useRef<number | null>(null)
   const keys = useRef(new Set<string>())
+  const motion = useRef<AvatarMotion>({ speed: 0, turn: 0 })
   const routePath = useMemo(() => routeInterpolator(route.scene_coordinates), [route])
-  const overview = useBinary(scene.overview.url)
+  useBinary(scene.overview.url)
   const storedTelemetry = useMissionStore.getState().walkTelemetry
   const [avatarPosition, setAvatarPosition] = useState<Position>(() => {
     if (!guided && storedTelemetry?.mode === 'free') return storedTelemetry.localPosition
@@ -288,10 +402,11 @@ function Scene({
       if (playing) nextProgress = Math.min(1, nextProgress + (speed * delta) / routePath.total)
       currentProgress = nextProgress
       const sample = routePath.at(nextProgress)
-      // Ground clearance offset (+0.18m) so astronaut shoes don't sink into terrain polygons
-      next = [sample.position[0], sample.position[1] + 0.18, sample.position[2]]
+      next = [sample.position[0], sample.position[1], sample.position[2]]
       routeIndex = sample.index
       direction.current.copy(sample.direction)
+      motion.current.speed = playing && nextProgress < 1 ? speed : 0
+      motion.current.turn = 0
       if (performance.now() - lastStoreUpdate.current > 100) {
         setWalkState({ progress: nextProgress, playing: nextProgress < 1 && playing })
         lastStoreUpdate.current = performance.now()
@@ -305,13 +420,13 @@ function Scene({
       const [xMin, zMin, xMax, zMax] = scene.bounds_local
       next[0] = THREE.MathUtils.clamp(next[0], xMin + 5, xMax - 5)
       next[2] = THREE.MathUtils.clamp(next[2], zMin + 5, zMax - 5)
-      if (overview) {
-        const col = Math.round((next[0] - xMin) / (xMax - xMin) * (scene.overview.cols - 1))
-        const row = Math.round((next[2] - zMin) / (zMax - zMin) * (scene.overview.rows - 1))
-        const sampled = overview[Math.max(0, Math.min(scene.overview.rows - 1, row)) * scene.overview.cols + Math.max(0, Math.min(scene.overview.cols - 1, col))]
-        if (Number.isFinite(sampled)) next[1] = sampled - scene.origin.elevation + 0.18
-      }
+      const moved = Math.hypot(next[0] - avatarPosition[0], next[2] - avatarPosition[2])
+      motion.current.speed = delta > 0 ? Math.sign(forward) * moved / delta : 0
+      motion.current.turn = turn
     }
+    // Stand on the terrain that is actually drawn; +0.1 m keeps boots clear of sloped polygons.
+    const ground = groundHeight(scene, next[0], next[2])
+    next[1] = (ground ?? (guided ? next[1] : avatarPosition[1] - 0.1)) + 0.1
     setAvatarPosition(next)
     if (performance.now() - lastUiUpdate.current > 100) {
       const projectedPosition = localToProjected(scene, next)
@@ -372,6 +487,9 @@ function Scene({
       const desiredPos = new THREE.Vector3(next[0] + dx, desiredY, next[2] + dz)
 
       camera.position.lerp(desiredPos, 1 - Math.exp(-delta * 7.5))
+      // Keep the camera above whatever terrain it is over, not only above the astronaut's elevation.
+      const cameraGround = groundHeight(scene, camera.position.x, camera.position.z)
+      if (cameraGround !== null) camera.position.y = Math.max(camera.position.y, cameraGround + 0.8)
       camera.lookAt(cameraTarget.current)
     }
   })
@@ -385,7 +503,7 @@ function Scene({
     <TerrainWorld scene={scene} avatar={avatarPosition} compact={compact} />
     <Line points={route.scene_coordinates.map((point) => [point[0], point[1] + 0.45, point[2]] as Position)} color="#38d4f8" lineWidth={2.2} transparent opacity={0.85} />
     {emergencyRoute && <Line points={emergencyRoute.scene_coordinates.map((point) => [point[0], point[1] + 0.7, point[2]] as Position)} color="#ff6579" lineWidth={3} dashed dashSize={12} gapSize={8} />}
-    <group ref={avatar}><Astronaut moving={playing || !guided} /></group>
+    <group ref={avatar}><Astronaut motion={motion} /></group>
     <WaypointMarkers scene={scene} />
     <Stars radius={2500} depth={200} count={400} factor={2} saturation={0.2} fade speed={0.1} />
   </>
@@ -567,7 +685,7 @@ export default function MarsWalk() {
     onPointerUp={handlePointerUp}
     onPointerCancel={handlePointerUp}
   >
-    <Canvas shadows={false} dpr={compact ? 1 : [1, 2]} camera={{ fov: 52, near: 0.2, far: compact ? 3200 : 5000, position: [0, 8, 15] }} gl={{ antialias: !compact, powerPreference: 'high-performance' }}>
+    <Canvas shadows={false} dpr={compact ? 1 : [1, 2]} camera={{ fov: 52, near: 0.2, far: compact ? 3200 : 5000, position: [0, 8, 15] }} gl={{ antialias: !compact, stencil: true, powerPreference: 'high-performance' }}>
       <Suspense fallback={<SuspenseFallback />}>
         <Scene
           route={route}

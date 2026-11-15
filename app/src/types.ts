@@ -78,6 +78,7 @@ export type SceneTile = {
   bounds_projected: number[]
   bounds_local: number[]
   texture_url: string
+  normal_url?: string
   lods: { resolution_m: number; url: string; rows: number; cols: number }[]
 }
 

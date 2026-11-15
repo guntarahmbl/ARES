@@ -22,6 +22,8 @@ WEB_ROOT = DATA_ROOT / "processed" / "web"
 SCENE_ROOT = DATA_ROOT / "processed" / "3d"
 MARS_GEOGRAPHIC = "+proj=longlat +R=3396190 +no_defs"
 TILE_SIZE_M = 512
+FINE_LOD_M = 2
+NORMAL_STRENGTH = 2.0  # Slope exaggeration baked into normal maps; lighting is illustrative.
 
 
 def sha256(path: Path) -> str:
@@ -106,6 +108,28 @@ def texture_for_bounds(source: rasterio.DatasetReader, bounds: tuple[float, floa
     Image.fromarray(rgb).save(target, "WEBP", quality=82, method=6)
 
 
+def normal_for_bounds(source: rasterio.DatasetReader, bounds: tuple[float, float, float, float], target: Path) -> None:
+    """Write an object-space normal map (x east, y up, z south) covering the same window as the tile texture."""
+    window = from_bounds(*bounds, transform=source.transform).round_offsets().round_lengths()
+    pad = 1
+    col_start = max(0, int(window.col_off) - pad)
+    row_start = max(0, int(window.row_off) - pad)
+    col_stop = min(source.width, int(window.col_off + window.width) + pad)
+    row_stop = min(source.height, int(window.row_off + window.height) + pad)
+    padded = rasterio.windows.Window(col_start, row_start, col_stop - col_start, row_stop - row_start)
+    data = source.read(1, window=padded, masked=True)
+    heights = data.filled(float(data.mean()) if data.count() else 0.0).astype(np.float32)
+    d_south, d_east = np.gradient(heights, abs(source.transform.e), abs(source.transform.a))
+    normal = np.stack([-NORMAL_STRENGTH * d_east, np.ones_like(d_east), -NORMAL_STRENGTH * d_south], axis=-1)
+    normal /= np.linalg.norm(normal, axis=-1, keepdims=True)
+    top = int(window.row_off) - row_start
+    left = int(window.col_off) - col_start
+    normal = normal[top:top + int(window.height), left:left + int(window.width)]
+    rgb = np.clip((normal * 0.5 + 0.5) * 255, 0, 255).round().astype(np.uint8)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    Image.fromarray(rgb).resize((512, 512), Image.BILINEAR).save(target, "WEBP", quality=90, method=6)
+
+
 def downsample_height(data: np.ma.MaskedArray, factor: int) -> np.ndarray:
     values = data.filled(np.nan).astype(np.float32)
     result = values[::factor, ::factor]
@@ -114,9 +138,40 @@ def downsample_height(data: np.ma.MaskedArray, factor: int) -> np.ndarray:
     return result
 
 
-def build_scene() -> dict:
-    terrain_dir = SCENE_ROOT / "terrain"
-    texture_dir = SCENE_ROOT / "textures"
+def read_fine_heights(elevation_source: rasterio.DatasetReader, tile_cells: int) -> tuple[np.ndarray, float] | None:
+    """Resample the 1 m DTM onto a lattice that subdivides the routing grid.
+
+    Fine samples sit on the same cell-centre lattice as the routing grid, so
+    every tile slices one shared array and neighbouring tiles agree on edges.
+    """
+    path = RASTER_ROOT / "hirise_dtm_1m.tif"
+    if not path.exists():
+        print(f"Skipping {FINE_LOD_M} m LOD: {path.name} is missing", file=sys.stderr)
+        return None
+    cell_x = abs(elevation_source.transform.a)
+    factor = round(cell_x / FINE_LOD_M * 2) / 2
+    spans = (tile_cells, elevation_source.width - 1, elevation_source.height - 1)
+    if any(abs(span * factor - round(span * factor)) > 1e-9 for span in spans):
+        print(f"Skipping {FINE_LOD_M} m LOD: grid does not subdivide evenly", file=sys.stderr)
+        return None
+    cols = round((elevation_source.width - 1) * factor) + 1
+    rows = round((elevation_source.height - 1) * factor) + 1
+    with rasterio.open(path) as source:
+        if source.bounds != elevation_source.bounds:
+            print(f"Skipping {FINE_LOD_M} m LOD: {path.name} extent differs from routing grid", file=sys.stderr)
+            return None
+        step_x = cell_x / abs(source.transform.a) / factor
+        step_y = abs(elevation_source.transform.e) / abs(source.transform.e) / factor
+        window = rasterio.windows.Window(
+            (0.5 * factor - 0.5) * step_x, (0.5 * factor - 0.5) * step_y, cols * step_x, rows * step_y,
+        )
+        data = source.read(1, window=window, out_shape=(rows, cols), resampling=Resampling.average, masked=True)
+    return data.filled(np.nan).astype(np.float32), factor
+
+
+def build_scene(scene_root: Path = SCENE_ROOT, fine_lod: bool = False, normal_maps: bool = False) -> dict:
+    terrain_dir = scene_root / "terrain"
+    texture_dir = scene_root / "textures"
     terrain_dir.mkdir(parents=True, exist_ok=True)
     texture_dir.mkdir(parents=True, exist_ok=True)
 
@@ -133,6 +188,11 @@ def build_scene() -> dict:
         tile_cols = math.ceil(elevation_source.width / tile_cells)
         tiles = []
         checksums: dict[str, str] = {}
+        fine = read_fine_heights(elevation_source, tile_cells) if fine_lod else None
+        dtm_path = RASTER_ROOT / "hirise_dtm_1m.tif"
+        if normal_maps and not dtm_path.exists():
+            print(f"Skipping normal maps: {dtm_path.name} is missing", file=sys.stderr)
+        dtm_source = rasterio.open(dtm_path) if normal_maps and dtm_path.exists() else None
 
         for tile_row in range(tile_rows):
             row_start = tile_row * tile_cells
@@ -148,14 +208,21 @@ def build_scene() -> dict:
                 tile_id = f"r{tile_row:02d}_c{tile_col:02d}"
                 texture_path = texture_dir / f"{tile_id}.webp"
                 texture_for_bounds(imagery_source, tile_bounds, texture_path)
-                checksums[texture_path.relative_to(SCENE_ROOT).as_posix()] = sha256(texture_path)
+                checksums[texture_path.relative_to(scene_root).as_posix()] = sha256(texture_path)
                 lods = []
-                for resolution, factor in ((5, 1), (10, 2), (20, 4)):
-                    height = downsample_height(tile_data, factor)
+                levels: list[tuple[int, np.ndarray]] = []
+                if fine is not None:
+                    fine_heights, fine_factor = fine
+                    levels.append((FINE_LOD_M, fine_heights[
+                        round(row_start * fine_factor):round((row_stop - 1) * fine_factor) + 1,
+                        round(col_start * fine_factor):round((col_stop - 1) * fine_factor) + 1,
+                    ]))
+                levels.extend((resolution, downsample_height(tile_data, factor)) for resolution, factor in ((5, 1), (10, 2), (20, 4)))
+                for resolution, height in levels:
                     height = np.where(np.isfinite(height), height, elevation_offset).astype("<f4")
                     height_path = terrain_dir / f"{tile_id}_{resolution}m.bin"
                     height.tofile(height_path)
-                    relative = height_path.relative_to(SCENE_ROOT).as_posix()
+                    relative = height_path.relative_to(scene_root).as_posix()
                     checksums[relative] = sha256(height_path)
                     lods.append({
                         "resolution_m": resolution,
@@ -163,19 +230,29 @@ def build_scene() -> dict:
                         "rows": height.shape[0],
                         "cols": height.shape[1],
                     })
+                normal_url = None
+                if dtm_source is not None:
+                    normal_path = scene_root / "normals" / f"{tile_id}.webp"
+                    normal_for_bounds(dtm_source, tile_bounds, normal_path)
+                    relative = normal_path.relative_to(scene_root).as_posix()
+                    checksums[relative] = sha256(normal_path)
+                    normal_url = f"/assets/3d/{relative}"
                 left, bottom, right, top = tile_bounds
                 tiles.append({
                     "id": tile_id,
                     "bounds_projected": [left, bottom, right, top],
                     "bounds_local": [left - origin_x, origin_y - top, right - origin_x, origin_y - bottom],
-                    "texture_url": f"/assets/3d/{texture_path.relative_to(SCENE_ROOT).as_posix()}",
+                    "texture_url": f"/assets/3d/{texture_path.relative_to(scene_root).as_posix()}",
                     "lods": lods,
+                    **({"normal_url": normal_url} if normal_url else {}),
                 })
+        if dtm_source is not None:
+            dtm_source.close()
 
         overview = full.filled(elevation_offset).astype("<f4")[::4, ::4]
         overview_path = terrain_dir / "overview_20m.bin"
         overview.tofile(overview_path)
-        checksums[overview_path.relative_to(SCENE_ROOT).as_posix()] = sha256(overview_path)
+        checksums[overview_path.relative_to(scene_root).as_posix()] = sha256(overview_path)
         transformer = Transformer.from_crs(elevation_source.crs, MARS_GEOGRAPHIC, always_xy=True)
         origin_lon, origin_lat = transformer.transform(origin_x, origin_y)
         scene = {
@@ -200,8 +277,8 @@ def build_scene() -> dict:
                 "Lighting and astronaut motion are illustrative simulations.",
             ],
         }
-    SCENE_ROOT.mkdir(parents=True, exist_ok=True)
-    target = SCENE_ROOT / "scene.json"
+    scene_root.mkdir(parents=True, exist_ok=True)
+    target = scene_root / "scene.json"
     target.write_text(json.dumps(scene, indent=2), encoding="utf-8")
     return scene
 
@@ -209,6 +286,10 @@ def build_scene() -> dict:
 def main() -> int:
     parser = argparse.ArgumentParser(description="Build ARES Path browser and MarsWalk assets.")
     parser.add_argument("--web-only", action="store_true")
+    parser.add_argument("--scene-only", action="store_true", help="Skip the 2D web previews.")
+    parser.add_argument("--fine-lod", action="store_true", help=f"Add a {FINE_LOD_M} m terrain LOD from hirise_dtm_1m.tif.")
+    parser.add_argument("--normal-maps", action="store_true", help="Add per-tile normal maps from hirise_dtm_1m.tif.")
+    parser.add_argument("--scene-out", type=Path, default=SCENE_ROOT, help="Output folder for MarsWalk assets.")
     args = parser.parse_args()
     required = [
         RASTER_ROOT / "routing_elevation_5m.tif",
@@ -219,11 +300,13 @@ def main() -> int:
     if missing:
         print(f"Missing processed rasters: {missing}", file=sys.stderr)
         return 1
-    previews = build_web_previews()
-    print(f"Built {len(previews)} web previews in {WEB_ROOT.relative_to(REPO_ROOT)}")
+    if not args.scene_only:
+        previews = build_web_previews()
+        print(f"Built {len(previews)} web previews in {WEB_ROOT.relative_to(REPO_ROOT)}")
     if not args.web_only:
-        scene = build_scene()
-        print(f"Built {len(scene['tiles'])} MarsWalk terrain tiles in {SCENE_ROOT.relative_to(REPO_ROOT)}")
+        scene_root = args.scene_out.resolve()
+        scene = build_scene(scene_root, args.fine_lod, args.normal_maps)
+        print(f"Built {len(scene['tiles'])} MarsWalk terrain tiles in {scene_root}")
     return 0
 
 
