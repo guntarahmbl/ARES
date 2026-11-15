@@ -117,10 +117,11 @@ def assistant_status() -> dict:
 
 
 @app.post("/api/v1/assistant/query", response_model=AnalystResponse)
-def assistant_query(payload: AnalystQuery, request: Request, engine: RoutingEngine = Depends(get_engine)) -> AnalystResponse:
+def assistant_query(payload: AnalystQuery, request: Request) -> AnalystResponse:
     config = get_llm_config()
     if config is None:
         raise HTTPException(status_code=503, detail="The local ARES Mission Analyst is disabled.")
+    engine = get_engine()
     client_id = request.client.host if request.client else "local"
     try:
         return query_analyst(engine, config, payload, client_id)
@@ -156,4 +157,3 @@ if (APP_DIST / "assets").exists() and (APP_DIST / "index.html").exists():
     def spa(path: str) -> FileResponse:
         candidate = APP_DIST / path
         return FileResponse(candidate if candidate.is_file() else APP_DIST / "index.html")
-
