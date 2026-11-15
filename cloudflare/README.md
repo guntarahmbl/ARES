@@ -1,6 +1,7 @@
 # Cloudflare Workers Free + R2
 
-Live deployment (`main` branch): https://ares.disra.net
+Production has moved to a Dokploy VM: https://ares.disra.net.
+See [../deploy/README.md](../deploy/README.md) for the VM release procedure.
 
 Workers URL: https://ares-path.mdikiisra98.workers.dev
 
@@ -63,8 +64,8 @@ cd cloudflare
 npm run deploy
 ```
 
-`npm run deploy` publishes the main `ares-path` Worker and attaches the custom
-domain `ares.disra.net`, including Cloudflare-managed DNS and HTTPS. Deployments
+`npm run deploy` publishes the separate `ares-path` Worker at its Workers URL.
+It no longer attaches the production custom domain. Deployments
 also run automatically through GitHub Actions: every push to `main` must pass
 Python tests, frontend tests/build, and routing tests before Wrangler publishes
 the site. Pull requests and other branches run validation without deployment.
@@ -100,7 +101,7 @@ After deploying, run the browser test against the public URL:
 
 ```bash
 cd app
-PLAYWRIGHT_BASE_URL=https://YOUR_WORKER.workers.dev PLAYWRIGHT_CHANNEL=chromium npx playwright test tests/e2e/cloudflare.spec.ts
+PLAYWRIGHT_BASE_URL=https://ares-path.mdikiisra98.workers.dev PLAYWRIGHT_CHANNEL=chromium npx playwright test tests/e2e/cloudflare.spec.ts
 ```
 
 This test loads the planner, then compares all browser-worker operations against

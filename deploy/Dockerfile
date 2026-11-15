@@ -1,0 +1,30 @@
+FROM python:3.12-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    OMP_NUM_THREADS=1 \
+    OPENBLAS_NUM_THREADS=1
+
+WORKDIR /app
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libexpat1 \
+    && rm -rf /var/lib/apt/lists/*
+COPY requirements-app.txt requirements-data.txt ./
+RUN pip install --no-cache-dir -r requirements-app.txt -r requirements-data.txt \
+    && python -c "import rasterio, pyproj, shapely, skimage, scipy, fastapi" \
+    && useradd --uid 10001 --create-home ares
+
+COPY server/ server/
+COPY app/dist/ app/dist/
+COPY data/aoi/ data/aoi/
+COPY data/manifests/ data/manifests/
+COPY data/samples/ data/samples/
+COPY data/processed/rasters/ data/processed/rasters/
+COPY data/processed/web/ data/processed/web/
+COPY data/processed/3d/ data/processed/3d/
+
+USER ares
+EXPOSE 8000
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health', timeout=8)"
+CMD ["python", "-m", "uvicorn", "server.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]

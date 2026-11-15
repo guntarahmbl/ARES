@@ -86,6 +86,10 @@ The command exits unsuccessfully when intent accuracy is below 90%.
 
 ## Cloudflare deployment
 
+Production at https://ares.disra.net now runs on a Dokploy VM with the Python
+backend and Mission Analyst. See [deploy/README.md](deploy/README.md) for releases.
+The Cloudflare deployment below remains available at its Workers URL.
+
 The application can also run entirely on Cloudflare Workers with a private R2
 bucket. A browser Web Worker calculates routes from a compact export of the
 original 5 m grid, while Static Assets serves React and R2 supplies terrain and

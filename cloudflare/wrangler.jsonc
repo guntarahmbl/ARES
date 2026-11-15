@@ -4,9 +4,7 @@
   "main": "src/index.js",
   "compatibility_date": "2026-11-13",
   "workers_dev": true,
-  "routes": [
-    { "pattern": "ares.disra.net", "custom_domain": true }
-  ],
+  "routes": [],
   "assets": {
     "directory": "../app/dist",
     "binding": "ASSETS",
