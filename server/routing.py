@@ -328,17 +328,21 @@ class RoutingEngine:
         coarse_transform = self.transform * rasterio.Affine.scale(stride, stride)
         from rasterio.features import shapes
 
+        hab_x, hab_y = self.to_projected.transform(mission.habitat.longitude, mission.habitat.latitude)
+        hab_point = Point(hab_x, hab_y)
+
         for label, fraction in levels:
             mask = np.isfinite(accumulated) & (accumulated * self.resolution * stride <= remaining * fraction)
-            for geometry, value in shapes(mask.astype(np.uint8), mask=mask, transform=coarse_transform):
-                if value != 1:
-                    continue
-                coordinates = []
-                for ring in geometry["coordinates"]:
-                    lonlat = [self.to_geographic.transform(x, y) for x, y in ring]
-                    coordinates.append([[lon, lat] for lon, lat in lonlat])
-                features.append({"type": "Feature", "properties": {"state": label}, "geometry": {"type": "Polygon", "coordinates": coordinates}})
-                break
+            candidates = [g for g, val in shapes(mask.astype(np.uint8), mask=mask, transform=coarse_transform) if val == 1]
+            if not candidates:
+                continue
+            matching = [g for g in candidates if shape(g).covers(hab_point)]
+            best = matching[0] if matching else max(candidates, key=lambda g: shape(g).area)
+            coordinates = []
+            for ring in best["coordinates"]:
+                lonlat = [self.to_geographic.transform(x, y) for x, y in ring]
+                coordinates.append([[lon, lat] for lon, lat in lonlat])
+            features.append({"type": "Feature", "properties": {"state": label}, "geometry": {"type": "Polygon", "coordinates": coordinates}})
         return {"type": "FeatureCollection", "features": features}
 
     def plan(self, mission: MissionConfig, include_envelope: bool = True) -> RoutePlanResponse:

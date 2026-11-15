@@ -70,3 +70,17 @@ def test_custom_stop_routes_without_increasing_science_score() -> None:
     assert payload["primary"]["stop_visits"][0]["type"] == "custom"
     assert payload["primary"]["metrics"]["science_score"] == 0
 
+
+def test_return_envelope_covers_habitat() -> None:
+    from shapely.geometry import Point, shape
+    response = client.post("/api/v1/routes/plan", json=DEFAULT_MISSION)
+    assert response.status_code == 200
+    envelope = response.json()["return_envelope"]
+    assert len(envelope["features"]) >= 1
+    safe_feature = next((f for f in envelope["features"] if f["properties"]["state"] == "safe"), None)
+    assert safe_feature is not None
+    hab = DEFAULT_MISSION["habitat"]
+    poly = shape(safe_feature["geometry"])
+    assert poly.covers(Point(hab["longitude"], hab["latitude"]))
+
+

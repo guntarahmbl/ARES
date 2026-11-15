@@ -2,7 +2,7 @@ import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame, useLoader, useThree } from '@react-three/fiber'
 import { Html, Line, Stars } from '@react-three/drei'
 import {
-  Activity, AlertTriangle, BatteryCharging, ChevronLeft, Compass, FastForward, Footprints, Gauge, Map, Minus, Pause, Play,
+  Activity, AlertTriangle, BatteryCharging, ChevronLeft, Compass, FastForward, Footprints, Gauge, Map, MapPin, Minus, Pause, Play,
   Plus, RotateCcw, ShieldCheck, Target, Zap
 } from 'lucide-react'
 import * as THREE from 'three'
@@ -402,7 +402,7 @@ function WaypointMarkers({ scene: _scene }: { scene: SceneManifest }) {
     return <group key={stop.id} position={[x, y + 0.2, z]}>
       <mesh position={[0, 6, 0]}><cylinderGeometry args={[0.18, 0.18, 12, 8]} /><meshBasicMaterial color={color} transparent opacity={0.65} /></mesh>
       <mesh position={[0, 12, 0]}><octahedronGeometry args={[1.2]} /><meshStandardMaterial color={color} emissive={stop.type === 'custom' ? '#16495a' : '#6b2d12'} /></mesh>
-      <Html position={[0, 14.5, 0]} center distanceFactor={22}><button className="rounded border border-white/20 bg-[#0d1117] px-2.5 py-1 text-xs font-mono font-medium text-white shadow-md hover:bg-white/10" onClick={() => stop.type === 'science' && useMissionStore.getState().setSelectedWaypoint(stop.id)}>{label}</button></Html>
+      <Html position={[0, 14.5, 0]} center distanceFactor={22}><button className="rounded border border-white/20 bg-[#0d1117] px-2.5 py-1 text-xs font-mono font-medium text-white shadow-md hover:bg-white/10" onClick={() => useMissionStore.getState().setSelectedWaypoint(stop.id)}>{label}</button></Html>
     </group>
   })}</>
 }
@@ -749,11 +749,59 @@ function SuspenseFallback() {
 function WaypointOverlay() {
   const id = useMissionStore((state) => state.selectedWaypoint)!
   const bootstrap = useMissionStore((state) => state.bootstrap)!
+  const mission = useMissionStore((state) => state.mission)
   const setSelected = useMissionStore((state) => state.setSelectedWaypoint)
   const waypoint = bootstrap.waypoints.features.find((item) => item.properties.id === id)
+  const customStop = mission?.route_stops.find((s) => s.id === id && s.type === 'custom') as CustomRouteStop | undefined
+
+  if (!waypoint && !customStop) return null
+
+  if (customStop) {
+    let nearestImage: { img: typeof bootstrap.surface_images[0]; distanceM: number } | null = null
+    if (bootstrap.surface_images.length > 0) {
+      const cosLat = Math.cos((customStop.latitude * Math.PI) / 180)
+      let minD = Infinity
+      for (const img of bootstrap.surface_images) {
+        const imgLon = Number(img.longitude)
+        const imgLat = Number(img.latitude)
+        const dx = ((imgLon - customStop.longitude) * Math.PI / 180) * 3396190 * cosLat
+        const dy = ((imgLat - customStop.latitude) * Math.PI / 180) * 3396190
+        const d = Math.hypot(dx, dy)
+        if (d < minD) {
+          minD = d
+          nearestImage = { img, distanceM: Math.round(d) }
+        }
+      }
+    }
+    const distStr = nearestImage && (nearestImage.distanceM >= 1000 ? `${(nearestImage.distanceM / 1000).toFixed(1)} km` : `${nearestImage.distanceM} m`)
+
+    return (
+      <aside className="absolute inset-x-3 bottom-3 z-30 max-h-[70svh] overflow-auto rounded-xl border border-white/20 bg-[#0d1117] p-5 shadow-2xl md:inset-auto md:right-4 md:top-20 md:w-84">
+        <button className="absolute right-3 top-3 grid size-8 place-items-center rounded-lg text-slate-400 hover:bg-white/10 hover:text-white" onClick={() => setSelected(null)}>✕</button>
+        <span className="flex items-center gap-1.5 text-xs font-mono font-semibold tracking-wider text-sky-400 uppercase">
+          <MapPin size={13} /> Custom Checkpoint
+        </span>
+        <h2 className="mb-1 mt-2 pr-6 text-lg font-semibold text-white">{customStop.name}</h2>
+        <p className="mb-3 font-mono text-xs text-slate-400">Coord: {customStop.latitude.toFixed(4)}°N, {customStop.longitude.toFixed(4)}°E</p>
+        {nearestImage && (
+          <div className="mb-3">
+            <img className="aspect-video w-full rounded-lg border border-white/10 object-cover" src={`/assets/thumbnails/surface/${nearestImage.img.product_id}.jpg`} alt="Nearest rover observation" />
+            <p className="mt-1 font-mono text-[10px] text-slate-400">Nearest Observation · Sol {nearestImage.img.sol} ({distStr} away)</p>
+          </div>
+        )}
+        <div className="flex items-center gap-2 border-t border-white/10 pt-2 text-[10px] text-slate-400 font-mono">
+          <Activity size={12} className="text-sky-400" />
+          <span>User-defined exploration stop</span>
+        </div>
+      </aside>
+    )
+  }
+
+  if (!waypoint) return null
+
   const images = bootstrap.surface_images.filter((item) => item.waypoint_id === id)
   const evidence = bootstrap.science_evidence[id]
-  if (!waypoint) return null
+
   return <aside className="absolute inset-x-3 bottom-3 z-30 max-h-[70svh] overflow-auto rounded-xl border border-white/20 bg-[#0d1117] p-5 shadow-2xl md:inset-auto md:right-4 md:top-20 md:w-84">
     <button className="absolute right-3 top-3 grid size-8 place-items-center rounded-lg text-slate-400 hover:bg-white/10 hover:text-white" onClick={() => setSelected(null)}>✕</button>
     <span className="flex items-center gap-1.5 text-xs font-mono font-semibold tracking-wider text-mars uppercase">

@@ -5,7 +5,8 @@ import {
   Compass, GripVertical, Layers3, MapPin, Menu, Mountain, Navigation, Plus, ShieldCheck, Target, Trash2, X, Zap
 } from 'lucide-react'
 import { useMissionStore } from '../store'
-import type { RouteCandidate, RouteStop } from '../types'
+import type { CustomRouteStop, RouteCandidate, RouteStop, WaypointValidation } from '../types'
+import { api } from '../api'
 import { MarsMap } from './MarsMap'
 import { Button } from './ui/button'
 import { Sheet } from './ui/sheet'
@@ -55,13 +56,109 @@ function WaypointInspector2D() {
   const bootstrap = useMissionStore((state) => state.bootstrap)
   const mission = useMissionStore((state) => state.mission)
   const toggleScience = useMissionStore((state) => state.toggleScienceStop)
+  const removeStop = useMissionStore((state) => state.removeStop)
 
   const id = selectedId ?? hoveredId
-  const isPinned = Boolean(selectedId)
+  const waypoint = bootstrap?.waypoints.features.find((f) => f.properties.id === id)
+  const customStop = mission?.route_stops.find((s) => s.id === id && s.type === 'custom') as CustomRouteStop | undefined
+
+  const [customValidation, setCustomValidation] = useState<WaypointValidation | null>(null)
+
+  useEffect(() => {
+    if (!customStop) {
+      setCustomValidation(null)
+      return
+    }
+    let cancelled = false
+    void api.validateWaypoint({ longitude: customStop.longitude, latitude: customStop.latitude }).then((res) => {
+      if (!cancelled) setCustomValidation(res)
+    }).catch(() => {})
+    return () => { cancelled = true }
+  }, [customStop?.id, customStop?.longitude, customStop?.latitude])
 
   if (!id || !bootstrap) return null
-  const waypoint = bootstrap.waypoints.features.find((f) => f.properties.id === id)
+  if (!waypoint && !customStop) return null
+
+  if (customStop) {
+    let nearestImage: { img: typeof bootstrap.surface_images[0]; distanceM: number } | null = null
+    if (bootstrap.surface_images.length > 0) {
+      const cosLat = Math.cos((customStop.latitude * Math.PI) / 180)
+      let minD = Infinity
+      for (const img of bootstrap.surface_images) {
+        const imgLon = Number(img.longitude)
+        const imgLat = Number(img.latitude)
+        const dx = ((imgLon - customStop.longitude) * Math.PI / 180) * 3396190 * cosLat
+        const dy = ((imgLat - customStop.latitude) * Math.PI / 180) * 3396190
+        const d = Math.hypot(dx, dy)
+        if (d < minD) {
+          minD = d
+          nearestImage = { img, distanceM: Math.round(d) }
+        }
+      }
+    }
+
+    return (
+      <aside
+        className="absolute right-3 top-14 z-20 w-80 max-h-[80svh] overflow-y-auto rounded-xl border border-white/20 bg-[#0d1117]/95 backdrop-blur p-4 shadow-2xl transition-all"
+        onMouseEnter={() => setHovered(id)}
+        onMouseLeave={() => setHovered(null)}
+      >
+        <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
+          <span className="flex items-center gap-1.5 font-mono text-[11px] font-semibold uppercase tracking-wider text-sky-400">
+            <MapPin size={13} /> Custom Checkpoint
+          </span>
+          <button
+            className="grid size-6 place-items-center rounded text-slate-400 hover:bg-white/10 hover:text-white"
+            onClick={() => { setSelected(null); setHovered(null) }}
+            aria-label="Close inspector"
+          >
+            <X size={14} />
+          </button>
+        </div>
+
+        <h3 className="mt-2.5 text-sm font-semibold text-white">{customStop.name}</h3>
+        <p className="mt-1 font-mono text-xs text-slate-400">{customStop.latitude.toFixed(4)}°N, {customStop.longitude.toFixed(4)}°E</p>
+
+        {nearestImage && (
+          <div className="mt-3 overflow-hidden rounded-lg border border-white/10">
+            <img className="aspect-video w-full object-cover" src={`/assets/thumbnails/surface/${nearestImage.img.product_id}.jpg`} alt="Nearest rover observation" />
+            <div className="bg-[#12161f] px-2 py-1 text-[10px] font-mono text-slate-300">
+              Nearest Photo · Sol {nearestImage.img.sol} ({formatDistance(nearestImage.distanceM)} away)
+            </div>
+          </div>
+        )}
+
+        <dl className="mt-3 grid grid-cols-3 gap-1.5 font-mono text-xs">
+          <div className="rounded border border-white/10 bg-[#161b22] p-1.5">
+            <dt className="text-[10px] text-slate-400">Slope</dt>
+            <dd className="font-semibold text-sky-400">{customValidation?.terrain.slope_deg?.toFixed(1) ?? '—'}°</dd>
+          </div>
+          <div className="rounded border border-white/10 bg-[#161b22] p-1.5">
+            <dt className="text-[10px] text-slate-400">Geology</dt>
+            <dd className="font-semibold text-white">{customValidation?.science_context.geology_symbol ?? 'Nili'}</dd>
+          </div>
+          <div className="rounded border border-white/10 bg-[#161b22] p-1.5">
+            <dt className="text-[10px] text-slate-400">Elev</dt>
+            <dd className="font-semibold text-white">{customValidation?.terrain.elevation_m != null ? `${Math.round(customValidation.terrain.elevation_m)}m` : '—'}</dd>
+          </div>
+        </dl>
+
+        <div className="mt-3.5 flex gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-full text-xs font-semibold text-rose-400 hover:bg-rose-500/10 hover:text-rose-300"
+            onClick={() => { removeStop(customStop.id); setSelected(null); setHovered(null) }}
+          >
+            <Trash2 size={13} className="mr-1.5" /> Remove from route
+          </Button>
+        </div>
+      </aside>
+    )
+  }
+
   if (!waypoint) return null
+
   const images = bootstrap.surface_images.filter((img) => img.waypoint_id === id)
   const evidence = bootstrap.science_evidence[id]
   const isSelected = mission?.route_stops.some((s) => s.id === id)
