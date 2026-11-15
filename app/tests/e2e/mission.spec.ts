@@ -60,6 +60,7 @@ test('MarsWalk loads terrain and returns to planner', async ({ page }) => {
   await expect(page.getByTestId('route-status')).toContainText('Route is safe to return', { timeout: 20_000 })
   await page.getByRole('navigation', { name: 'Primary view selector' }).getByRole('button', { name: 'MarsWalk' }).click()
   await expect(page.locator('.marswalk-shell canvas')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Route advisor' })).toBeVisible()
   await expect(page.getByLabel('Astronaut tracking map')).toBeVisible()
   await expect(page.getByRole('button', { name: /Guided Tour/i })).toBeVisible()
   await expect(page.locator('.terrain-loader')).toHaveCount(0, { timeout: 5_000 })
@@ -142,42 +143,43 @@ for (const viewport of [
   })
 }
 
-test('route advisor answers from the plan and applies an accepted proposal', async ({ page }) => {
+test('mission analyst answers from evidence and applies a validated proposal', async ({ page }) => {
   const errors = captureErrors(page)
-  const frame = (event: object) => `data: ${JSON.stringify(event)}\n\n`
-  let asked: { messages: { role: string; content: string }[]; mission: { route_stops: { id: string }[] } } | null = null
-  await page.route('**/api/v1/assistant/status', (route) => route.fulfill({ json: { available: true, provider: 'Test provider', model: 'test-model' } }))
-  await page.route('**/api/v1/assistant/chat', async (route) => {
+  let asked: { message: string; mission: { route_stops: { id: string }[] } } | null = null
+  await page.route('**/api/v1/assistant/status', (route) => route.fulfill({ json: { available: true, state: 'ready', provider: '9Router', model: 'test-model', detail: null } }))
+  await page.route('**/api/v1/assistant/query', async (route) => {
     asked = route.request().postDataJSON()
     const mission = { ...asked!.mission, route_stops: asked!.mission.route_stops.slice(0, 2) }
     await route.fulfill({
-      contentType: 'text/event-stream',
-      body: [
-        frame({ type: 'text', text: 'Dropping the far stop ' }),
-        frame({ type: 'text', text: 'saves the most.' }),
-        frame({
-          type: 'proposal', summary: 'Skip Upper Delta Traverse.', mission,
-          outcome: { feasible: true, warnings: [], route: { distance_m: 6800, duration_min: 203, energy_units: 7538, return_reserve_units: 37462, maximum_slope_deg: 9, elevation_gain_m: 80, science_score: 54.5 } },
-        }),
-        frame({ type: 'done' }),
-      ].join(''),
+      json: {
+        request_id: 'request-1', intent: 'configure_mission', answer: 'Dropping the far stop saves the most [D-02].',
+        citations: [{ dataset_id: 'D-02', title: 'HiRISE DTM', product_id: 'DTM', catalog_url: 'https://example.test/dtm', version: '1', resolution_m: 1, classification: 'measured', attribution: 'NASA', license: 'Public domain', processing: 'Derived 5 m routing grid' }],
+        evidence: [], warnings: [], model: 'test-model', prompt_version: 'ares-analyst-v1',
+        proposal: {
+          summary: 'Skip Upper Delta Traverse.', changes: ['Stops changed'], mission, based_on_revision: 'revision-1',
+          preview: { feasible: true, warnings: [], route: { distance_m: 6800, duration_min: 203, energy_units: 7538, return_reserve_units: 37462, maximum_slope_deg: 9, elevation_gain_m: 80, science_score: 54.5 } },
+        },
+      },
     })
+  })
+  await page.route('**/api/v1/assistant/proposals/apply', async (route) => {
+    const payload = route.request().postDataJSON()
+    const planned = await page.request.post('/api/v1/routes/plan', { data: payload.proposed_mission })
+    await route.fulfill({ json: { mission: payload.proposed_mission, plan: await planned.json(), mission_revision: 'revision-2' } })
   })
 
   await page.goto('/')
   await expect(page.getByTestId('route-status')).toContainText('Route is safe to return', { timeout: 20_000 })
   await page.getByRole('button', { name: 'Route advisor' }).click()
   const advisor = page.getByRole('complementary', { name: 'Route advisor' })
-  await expect(advisor).toContainText('Test provider · test-model')
+  await expect(advisor).toContainText('9Router · test-model')
   await advisor.getByLabel('Message to the route advisor').fill('Make it shorter')
   await page.keyboard.press('Enter')
-  await expect(advisor).toContainText('Dropping the far stop saves the most.')
+  await expect(advisor).toContainText('Dropping the far stop saves the most')
   await expect(advisor).toContainText('was 13.5 km')
-  expect(asked!.messages.at(-1)).toEqual({ role: 'user', content: 'Make it shorter' })
+  expect(asked!.message).toBe('Make it shorter')
 
-  const replanned = page.waitForResponse((response) => response.url().endsWith('/api/v1/routes/plan') && response.request().method() === 'POST')
   await advisor.getByRole('button', { name: 'Apply to plan' }).click()
-  expect((await replanned).request().postDataJSON().route_stops).toHaveLength(2)
   await expect(advisor).toContainText('Applied to plan')
   await expect(page.getByTestId('route-action')).toHaveText('Route up to date', { timeout: 20_000 })
   await expect(page.getByRole('button', { name: 'Remove Upper Delta Traverse' })).toHaveCount(0)
