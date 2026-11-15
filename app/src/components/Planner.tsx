@@ -2,7 +2,6 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { Check, ChevronLeft, ChevronRight, GripVertical, Layers3, PanelLeftOpen, Plus, Trash2, X } from 'lucide-react'
 import { useMissionStore } from '../store'
 import type { RouteCandidate, RouteStop } from '../types'
-import { Advisor } from './Advisor'
 import { MarsMap } from './MarsMap'
 import { TraverseProfile } from './TraverseProfile'
 import { Button } from './ui/button'
@@ -618,7 +617,6 @@ export function Planner() {
         </div>
         <RouteStrip />
       </div>
-      <Advisor />
       <RouteDetails />
       <DraftStopSheet />
     </div>
