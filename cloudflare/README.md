@@ -65,14 +65,12 @@ npm run deploy
 ```
 
 `npm run deploy` publishes the separate `ares-path` Worker at its Workers URL.
-It no longer attaches the production custom domain. Deployments
-also run automatically through GitHub Actions: every push to `main` must pass
-Python tests, frontend tests/build, and routing tests before Wrangler publishes
-the site. Pull requests and other branches run validation without deployment.
-The workflow checks the public health endpoint after publishing and serializes
-runs for each branch to prevent simultaneous deployments.
+It no longer attaches the production custom domain. Worker publishing is manual;
+GitHub Actions now deploys the production Dokploy VM after validation. See
+[../deploy/README.md](../deploy/README.md) for that pipeline and its private R2
+runtime dataset.
 
-Configure these GitHub repository secrets for automatic deployment:
+The VM pipeline uses these GitHub repository secrets to read its R2 dataset:
 
 - `CLOUDFLARE_API_TOKEN`: a durable API token using the **Edit Cloudflare Workers**
   template, restricted to the deployment account and the `disra.net` zone, with

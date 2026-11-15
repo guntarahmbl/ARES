@@ -19,6 +19,7 @@ def test_health_reports_real_grid() -> None:
     assert response.status_code == 200
     payload = response.json()
     assert payload["status"] == "ok"
+    assert "release" in payload
     assert payload["grid"]["width"] == 1423
     assert payload["marswalk_assets"] is True
 

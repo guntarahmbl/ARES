@@ -15,6 +15,7 @@ RUN pip install --no-cache-dir -r requirements-app.txt -r requirements-data.txt 
     && useradd --uid 10001 --create-home ares
 
 COPY server/ server/
+COPY release.txt ./
 COPY app/dist/ app/dist/
 COPY data/aoi/ data/aoi/
 COPY data/manifests/ data/manifests/

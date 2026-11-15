@@ -20,7 +20,7 @@ from .analyst import (
     get_llm_config,
     query_analyst,
 )
-from .config import APP_DIST, DATA_ROOT, DEFAULT_MISSION, HABITAT_RADIUS_M, SCENE_ROOT, WEB_ROOT
+from .config import APP_DIST, DATA_ROOT, DEFAULT_MISSION, HABITAT_RADIUS_M, REPO_ROOT, SCENE_ROOT, WEB_ROOT
 from .routing import RoutingEngine, RoutingError, get_engine
 from .schemas import (
     EnergyLossRequest,
@@ -34,12 +34,14 @@ from .schemas import (
 
 
 app = FastAPI(title="ARES Path API", version="1.0.0", docs_url="/api/docs")
+RELEASE = (REPO_ROOT / "release.txt").read_text().strip() if (REPO_ROOT / "release.txt").is_file() else "development"
 
 
 @app.get("/api/v1/health")
 def health(engine: RoutingEngine = Depends(get_engine)) -> dict:
     return {
         "status": "ok",
+        "release": RELEASE,
         "grid": {"width": int(engine.elevation.shape[1]), "height": int(engine.elevation.shape[0]), "resolution_m": engine.resolution},
         "web_assets": WEB_ROOT.exists(),
         "marswalk_assets": (SCENE_ROOT / "scene.json").exists(),
