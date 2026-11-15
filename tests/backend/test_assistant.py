@@ -294,6 +294,11 @@ def test_message_limit_is_enforced() -> None:
     assert client.post("/api/v1/assistant/query", json=payload).status_code == 422
 
 
+def test_legacy_full_mission_revision_is_accepted() -> None:
+    request = query().model_copy(update={"mission_revision": json.dumps(DEFAULT_MISSION)})
+    assert len(request.mission_revision) > 128
+
+
 @needs_rasters
 def test_structured_query_and_revision_safe_apply(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("ARES_LLM_ENABLED", "true")

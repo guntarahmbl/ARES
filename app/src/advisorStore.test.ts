@@ -42,6 +42,13 @@ describe('headless analyst store', () => {
     expect(useAdvisorStore.getState().messages.at(-1)?.citations?.[0].dataset_id).toBe('D-02')
   })
 
+  it('uses a compact deterministic mission revision', () => {
+    const revision = missionKey(mission)
+    expect(revision.length).toBeLessThanOrEqual(128)
+    expect(revision).toBe(missionKey(structuredClone(mission)))
+    expect(revision).not.toBe(missionKey({ ...mission, energy_budget: 44000 }))
+  })
+
   it('does not apply a proposal after the mission changes', async () => {
     vi.spyOn(api, 'advisorQuery').mockResolvedValue(response({ ...mission, energy_budget: 40000 }))
     await useAdvisorStore.getState().send('Use less energy')

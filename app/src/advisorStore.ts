@@ -38,7 +38,15 @@ type AdvisorStore = {
 
 let controller: AbortController | null = null
 
-export const missionKey = (mission: MissionConfig | null) => JSON.stringify(mission)
+export const missionKey = (mission: MissionConfig | null) => {
+  const serialized = JSON.stringify(mission)
+  let hash = 0x811c9dc5
+  for (let index = 0; index < serialized.length; index += 1) {
+    hash ^= serialized.charCodeAt(index)
+    hash = Math.imul(hash, 0x01000193)
+  }
+  return `mission-v1-${(hash >>> 0).toString(16).padStart(8, '0')}-${serialized.length}`
+}
 
 export const useAdvisorStore = create<AdvisorStore>((set, get) => {
   const patch = (id: string, change: (message: AdvisorMessage) => AdvisorMessage) =>
