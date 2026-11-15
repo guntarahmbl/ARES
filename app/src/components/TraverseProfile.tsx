@@ -78,14 +78,14 @@ export function TraverseProfile({ route, stops, slopeLimitDeg, compact = false, 
         onPointerLeave={() => setCursor(null)}
       >
         <svg className="absolute inset-0 size-full" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden>
-          <path d={geometry.area} fill="#0b6e8a" fillOpacity="0.1" />
+          <path d={geometry.area} fill="rgb(var(--c-route))" fillOpacity="0.1" />
           {stations.map(({ visit }) => {
             const position = geometry.x(visit.arrival_distance_m)
-            return <line key={visit.id} x1={position} x2={position} y1="0" y2="100" stroke="#141c1a" strokeWidth="1" strokeDasharray="2 2" vectorEffect="non-scaling-stroke" />
+            return <line key={visit.id} x1={position} x2={position} y1="0" y2="100" stroke="rgb(var(--c-ink))" strokeWidth="1" strokeDasharray="2 2" vectorEffect="non-scaling-stroke" />
           })}
-          <path d={geometry.line} fill="none" stroke="#0b6e8a" strokeWidth="1.5" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
-          {geometry.steep && <path d={geometry.steep} fill="none" stroke="#b8431b" strokeWidth="2.5" strokeLinecap="round" vectorEffect="non-scaling-stroke" />}
-          {active && <line x1={geometry.x(active.distance_m)} x2={geometry.x(active.distance_m)} y1="0" y2="100" stroke="#141c1a" strokeWidth="1" vectorEffect="non-scaling-stroke" />}
+          <path d={geometry.line} fill="none" stroke="rgb(var(--c-route))" strokeWidth="1.5" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+          {geometry.steep && <path d={geometry.steep} fill="none" stroke="rgb(var(--c-rust))" strokeWidth="2.5" strokeLinecap="round" vectorEffect="non-scaling-stroke" />}
+          {active && <line x1={geometry.x(active.distance_m)} x2={geometry.x(active.distance_m)} y1="0" y2="100" stroke="rgb(var(--c-ink))" strokeWidth="1" vectorEffect="non-scaling-stroke" />}
         </svg>
 
         {!compact && (

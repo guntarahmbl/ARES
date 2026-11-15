@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
-import { Footprints, Info, Map, Menu, MessageSquareText, RotateCcw } from 'lucide-react'
+import { Footprints, Info, Map, Menu, MessageSquareText, Moon, RotateCcw, Sun } from 'lucide-react'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { Advisor } from './components/Advisor'
 import { MarsTrackingMap } from './components/MarsTrackingMap'
@@ -8,6 +8,7 @@ import { Button } from './components/ui/button'
 import { Sheet } from './components/ui/sheet'
 import { useAdvisorStore } from './advisorStore'
 import { useMissionStore } from './store'
+import { useTheme } from './hooks/useTheme'
 import { useViewTransition } from './hooks/useViewTransition'
 import { loadMarsWalk, preloadMarsWalk } from './lib/marsWalkLoader'
 
@@ -24,6 +25,7 @@ export default function App() {
   const setSidebarOpen = useMissionStore((state) => state.setSidebarOpen)
   const [showInfo, setShowInfo] = useState(false)
   const { transitionTo, transitioning } = useViewTransition()
+  const { theme, toggle: toggleTheme } = useTheme()
 
   const advisorStatus = useAdvisorStore((state) => state.status)
   const advisorOpen = useAdvisorStore((state) => state.open)
@@ -109,6 +111,14 @@ export default function App() {
             </button>
           )}
 
+          <button
+            onClick={toggleTheme}
+            className={iconBtn}
+            title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+          >
+            {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+          </button>
           <button onClick={() => setShowInfo(true)} className={iconBtn} title="Data and limitations" aria-label="Data and limitations">
             <Info size={16} />
           </button>

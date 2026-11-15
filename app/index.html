@@ -4,6 +4,14 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#f4f5f1" />
+    <script>
+      try {
+        var t = localStorage.getItem('ares-theme');
+        if (t !== 'light' && t !== 'dark') t = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        document.documentElement.dataset.theme = t;
+        if (t === 'dark') document.querySelector('meta[name=theme-color]').content = '#18191c';
+      } catch (e) {}
+    </script>
     <meta name="description" content="Plan a Mars surface walk at Jezero Crater and check that the crew can get back to the habitat." />
     <title>ARES Path · Jezero Crater EVA planner</title>
   </head>
