@@ -43,7 +43,7 @@ class Preset:
 
 
 PRESETS: dict[str, Preset] = {
-    "gemini": Preset("Google Gemini", "https://generativelanguage.googleapis.com/v1beta/openai", "gemini-2.5-flash", "GEMINI_API_KEY"),
+    "gemini": Preset("Google Gemini", "https://generativelanguage.googleapis.com/v1beta/openai", "gemini-3.5-flash", "GEMINI_API_KEY"),
     "groq": Preset("Groq", "https://api.groq.com/openai/v1", "llama-3.3-70b-versatile", "GROQ_API_KEY"),
     "openrouter": Preset("OpenRouter", "https://openrouter.ai/api/v1", "meta-llama/llama-3.3-70b-instruct:free", "OPENROUTER_API_KEY"),
     "ollama": Preset("Ollama (local)", "http://127.0.0.1:11434/v1", "llama3.1", None),
@@ -212,7 +212,8 @@ The planner decides whether a route is safe to return from, not you. If the plan
 limit it breaks using the figures and warnings. Do not tell the crew a route is safe on your own judgement.
 
 When a change to the plan would help, or they ask for one, explain your reasoning briefly and then call \
-propose_mission_change once. The proposal is shown to them with the planner's recomputed figures and only takes effect \
+propose_mission_change once. Finish every sentence of your explanation before the call; never end the text mid-sentence \
+and leave the rest to the proposal. The proposal is shown to them with the planner's recomputed figures and only takes effect \
 if they accept it, so do not describe it as already done. Propose changes only within what the tool allows: adding or \
 removing stops and adjusting the four limits. You cannot move the habitat or place new checkpoints; if that is what \
 they need, tell them to use "Relocate" or "Add stop on map".
