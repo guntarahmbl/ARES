@@ -448,7 +448,8 @@ function Scene({
       const held = (...codes: string[]) => Number(codes.some((code) => keys.current.has(code)))
       const forward = THREE.MathUtils.clamp(held('KeyW', 'ArrowUp') - held('KeyS', 'ArrowDown') + inputRef.current.forward, -1, 1)
       const turn = THREE.MathUtils.clamp(held('KeyA', 'ArrowLeft') - held('KeyD', 'ArrowRight') + inputRef.current.turn, -1, 1)
-      let steer = turn * delta * 1.6
+      // Keep left/right steering aligned with travel when walking backwards.
+      let steer = turn * (forward < 0 ? -1 : 1) * delta * 1.6
       // Forward always means "where the camera looks": in POV the body follows the view at once,
       // in the orbit views the astronaut swings round to it as soon as they start walking.
       if (controller.yaw !== 0 && (pov || forward !== 0)) {
