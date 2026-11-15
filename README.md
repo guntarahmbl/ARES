@@ -62,17 +62,27 @@ Start the prepared offline demo with:
 
 The launcher serves the React planner, FastAPI routing service, local map layers, and MarsWalk terrain at `http://127.0.0.1:8000`. No third-party service is required during the demo.
 
-## Route advisor (optional)
+## Mission analyst with 9Router (optional)
 
-The planner has an advisor panel that answers questions about the current route and proposes changes. It talks to any OpenAI-compatible chat endpoint, and every provider preset has a free tier.
+The local Mission Analyst explains route results, inspects selected locations, and proposes planner-validated mission changes. Answers include NASA/USGS citations plus deterministic coverage, completeness, and confidence labels. The routing engine—not the language model—remains the source of all route and GO/NO-GO results.
 
-1. Copy `.env.example` to `.env`.
-2. Set one key: `GEMINI_API_KEY` (Google AI Studio), `GROQ_API_KEY` or `OPENROUTER_API_KEY`. For a local model, set `ARES_LLM_PROVIDER=ollama` instead.
-3. Restart the server. The **Advisor** button appears in the header.
+Run development in three terminals:
 
-Free model line-ups change; if the default model is rejected, set `ARES_LLM_MODEL` to one your account lists. Hosted free tiers are rate-limited and may use prompts to improve their products, so use Ollama if the plan must stay on the machine.
+1. Start 9Router and create a smart combo named `ares-mission-analyst`.
+2. Copy `.env.example` to `.env`, set `ARES_LLM_ENABLED=true`, and optionally set `NINEROUTER_API_KEY`.
+3. Start FastAPI and Vite with the commands in **Development** above.
 
-The advisor only reads the planner's figures. Each proposal is re-planned by the routing engine before it is shown, and nothing changes until you choose **Apply to plan**. Without a key the panel explains how to set one up and the rest of the app is unaffected.
+ARES connects to `http://127.0.0.1:20128/v1` by default. The server checks `/v1/models`; the Advisor panel reports when 9Router is unreachable or the combo is missing. It uses ordinary JSON completions rather than model-specific tool calling, so 9Router can switch providers safely.
+
+Mission proposals are previews. Applying one sends it back to the backend, rejects stale proposals, validates its permitted changes, and recalculates the route. With the analyst disabled, unavailable, or absent from the Cloudflare deployment, planning and MarsWalk continue unchanged.
+
+Evaluate the configured 9Router combo against the bilingual 30-prompt intent set with:
+
+```powershell
+python scripts/evaluate_analyst.py
+```
+
+The command exits unsuccessfully when intent accuracy is below 90%.
 
 ## Device support
 
