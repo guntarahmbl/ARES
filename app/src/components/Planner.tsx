@@ -664,7 +664,7 @@ function DraftStopSheet() {
           <label className="block text-[13px] font-semibold text-ink">
             Checkpoint name
             <input
-              className="mt-1.5 h-10 w-full rounded border border-ink bg-white px-3 text-[13px] font-normal text-ink placeholder:text-ink-3"
+              className="mt-1.5 h-10 w-full rounded border border-ink bg-field px-3 text-[13px] font-normal text-ink placeholder:text-ink-3"
               value={draft.name}
               placeholder="e.g. North delta stop"
               onChange={(event) => useMissionStore.setState({ draftStop: { ...draft, name: event.target.value } })}

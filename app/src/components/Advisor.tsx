@@ -237,7 +237,7 @@ export function Advisor() {
           <form className="border-t border-ink p-3" onSubmit={submit}>
             <div className="flex items-end gap-2">
               <textarea
-                className="max-h-32 min-h-10 flex-1 resize-none rounded border border-ink bg-white px-3 py-2 text-[13px] leading-snug text-ink placeholder:text-ink-3"
+                className="max-h-32 min-h-10 flex-1 resize-none rounded border border-ink bg-field px-3 py-2 text-[13px] leading-snug text-ink placeholder:text-ink-3"
                 rows={2}
                 maxLength={1000}
                 value={draft}
