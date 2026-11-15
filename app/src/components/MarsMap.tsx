@@ -18,6 +18,7 @@ import 'ol/ol.css'
 import { useMissionStore } from '../store'
 import { api } from '../api'
 import { createMarsProjection, MARS_RADIUS_M } from '../lib/marsProjection'
+import type { CustomRouteStop } from '../types'
 
 const PAPER = '#f4f5f1'
 const INK = '#141c1a'
@@ -281,9 +282,9 @@ export function MarsMap() {
 
       let hitId: string | null = null
       map.forEachFeatureAtPixel(event.pixel, (feature) => {
-        const waypointId = feature.get('waypointId') as string | undefined
-        if (waypointId) {
-          hitId = waypointId
+        const id = (feature.get('waypointId') ?? feature.get('customStopId')) as string | undefined
+        if (id) {
+          hitId = id
           return true
         }
       })
@@ -313,9 +314,9 @@ export function MarsMap() {
       }
       let hitId: string | null = null
       map.forEachFeatureAtPixel(event.pixel, (feature) => {
-        const waypointId = feature.get('waypointId') as string | undefined
-        if (waypointId) {
-          hitId = waypointId
+        const id = (feature.get('waypointId') ?? feature.get('customStopId')) as string | undefined
+        if (id) {
+          hitId = id
           return true
         }
       })
@@ -350,6 +351,21 @@ export function MarsMap() {
             const isHovered = state.hoveredWaypoint === wid
             const isSelected = state.selectedWaypoint === wid
             feature.setStyle(stationStyle(orderOf(wid), wid, isHovered, isSelected))
+          }
+          const cid = feature.get('customStopId') as string | undefined
+          if (cid) {
+            const isHovered = state.hoveredWaypoint === cid
+            const isSelected = state.selectedWaypoint === cid
+            const stop = state.mission?.route_stops.find((s): s is CustomRouteStop => s.id === cid && s.type === 'custom')
+            const name = stop?.name ?? cid
+            feature.setStyle(new Style({
+              image: new Circle({
+                radius: isSelected ? 12 : (isHovered ? 10 : 8),
+                fill: new Fill({ color: isSelected ? '#ffcc00' : (isHovered ? '#8be9fd' : '#62c7e8') }),
+                stroke: new Stroke({ color: '#07141a', width: isSelected ? 4 : 3 }),
+              }),
+              text: new Text({ text: name, offsetY: -20, font: '600 12px Inter', fill: new Fill({ color: '#dff7ff' }), stroke: new Stroke({ color: '#111', width: 4 }) }),
+            }))
           }
         })
       }

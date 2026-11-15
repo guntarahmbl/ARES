@@ -2,7 +2,7 @@ import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame, useLoader, useThree } from '@react-three/fiber'
 import { Html, Line, Stars } from '@react-three/drei'
 import {
-  AlertTriangle, ChevronLeft, Compass, FastForward, Footprints, Minus, Pause, Play, Plus, RotateCcw, X
+  AlertTriangle, ChevronLeft, Compass, FastForward, Footprints, MapPin, Minus, Pause, Play, Plus, RotateCcw, X
 } from 'lucide-react'
 import * as THREE from 'three'
 import { useMissionStore } from '../store'
@@ -68,7 +68,7 @@ function OverviewTerrain({ scene }: { scene: SceneManifest }) {
   return <mesh geometry={geometry}><meshStandardMaterial map={texture} roughness={1} metalness={0} /></mesh>
 }
 
-function TerrainTile({ tile, lod, elevationOffset }: { tile: SceneTile; lod: number; elevationOffset: number }) {
+function TerrainTile({ tile, lod, elevationOffset, compact }: { tile: SceneTile; lod: number; elevationOffset: number; compact: boolean }) {
   const descriptor = tile.lods.find((item) => item.resolution_m === lod) ?? tile.lods.at(-1)!
   const heights = useBinary(descriptor.url)
   const texture = useLoader(THREE.TextureLoader, tile.texture_url)
@@ -104,7 +104,7 @@ function TerrainTile({ tile, lod, elevationOffset }: { tile: SceneTile; lod: num
   }, [heights, descriptor, tile.bounds_local, elevationOffset])
 
   useEffect(() => () => geometry?.dispose(), [geometry])
-  useEffect(() => { texture.colorSpace = THREE.SRGBColorSpace; texture.anisotropy = 4 }, [texture])
+  useEffect(() => { texture.colorSpace = THREE.SRGBColorSpace; texture.anisotropy = compact ? 4 : 16; texture.needsUpdate = true }, [texture, compact])
   if (!geometry) return null
   return <mesh geometry={geometry} receiveShadow><meshStandardMaterial map={texture} roughness={1} metalness={0} /></mesh>
 }
@@ -113,13 +113,17 @@ function TerrainWorld({ scene, avatar, compact }: { scene: SceneManifest; avatar
   const visible = useMemo(() => scene.tiles.map((tile) => {
     const [xMin, zMin, xMax, zMax] = tile.bounds_local
     const distance = Math.hypot((xMin + xMax) / 2 - avatar[0], (zMin + zMax) / 2 - avatar[2])
-    const lod = distance < (compact ? 450 : 650) ? 5 : distance < (compact ? 800 : 1100) ? 10 : 20
+    const wanted = compact
+      ? (distance < 450 ? 5 : distance < 800 ? 10 : 20)
+      : (distance < 400 ? 2 : distance < 900 ? 5 : distance < 1400 ? 10 : 20)
+    // Older asset builds have no 2 m level: fall back to the finest level that is not finer than requested.
+    const lod = tile.lods.reduce((best, item) => item.resolution_m >= wanted && item.resolution_m < best ? item.resolution_m : best, Infinity)
     return { tile, distance, lod }
   }).filter((item) => item.distance < (compact ? 1050 : 1600)), [scene.tiles, avatar[0], avatar[2], compact])
 
   return <group>
     <OverviewTerrain scene={scene} />
-    {visible.map(({ tile, lod }) => <TerrainTile key={`${tile.id}-${lod}`} tile={tile} lod={lod} elevationOffset={scene.origin.elevation} />)}
+    {visible.map(({ tile, lod }) => <TerrainTile key={`${tile.id}-${lod}`} tile={tile} lod={lod} elevationOffset={scene.origin.elevation} compact={compact} />)}
   </group>
 }
 
@@ -401,7 +405,7 @@ function WaypointMarkers({ scene: _scene }: { scene: SceneManifest }) {
     return <group key={stop.id} position={[x, y + 0.2, z]}>
       <mesh position={[0, 6, 0]}><cylinderGeometry args={[0.18, 0.18, 12, 8]} /><meshBasicMaterial color={color} transparent opacity={0.65} /></mesh>
       <mesh position={[0, 12, 0]}><octahedronGeometry args={[1.2]} /><meshStandardMaterial color={color} emissive={stop.type === 'custom' ? '#16495a' : '#6b2d12'} /></mesh>
-      <Html position={[0, 14.5, 0]} center distanceFactor={22}><button className="rounded border border-ink bg-panel px-2.5 py-1 text-xs font-medium text-ink hover:bg-panel-2" onClick={() => stop.type === 'science' && useMissionStore.getState().setSelectedWaypoint(stop.id)}>{label}</button></Html>
+      <Html position={[0, 14.5, 0]} center distanceFactor={22}><button className="rounded border border-ink bg-panel px-2.5 py-1 text-xs font-medium text-ink hover:bg-panel-2" onClick={() => useMissionStore.getState().setSelectedWaypoint(stop.id)}>{label}</button></Html>
     </group>
   })}</>
 }
@@ -563,7 +567,7 @@ export default function MarsWalk() {
     onPointerUp={handlePointerUp}
     onPointerCancel={handlePointerUp}
   >
-    <Canvas shadows={false} dpr={compact ? 1 : [1, 1.5]} camera={{ fov: 52, near: 0.2, far: compact ? 3200 : 5000, position: [0, 8, 15] }} gl={{ antialias: !compact, powerPreference: 'high-performance' }}>
+    <Canvas shadows={false} dpr={compact ? 1 : [1, 2]} camera={{ fov: 52, near: 0.2, far: compact ? 3200 : 5000, position: [0, 8, 15] }} gl={{ antialias: !compact, powerPreference: 'high-performance' }}>
       <Suspense fallback={<SuspenseFallback />}>
         <Scene
           route={route}
@@ -736,8 +740,53 @@ function SuspenseFallback() {
 function WaypointOverlay() {
   const id = useMissionStore((state) => state.selectedWaypoint)!
   const bootstrap = useMissionStore((state) => state.bootstrap)!
+  const mission = useMissionStore((state) => state.mission)
   const setSelected = useMissionStore((state) => state.setSelectedWaypoint)
   const waypoint = bootstrap.waypoints.features.find((item) => item.properties.id === id)
+  const customStop = mission?.route_stops.find((s) => s.id === id && s.type === 'custom') as CustomRouteStop | undefined
+
+  if (!waypoint && !customStop) return null
+
+  if (customStop) {
+    let nearestImage: { img: typeof bootstrap.surface_images[0]; distanceM: number } | null = null
+    if (bootstrap.surface_images.length > 0) {
+      const cosLat = Math.cos((customStop.latitude * Math.PI) / 180)
+      let minD = Infinity
+      for (const img of bootstrap.surface_images) {
+        const imgLon = Number(img.longitude)
+        const imgLat = Number(img.latitude)
+        const dx = ((imgLon - customStop.longitude) * Math.PI / 180) * 3396190 * cosLat
+        const dy = ((imgLat - customStop.latitude) * Math.PI / 180) * 3396190
+        const d = Math.hypot(dx, dy)
+        if (d < minD) {
+          minD = d
+          nearestImage = { img, distanceM: Math.round(d) }
+        }
+      }
+    }
+    const distStr = nearestImage && (nearestImage.distanceM >= 1000 ? `${(nearestImage.distanceM / 1000).toFixed(1)} km` : `${nearestImage.distanceM} m`)
+
+    return (
+      <aside className="absolute inset-x-3 bottom-3 z-30 max-h-[70svh] overflow-auto rounded border border-ink bg-panel p-5 md:inset-auto md:right-4 md:top-4 md:w-84">
+        <button className="absolute right-3 top-3 grid size-8 place-items-center rounded text-ink-3 hover:bg-panel-2 hover:text-ink" onClick={() => setSelected(null)} aria-label="Close checkpoint details"><X size={15} /></button>
+        <span className="label flex items-center gap-1.5 text-ink-3">
+          <MapPin size={13} /> Custom Checkpoint
+        </span>
+        <h2 className="mb-1 mt-1 pr-8 text-lg font-bold text-ink">{customStop.name}</h2>
+        <p className="num mb-3 text-xs text-ink-3">Coord: {customStop.latitude.toFixed(4)}°N, {customStop.longitude.toFixed(4)}°E</p>
+        {nearestImage && (
+          <div className="mb-3">
+            <img className="aspect-video w-full rounded-sm object-cover" src={`/assets/thumbnails/surface/${nearestImage.img.product_id}.jpg`} alt="Nearest rover observation" />
+            <p className="mt-1 text-[10px] text-ink-3">Nearest Observation · Sol {nearestImage.img.sol} ({distStr} away)</p>
+          </div>
+        )}
+        <p className="border-t border-rule pt-2 text-xs text-ink-3">User-defined exploration stop</p>
+      </aside>
+    )
+  }
+
+  if (!waypoint) return null
+
   const images = bootstrap.surface_images.filter((item) => item.waypoint_id === id)
   const evidence = bootstrap.science_evidence[id]
   if (!waypoint) return null
