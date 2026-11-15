@@ -93,6 +93,7 @@ export type SceneManifest = {
 }
 
 export type Bootstrap = {
+  routing?: { runtime: 'browser'; metadata_url: string; grid_url: string }
   aoi: GeoJSON.FeatureCollection
   geology: GeoJSON.FeatureCollection
   traverse: GeoJSON.FeatureCollection

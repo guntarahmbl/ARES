@@ -169,3 +169,8 @@ app/playwright-report/
 app/*.tsbuildinfo
 app/vite.config.js
 app/vite.config.d.ts
+
+# Cloudflare local state and secret bindings
+.wrangler/
+.dev.vars
+.dev.vars.*

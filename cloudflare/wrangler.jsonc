@@ -1,0 +1,23 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "ares-path",
+  "main": "src/index.js",
+  "compatibility_date": "2026-11-13",
+  "workers_dev": true,
+  "routes": [
+    { "pattern": "ares.disra.net", "custom_domain": true }
+  ],
+  "assets": {
+    "directory": "../app/dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*", "/assets/web/*", "/assets/3d/*", "/assets/thumbnails/*", "/assets/routing/*"]
+  },
+  "r2_buckets": [
+    { "binding": "DATA", "bucket_name": "ares-path-data" }
+  ],
+  "vars": {
+    "DATA_PREFIX": "jezero-v1/"
+  },
+  "observability": { "enabled": true }
+}
