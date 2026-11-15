@@ -83,16 +83,14 @@ export function MarsTrackingMap() {
       if (!current.mission) return
       const habitat = new Feature(new Point(coordinateToProjected(current.mission.habitat)))
       habitat.setStyle(new Style({
-        image: new Circle({ radius: 6, fill: new Fill({ color: '#4cc9f0' }), stroke: new Stroke({ color: '#07141a', width: 2 }) }),
-        text: new Text({ text: 'HAB', offsetY: -13, font: '700 9px Inter', fill: new Fill({ color: '#dff7ff' }), stroke: new Stroke({ color: '#111', width: 3 }) }),
+        image: new RegularShape({ points: 4, radius: 11, angle: Math.PI / 4, fill: new Fill({ color: '#141c1a' }), stroke: new Stroke({ color: '#f4f5f1', width: 1.5 }) }),
+        text: new Text({ text: 'H', offsetY: 1, font: '700 11px "IBM Plex Mono", monospace', fill: new Fill({ color: '#f4f5f1' }) }),
       }))
       missionSource.addFeature(habitat)
-      for (const stop of current.mission.route_stops) {
+      for (const [index, stop] of current.mission.route_stops.entries()) {
         let coordinate
-        let label = stop.id
         if (stop.type === 'custom') {
           coordinate = { longitude: stop.longitude, latitude: stop.latitude }
-          label = stop.name
         } else {
           const feature = bootstrap.waypoints.features.find((item) => item.properties?.id === stop.id)
           if (!feature) continue
@@ -100,8 +98,8 @@ export function MarsTrackingMap() {
         }
         const marker = new Feature(new Point(coordinateToProjected(coordinate)))
         marker.setStyle(new Style({
-          image: new Circle({ radius: 5, fill: new Fill({ color: stop.type === 'science' ? '#ffb86c' : '#62c7e8' }), stroke: new Stroke({ color: '#111', width: 2 }) }),
-          text: new Text({ text: label, offsetY: -12, font: '600 8px Inter', fill: new Fill({ color: '#fff' }), stroke: new Stroke({ color: '#111', width: 3 }) }),
+          image: new Circle({ radius: 8, fill: new Fill({ color: '#f4f5f1' }), stroke: new Stroke({ color: '#141c1a', width: 1.5 }) }),
+          text: new Text({ text: String(index + 1), offsetY: 1, font: '700 11px "IBM Plex Mono", monospace', fill: new Fill({ color: '#141c1a' }) }),
         }))
         missionSource.addFeature(marker)
       }
@@ -123,7 +121,7 @@ export function MarsTrackingMap() {
     const refreshRoutes = () => {
       const current = useMissionStore.getState()
       routeSource.clear()
-      addRoute(routeSource, activeRoute(), lineStyle('#4cc9f0', 3))
+      addRoute(routeSource, activeRoute(), lineStyle('#5fd0f0', 3))
       addRoute(routeSource, current.emergencyRoute, lineStyle('#ff5d73', 3, [7, 5]))
       refreshCompletedRoute()
     }
@@ -138,7 +136,7 @@ export function MarsTrackingMap() {
           radius: 10,
           rotation: telemetry.headingRad,
           fill: new Fill({ color: '#ffffff' }),
-          stroke: new Stroke({ color: '#082f49', width: 3 }),
+          stroke: new Stroke({ color: '#141c1a', width: 3 }),
         }),
       }))
       if (!astronautSource.hasFeature(astronaut)) astronautSource.addFeature(astronaut)
@@ -171,7 +169,7 @@ export function MarsTrackingMap() {
   if (!minimapOpen) {
     return (
       <button
-        className="map-transition-surface absolute right-[max(.75rem,env(safe-area-inset-right))] top-[max(.75rem,env(safe-area-inset-top))] z-20 grid size-11 place-items-center rounded-xl border border-white/25 bg-[#0d1117]/95 text-white shadow-2xl backdrop-blur"
+        className="map-transition-surface absolute right-[max(.75rem,env(safe-area-inset-right))] top-[max(.75rem,env(safe-area-inset-top))] z-20 grid size-11 place-items-center rounded border border-ink bg-panel text-ink hover:bg-panel-2"
         onClick={() => setMinimapOpen(true)}
         aria-label="Open tracking map"
         title="Open tracking map"
@@ -183,15 +181,15 @@ export function MarsTrackingMap() {
 
   const moveForEvidence = selectedWaypoint ? 'md:right-[22rem]' : ''
   return (
-    <section className={`map-transition-surface absolute right-[max(.75rem,env(safe-area-inset-right))] top-[max(.75rem,env(safe-area-inset-top))] z-20 aspect-[4/3] w-[clamp(8.75rem,42vw,11.25rem)] max-h-[42svh] overflow-hidden rounded-xl border border-white/25 bg-[#0d1117] shadow-2xl transition-[right] sm:w-[220px] lg:w-[260px] 2xl:w-[300px] ${moveForEvidence}`} aria-label="Astronaut tracking map">
-      <div className="absolute inset-x-0 top-0 z-10 flex h-8 items-center justify-between border-b border-white/15 bg-[#0d1117]/90 px-2 backdrop-blur">
-        <span className="flex items-center gap-1.5 font-mono text-[9px] font-bold uppercase tracking-wider text-white"><span className="size-1.5 animate-pulse rounded-full bg-emerald-400" />Live position</span>
-        <button className="grid size-7 place-items-center rounded text-slate-300 hover:bg-white/10 hover:text-white" onClick={() => setMinimapOpen(false)} aria-label="Collapse tracking map" title="Collapse map"><ChevronDown size={15} /></button>
+    <section className={`map-transition-surface absolute right-[max(.75rem,env(safe-area-inset-right))] top-[max(.75rem,env(safe-area-inset-top))] z-20 aspect-[4/3] w-[clamp(8.75rem,42vw,11.25rem)] max-h-[42svh] overflow-hidden rounded border border-ink bg-panel transition-[right] sm:w-[220px] lg:w-[260px] 2xl:w-[300px] ${moveForEvidence}`} aria-label="Astronaut tracking map">
+      <div className="absolute inset-x-0 top-0 z-10 flex h-8 items-center justify-between border-b border-ink bg-panel px-2.5">
+        <span className="label text-ink">Live position</span>
+        <button className="grid size-7 place-items-center rounded text-ink-3 hover:bg-panel-2 hover:text-ink" onClick={() => setMinimapOpen(false)} aria-label="Collapse tracking map" title="Collapse map"><ChevronDown size={15} /></button>
       </div>
       <div className="absolute inset-0 pt-8" ref={target} />
-      <div className="absolute bottom-2 right-2 z-10 flex overflow-hidden rounded-md border border-white/20 bg-[#0d1117]/90 shadow-lg">
-        <button className="grid size-7 place-items-center text-white hover:bg-white/10" onClick={() => { const view = mapRef.current?.getView(); if (view) view.setZoom(Math.min(view.getMaxZoom(), (view.getZoom() ?? 5.3) + 0.5)) }} aria-label="Zoom tracking map in"><Plus size={13} /></button>
-        <button className="grid size-7 place-items-center border-l border-white/15 text-white hover:bg-white/10" onClick={() => { const view = mapRef.current?.getView(); if (view) view.setZoom(Math.max(view.getMinZoom(), (view.getZoom() ?? 5.3) - 0.5)) }} aria-label="Zoom tracking map out"><Minus size={13} /></button>
+      <div className="absolute bottom-2 right-2 z-10 flex overflow-hidden rounded border border-ink bg-panel">
+        <button className="grid size-7 place-items-center text-ink-2 hover:text-ink" onClick={() => { const view = mapRef.current?.getView(); if (view) view.setZoom(Math.min(view.getMaxZoom(), (view.getZoom() ?? 5.3) + 0.5)) }} aria-label="Zoom tracking map in"><Plus size={13} /></button>
+        <button className="grid size-7 place-items-center border-l border-ink text-ink-2 hover:text-ink" onClick={() => { const view = mapRef.current?.getView(); if (view) view.setZoom(Math.max(view.getMinZoom(), (view.getZoom() ?? 5.3) - 0.5)) }} aria-label="Zoom tracking map out"><Minus size={13} /></button>
       </div>
     </section>
   )

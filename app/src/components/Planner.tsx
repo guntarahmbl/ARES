@@ -1,22 +1,28 @@
-import { useEffect, useState } from 'react'
-import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
-import {
-  Activity, ArrowDown, ArrowUp, Check, ChevronLeft, ChevronRight,
-  Compass, GripVertical, Layers3, MapPin, Menu, Mountain, Navigation, Plus, ShieldCheck, Target, Trash2, X, Zap
-} from 'lucide-react'
+import { useEffect, useState, type ReactNode } from 'react'
+import { Check, ChevronLeft, ChevronRight, GripVertical, Layers3, MapPin, PanelLeftOpen, Plus, Trash2, X } from 'lucide-react'
 import { useMissionStore } from '../store'
 import type { CustomRouteStop, RouteCandidate, RouteStop, WaypointValidation } from '../types'
 import { api } from '../api'
 import { MarsMap } from './MarsMap'
+import { TraverseProfile } from './TraverseProfile'
 import { Button } from './ui/button'
 import { Sheet } from './ui/sheet'
 
 const formatDistance = (meters: number) => meters >= 1000 ? `${(meters / 1000).toFixed(1)} km` : `${Math.round(meters)} m`
+const formatEnergy = (units: number) => `${Math.round(units).toLocaleString()} EU`
+const isNarrow = () => window.innerWidth < 768
 
 function stopName(stop: RouteStop) {
   if (stop.type === 'custom') return stop.name
   const feature = useMissionStore.getState().bootstrap?.waypoints.features.find((item) => item.properties.id === stop.id)
   return feature?.properties.name ?? stop.id
+}
+
+function useActiveRoute(): RouteCandidate | null {
+  const plan = useMissionStore((state) => state.plan)
+  const active = useMissionStore((state) => state.activeRoute)
+  if (!plan?.primary) return null
+  return active === 'alternative' ? plan.alternative ?? plan.primary : plan.primary
 }
 
 function PlacementBanner() {
@@ -34,16 +40,24 @@ function PlacementBanner() {
   if (!mode) return null
 
   return (
-    <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 flex items-center gap-3 rounded-lg border border-route bg-[#0d1117] px-4 py-2 text-xs shadow-2xl">
-      <span className="flex items-center gap-1.5 font-medium text-route">
-        <MapPin size={15} className="animate-bounce" />
+    <div className="absolute left-1/2 top-3 z-30 flex max-w-[calc(100%-1.5rem)] -translate-x-1/2 items-center gap-3 bg-ink py-1.5 pl-4 pr-1.5 text-[13px] text-panel">
+      <span>
         {mode === 'habitat'
           ? 'Click inside the dashed zone to move the habitat'
           : 'Click the map to place a checkpoint'}
       </span>
-      <button className="rounded bg-white/10 px-2 py-0.5 text-white hover:bg-white/20 font-mono text-[11px]" onClick={cancel}>
-        Cancel (Esc)
+      <button className="flex h-7 shrink-0 items-center gap-1.5 rounded border border-panel/40 px-2 font-semibold hover:bg-panel/15" onClick={cancel}>
+        Cancel <kbd className="num text-xs text-panel/70">Esc</kbd>
       </button>
+    </div>
+  )
+}
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0">
+      <dt className="label truncate text-ink-3">{label}</dt>
+      <dd className="num mt-1 truncate text-[15px] font-bold leading-none text-ink">{value}</dd>
     </div>
   )
 }
@@ -99,16 +113,16 @@ function WaypointInspector2D() {
 
     return (
       <aside
-        className="absolute right-3 top-14 z-20 w-80 max-h-[80svh] overflow-y-auto rounded-xl border border-white/20 bg-[#0d1117]/95 backdrop-blur p-4 shadow-2xl transition-all"
+        className="absolute right-3 top-14 z-20 w-80 max-h-[80svh] overflow-y-auto rounded border border-ink bg-panel p-4"
         onMouseEnter={() => setHovered(id)}
         onMouseLeave={() => setHovered(null)}
       >
-        <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
-          <span className="flex items-center gap-1.5 font-mono text-[11px] font-semibold uppercase tracking-wider text-sky-400">
+        <div className="flex items-center justify-between border-b border-rule pb-2.5">
+          <span className="flex items-center gap-1.5 label text-ink-3">
             <MapPin size={13} /> Custom Checkpoint
           </span>
           <button
-            className="grid size-6 place-items-center rounded text-slate-400 hover:bg-white/10 hover:text-white"
+            className="grid size-6 place-items-center rounded text-ink-3 hover:bg-panel-2 hover:text-ink"
             onClick={() => { setSelected(null); setHovered(null) }}
             aria-label="Close inspector"
           >
@@ -116,30 +130,30 @@ function WaypointInspector2D() {
           </button>
         </div>
 
-        <h3 className="mt-2.5 text-sm font-semibold text-white">{customStop.name}</h3>
-        <p className="mt-1 font-mono text-xs text-slate-400">{customStop.latitude.toFixed(4)}°N, {customStop.longitude.toFixed(4)}°E</p>
+        <h3 className="mt-2.5 text-sm font-bold text-ink">{customStop.name}</h3>
+        <p className="num mt-1 text-xs text-ink-3">{customStop.latitude.toFixed(4)}°N, {customStop.longitude.toFixed(4)}°E</p>
 
         {nearestImage && (
-          <div className="mt-3 overflow-hidden rounded-lg border border-white/10">
+          <div className="mt-3 overflow-hidden rounded-sm border border-rule">
             <img className="aspect-video w-full object-cover" src={`/assets/thumbnails/surface/${nearestImage.img.product_id}.jpg`} alt="Nearest rover observation" />
-            <div className="bg-[#12161f] px-2 py-1 text-[10px] font-mono text-slate-300">
+            <div className="bg-panel-2 px-2 py-1 text-[10px] text-ink-2">
               Nearest Photo · Sol {nearestImage.img.sol} ({formatDistance(nearestImage.distanceM)} away)
             </div>
           </div>
         )}
 
         <dl className="mt-3 grid grid-cols-3 gap-1.5 font-mono text-xs">
-          <div className="rounded border border-white/10 bg-[#161b22] p-1.5">
-            <dt className="text-[10px] text-slate-400">Slope</dt>
-            <dd className="font-semibold text-sky-400">{customValidation?.terrain.slope_deg?.toFixed(1) ?? '—'}°</dd>
+          <div className="rounded-sm border border-rule bg-panel-2 p-1.5">
+            <dt className="text-[10px] text-ink-3">Slope</dt>
+            <dd className="font-bold text-ink">{customValidation?.terrain.slope_deg?.toFixed(1) ?? '—'}°</dd>
           </div>
-          <div className="rounded border border-white/10 bg-[#161b22] p-1.5">
-            <dt className="text-[10px] text-slate-400">Geology</dt>
-            <dd className="font-semibold text-white">{customValidation?.science_context.geology_symbol ?? 'Nili'}</dd>
+          <div className="rounded-sm border border-rule bg-panel-2 p-1.5">
+            <dt className="text-[10px] text-ink-3">Geology</dt>
+            <dd className="font-bold text-ink">{customValidation?.science_context.geology_symbol ?? 'Nili'}</dd>
           </div>
-          <div className="rounded border border-white/10 bg-[#161b22] p-1.5">
-            <dt className="text-[10px] text-slate-400">Elev</dt>
-            <dd className="font-semibold text-white">{customValidation?.terrain.elevation_m != null ? `${Math.round(customValidation.terrain.elevation_m)}m` : '—'}</dd>
+          <div className="rounded-sm border border-rule bg-panel-2 p-1.5">
+            <dt className="text-[10px] text-ink-3">Elev</dt>
+            <dd className="font-bold text-ink">{customValidation?.terrain.elevation_m != null ? `${Math.round(customValidation.terrain.elevation_m)}m` : '—'}</dd>
           </div>
         </dl>
 
@@ -147,7 +161,7 @@ function WaypointInspector2D() {
           <Button
             variant="ghost"
             size="sm"
-            className="w-full text-xs font-semibold text-rose-400 hover:bg-rose-500/10 hover:text-rose-300"
+            className="w-full text-xs font-semibold text-ink hover:bg-panel-2"
             onClick={() => { removeStop(customStop.id); setSelected(null); setHovered(null) }}
           >
             <Trash2 size={13} className="mr-1.5" /> Remove from route
@@ -165,16 +179,17 @@ function WaypointInspector2D() {
 
   return (
     <aside
-      className="absolute right-3 top-14 z-20 w-80 max-h-[80svh] overflow-y-auto rounded-xl border border-white/20 bg-[#0d1117]/95 backdrop-blur p-4 shadow-2xl transition-all"
+      className="absolute inset-x-3 top-14 z-20 max-h-[calc(100%-4.5rem)] overflow-y-auto border border-ink bg-panel sm:left-auto sm:w-80"
       onMouseEnter={() => setHovered(id)}
       onMouseLeave={() => setHovered(null)}
     >
-      <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
-        <span className="flex items-center gap-1.5 font-mono text-[11px] font-semibold uppercase tracking-wider text-sky-400">
-          <Target size={13} /> Target · Sol {waypoint.properties.sol}
-        </span>
+      <div className="flex items-start justify-between gap-3 px-4 pt-3">
+        <div>
+          <p className="label text-ink-3">{waypoint.properties.id} · Science target · Sol <span className="num">{waypoint.properties.sol}</span></p>
+          <h3 className="mt-1.5 text-base font-bold leading-snug text-ink">{waypoint.properties.name}</h3>
+        </div>
         <button
-          className="grid size-6 place-items-center rounded text-slate-400 hover:bg-white/10 hover:text-white"
+          className="-mr-2 grid size-7 shrink-0 place-items-center rounded text-ink-2 hover:bg-panel-2 hover:text-ink"
           onClick={() => { setSelected(null); setHovered(null) }}
           aria-label="Close inspector"
         >
@@ -182,44 +197,56 @@ function WaypointInspector2D() {
         </button>
       </div>
 
-      <h3 className="mt-2.5 text-sm font-semibold text-white">{waypoint.properties.name}</h3>
-      <p className="mt-1 text-xs leading-relaxed text-slate-300">{waypoint.properties.science_rationale}</p>
+      <p className="mt-2 px-4 text-[13px] leading-relaxed text-ink-2">{waypoint.properties.science_rationale}</p>
 
       {images[0] && (
-        <div className="mt-3 overflow-hidden rounded-lg border border-white/10">
+        <figure className="mt-3 px-4">
           <img className="aspect-video w-full object-cover" src={`/assets/thumbnails/surface/${images[0].product_id}.jpg`} alt={waypoint.properties.name} />
-          <div className="bg-[#12161f] px-2 py-1 text-[10px] font-mono text-slate-300">
-            Perseverance Mastcam-Z / Navcam Observation
-          </div>
-        </div>
+          <figcaption className="mt-1 text-xs text-ink-3">Perseverance Mastcam-Z / Navcam</figcaption>
+        </figure>
       )}
 
-      <dl className="mt-3 grid grid-cols-3 gap-1.5 font-mono text-xs">
-        <div className="rounded border border-white/10 bg-[#161b22] p-1.5">
-          <dt className="text-[10px] text-slate-400">Priority</dt>
-          <dd className="font-semibold text-sky-400">{waypoint.properties.priority}/3</dd>
-        </div>
-        <div className="rounded border border-white/10 bg-[#161b22] p-1.5">
-          <dt className="text-[10px] text-slate-400">Geology</dt>
-          <dd className="font-semibold text-white">{evidence?.geology_symbol ?? 'Nili'}</dd>
-        </div>
-        <div className="rounded border border-white/10 bg-[#161b22] p-1.5">
-          <dt className="text-[10px] text-slate-400">OLINDEX3</dt>
-          <dd className="font-semibold text-white">{evidence?.crism.olindex3?.toFixed(3) ?? 'nodata'}</dd>
-        </div>
+      <dl className="mt-3 grid grid-cols-3 gap-3 border-y border-rule px-4 py-3">
+        <Stat label="Priority" value={`${waypoint.properties.priority} of 3`} />
+        <Stat label="Geology" value={evidence?.geology_symbol ?? 'Nili'} />
+        <Stat label="OLINDEX3" value={evidence?.crism.olindex3?.toFixed(3) ?? 'nodata'} />
       </dl>
 
-      <div className="mt-3.5 flex gap-2">
+      <div className="p-3">
         <Button
           variant={isSelected ? 'secondary' : 'default'}
           size="sm"
-          className="w-full text-xs font-semibold"
+          className="w-full"
           onClick={() => toggleScience(id)}
         >
-          {isSelected ? '✓ Added to route' : '+ Add to route'}
+          {isSelected ? 'Remove from route' : 'Add to route'}
         </Button>
       </div>
     </aside>
+  )
+}
+
+/** One line of the traverse table: station mark, name, and where the route stands on arrival. */
+function StationRow({ mark, name, kind, arrival, energy, children }: {
+  mark: string; name: string; kind: string; arrival?: string; energy?: string; children?: ReactNode
+}) {
+  return (
+    <>
+      <span className="num relative z-10 grid size-6 shrink-0 place-items-center border border-ink bg-panel text-[13px] font-bold leading-none text-ink">
+        <span className="translate-y-px">{mark}</span>
+      </span>
+      <div className="min-w-0 flex-1">
+        <strong className="block truncate text-[13px] font-semibold text-ink">{name}</strong>
+        <span className="block truncate text-xs text-ink-3">{kind}</span>
+      </div>
+      {arrival && (
+        <div className="shrink-0 text-right">
+          <span className="num block text-[13px] leading-tight text-ink">{arrival}</span>
+          <span className="num block text-[11px] leading-tight text-ink-3">{energy}</span>
+        </div>
+      )}
+      {children}
+    </>
   )
 }
 
@@ -237,165 +264,165 @@ function MissionSidebar() {
   const calculate = useMissionStore((state) => state.calculate)
   const plan = useMissionStore((state) => state.plan)
   const routeDirty = useMissionStore((state) => state.routeDirty)
+  const route = useActiveRoute()
 
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
 
-  if (!open) return (
-    <Button variant="secondary" size="icon" className="absolute left-3 top-3 z-20 hidden border border-white/20 bg-[#0d1117] shadow-xl lg:flex hover:bg-white/10" onClick={() => setOpen(true)} aria-label="Expand mission panel">
-      <Menu />
-    </Button>
-  )
+  if (!open) return null
+
+  const startPlacement = (mode: 'habitat' | 'stop') => {
+    setPlacement(mode)
+    if (isNarrow()) setOpen(false)
+  }
+
+  // Arrival figures only mean something while the plan matches the stop list.
+  const current = route && !routeDirty ? route : null
+  const scienceCount = mission.route_stops.filter((stop) => stop.type === 'science').length
+  const summary = 'flex h-11 cursor-pointer list-none items-center gap-2 px-4 text-[13px] font-semibold text-ink hover:bg-panel-2 [&::-webkit-details-marker]:hidden'
+  const chevron = <ChevronRight size={14} className="text-ink-2 transition-transform group-open:rotate-90" />
 
   return (
-    <aside className="absolute inset-x-2 bottom-2 z-20 flex max-h-[52svh] flex-col overflow-hidden rounded-xl border border-white/20 bg-[#0d1117] shadow-2xl sm:bottom-3 sm:left-3 sm:right-auto sm:top-3 sm:max-h-none sm:w-96 lg:w-[380px]">
-      <div className="flex items-center gap-3 border-b border-white/10 px-4 py-3 bg-[#12161f]">
+    <aside className="absolute inset-0 z-30 flex flex-col bg-panel md:static md:z-auto md:w-[340px] md:shrink-0 md:border-r md:border-ink">
+      <div className="flex items-start gap-3 border-b border-ink py-3 pl-4 pr-2">
         <div className="min-w-0 flex-1">
-          <h1 className="text-sm font-semibold text-white">Plan an EVA</h1>
-          <p className="mt-0.5 text-xs text-slate-300">Choose stops and check a safe return route</p>
+          <h1 className="text-lg font-bold leading-tight text-ink">Plan an EVA</h1>
+          <p className="mt-0.5 text-[13px] text-ink-2">Choose stops and check a safe return route</p>
         </div>
         <Button variant="ghost" size="icon" onClick={() => setOpen(false)} aria-label="Collapse mission panel">
-          <ChevronLeft className="hidden lg:block text-slate-300" />
-          <span className="lg:hidden text-lg text-slate-300">✕</span>
+          <ChevronLeft size={16} className="hidden md:block" />
+          <X size={16} className="md:hidden" />
         </Button>
       </div>
 
-      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
-        {/* Stops section */}
-        <section>
-          <div className="mb-2 flex items-center justify-between">
-            <h2 className="text-xs font-medium text-slate-300">Route stops</h2>
-            <span className="text-xs font-semibold text-sky-400">{mission.route_stops.length} stops · round trip</span>
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <section className="px-4 pb-4 pt-3">
+          <div className="mb-1 flex items-baseline justify-between">
+            <h2 className="label text-ink">Traverse</h2>
+            <span className="label text-ink-3">{current ? 'Arrival · energy used' : 'Round trip'}</span>
           </div>
 
-          <div className="space-y-1.5">
-            {/* Departure Origin */}
-            <div className="flex items-center gap-2.5 rounded-lg border border-white/10 bg-[#161b22] p-2 text-xs">
-              <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded bg-[#21262d] text-white border border-white/20">
-                DEP
-              </span>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center justify-between">
-                  <strong className="text-white text-xs">Habitat</strong>
-                  <button
-                    className="text-[10px] font-mono text-sky-400 hover:text-sky-200 underline"
-                    onClick={() => useMissionStore.getState().setPlacementMode('habitat')}
-                    title="Relocate Habitat Base within approved 250 m zone"
+          <ol className="relative">
+            <span className="absolute bottom-5 left-[11.5px] top-5 w-px bg-ink" aria-hidden />
+
+            <li className="relative flex min-h-12 items-center gap-3">
+              <StationRow mark="H" name="Habitat" kind="Starting point">
+                <button
+                  className="text-xs font-medium text-ink underline underline-offset-2 hover:text-route"
+                  onClick={() => startPlacement('habitat')}
+                  title="Move the habitat within the approved 250 m zone"
+                >
+                  Relocate
+                </button>
+              </StationRow>
+            </li>
+
+            {mission.route_stops.map((stop, index) => {
+              const visit = current?.stop_visits.find((item) => item.id === stop.id)
+              return (
+                <li
+                  key={stop.id}
+                  draggable
+                  onMouseEnter={() => stop.type === 'science' && useMissionStore.getState().setHoveredWaypoint(stop.id)}
+                  onMouseLeave={() => stop.type === 'science' && useMissionStore.getState().setHoveredWaypoint(null)}
+                  onDragStart={() => setDraggedIndex(index)}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={() => {
+                    if (draggedIndex !== null && draggedIndex !== index) {
+                      moveStop(draggedIndex, index)
+                    }
+                    setDraggedIndex(null)
+                  }}
+                  className={`group/stop relative flex min-h-12 cursor-grab items-center gap-3 active:cursor-grabbing ${draggedIndex === index ? 'opacity-40' : ''}`}
+                >
+                  <StationRow
+                    mark={String(index + 1)}
+                    name={stopName(stop)}
+                    kind={stop.type === 'science' ? `Science target · ${stop.id}` : 'Checkpoint'}
+                    arrival={visit ? formatDistance(visit.arrival_distance_m) : undefined}
+                    energy={visit ? formatEnergy(visit.arrival_energy_units) : undefined}
                   >
-                    Relocate
-                  </button>
-                </div>
-                <span className="text-[11px] text-slate-300">Starting point</span>
-              </div>
-            </div>
+                    <div className="flex shrink-0 items-center">
+                      <GripVertical size={14} className="text-ink-3 opacity-0 transition-opacity group-hover/stop:opacity-100" aria-hidden />
+                      <button className="grid size-7 place-items-center rounded text-ink-3 hover:bg-panel-2 hover:text-danger disabled:opacity-30" disabled={mission.route_stops.length === 1} onClick={() => remove(stop.id)} aria-label={`Remove ${stopName(stop)}`}>
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  </StationRow>
+                  {stop.type === 'science' && (
+                    <button className="absolute inset-y-0 left-0 right-12" onClick={() => useMissionStore.getState().setSelectedWaypoint(stop.id)} aria-label={`Show ${stopName(stop)} on the map`} />
+                  )}
+                </li>
+              )
+            })}
 
-            {/* Draggable Checkpoints List */}
-            {mission.route_stops.map((stop, index) => (
-              <div
-                key={stop.id}
-                draggable
-                onMouseEnter={() => stop.type === 'science' && useMissionStore.getState().setHoveredWaypoint(stop.id)}
-                onMouseLeave={() => stop.type === 'science' && useMissionStore.getState().setHoveredWaypoint(null)}
-                onDragStart={() => setDraggedIndex(index)}
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={() => {
-                  if (draggedIndex !== null && draggedIndex !== index) {
-                    moveStop(draggedIndex, index)
-                  }
-                  setDraggedIndex(null)
-                }}
-                className={`flex min-h-11 items-center gap-2.5 rounded-lg border bg-[#161b22] px-2.5 py-1.5 transition cursor-grab active:cursor-grabbing ${draggedIndex === index ? 'opacity-40 border-sky-400 border-dashed' : 'border-white/10 hover:border-white/20'}`}
-              >
-                <div className="grid place-items-center text-slate-400 hover:text-white" title="Drag to reorder waypoint">
-                  <GripVertical size={14} />
-                </div>
-                <span className="font-mono text-xs font-bold text-slate-200">
-                  {String(index + 1).padStart(2, '0')}
-                </span>
-                <button className="min-w-0 flex-1 text-left" onClick={() => stop.type === 'science' && useMissionStore.getState().setSelectedWaypoint(stop.id)}>
-                  <strong className="block truncate text-xs font-medium text-white">{stopName(stop)}</strong>
-                  <span className="text-[10px] text-slate-300 font-mono">{stop.type === 'science' ? 'Science Target' : 'Checkpoint'}</span>
-                </button>
-                <button className="grid size-7 place-items-center rounded text-slate-400 hover:text-rose-400 hover:bg-rose-950/40 disabled:opacity-20" disabled={mission.route_stops.length === 1} onClick={() => remove(stop.id)} aria-label={`Remove ${stop.id}`}>
-                  <Trash2 size={13} />
-                </button>
-              </div>
-            ))}
-
-            {/* Return Destination */}
-            <div className="flex items-center gap-2.5 rounded-lg border border-white/10 bg-[#161b22] p-2 text-xs">
-              <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded bg-[#21262d] text-white border border-white/20">
-                RET
-              </span>
-              <div className="min-w-0 flex-1">
-                <strong className="block text-white text-xs">Return to habitat</strong>
-                <span className="text-[11px] text-slate-300">Route ends at the starting point</span>
-              </div>
-            </div>
-          </div>
+            <li className="relative flex min-h-12 items-center gap-3">
+              <StationRow
+                mark="H"
+                name="Return to habitat"
+                kind="Route ends at the starting point"
+                arrival={current ? formatDistance(current.metrics.distance_m) : undefined}
+                energy={current ? formatEnergy(current.metrics.energy_units) : undefined}
+              />
+            </li>
+          </ol>
 
           <Button
             variant="secondary"
-            className="mt-2.5 w-full border border-white/20 text-xs font-medium"
+            className="mt-2 w-full"
             disabled={mission.route_stops.length >= 12}
-            onClick={() => {
-              setPlacement('stop')
-              if (window.innerWidth < 1024) setOpen(false)
-            }}
+            onClick={() => startPlacement('stop')}
           >
-            <Plus size={15} /> Add stop on map
+            <Plus size={14} /> Add stop on map
           </Button>
         </section>
 
-        {/* Science Targets accordion */}
-        <details className="group rounded-lg border border-white/10 bg-[#161b22]">
-          <summary className="flex min-h-10 cursor-pointer items-center justify-between px-3 text-xs font-medium text-slate-200">
-            <span>Science targets</span>
-            <ChevronRight size={14} className="transition group-open:rotate-90 text-slate-400" />
+        <details className="group border-t border-rule">
+          <summary className={summary}>
+            <span className="flex-1">Science targets</span>
+            <span className="num text-xs font-normal text-ink-3">{scienceCount} of {bootstrap.waypoints.features.length}</span>
+            {chevron}
           </summary>
-          <div className="space-y-1 border-t border-white/10 p-2">
+          <div className="pb-2">
             {bootstrap.waypoints.features.map((feature) => {
               const selected = mission.route_stops.some((stop) => stop.id === feature.properties.id)
               return (
-                <button
+                <label
                   key={feature.properties.id}
-                  className="flex min-h-10 w-full items-center gap-2.5 rounded-md px-2 text-left hover:bg-white/5 transition"
+                  className="flex min-h-11 cursor-pointer items-center gap-3 px-4 hover:bg-panel-2"
                   onMouseEnter={() => useMissionStore.getState().setHoveredWaypoint(feature.properties.id)}
                   onMouseLeave={() => useMissionStore.getState().setHoveredWaypoint(null)}
-                  onClick={() => toggleScience(feature.properties.id)}
                 >
-                  <span className={`grid size-5 place-items-center rounded border ${selected ? 'border-white/40 bg-[#1f6feb] text-white' : 'border-white/20 bg-[#161b22] text-transparent'}`}>
-                    {selected && <Check size={12} />}
-                  </span>
+                  <input className="check" type="checkbox" checked={selected} onChange={() => toggleScience(feature.properties.id)} />
                   <span className="min-w-0 flex-1">
-                    <strong className="block truncate text-xs text-white">{feature.properties.name}</strong>
-                    <small className="font-mono text-[10px] text-slate-400">{feature.properties.id} · Sol {feature.properties.sol}</small>
+                    <strong className="block truncate text-[13px] font-medium text-ink">{feature.properties.name}</strong>
+                    <small className="text-xs text-ink-3">{feature.properties.id} · Sol <span className="num">{feature.properties.sol}</span></small>
                   </span>
-                </button>
+                </label>
               )
             })}
           </div>
         </details>
 
-        {/* Advanced Constraints accordion */}
-        <details className="group rounded-lg border border-white/10 bg-[#161b22]">
-          <summary className="flex min-h-10 cursor-pointer items-center justify-between px-3 text-xs font-medium text-slate-200">
-            <span>Route settings</span>
-            <ChevronRight size={14} className="transition group-open:rotate-90 text-slate-400" />
+        <details className="group border-y border-rule">
+          <summary className={summary}>
+            <span className="flex-1">Route settings</span>
+            <span className="num text-xs font-normal text-ink-3 group-open:hidden">{mission.max_duration_min} min · {mission.return_reserve_pct}% reserve</span>
+            {chevron}
           </summary>
-          <div className="space-y-4 border-t border-white/10 p-3">
+          <div className="space-y-4 px-4 pb-4 pt-1">
             {[
               ['Maximum duration', 'max_duration_min', 240, 1000, 10, `${mission.max_duration_min} min`],
               ['Energy budget', 'energy_budget', 15000, 70000, 1000, `${mission.energy_budget.toLocaleString()} EU`],
               ['Preferred maximum slope', 'preferred_max_slope_deg', 8, 25, 1, `${mission.preferred_max_slope_deg}°`],
               ['Return reserve', 'return_reserve_pct', 10, 50, 5, `${mission.return_reserve_pct}%`],
             ].map(([label, key, min, max, step, value]) => (
-              <label className="block text-xs" key={String(key)}>
-                <span className="mb-1.5 flex justify-between">
-                  <span className="text-slate-300">{label}</span>
-                  <output className="font-mono text-mars font-semibold">{value}</output>
+              <label className="block text-[13px]" key={String(key)}>
+                <span className="flex items-baseline justify-between">
+                  <span className="text-ink-2">{label}</span>
+                  <output className="num font-bold text-ink">{value}</output>
                 </span>
                 <input
-                  className="h-1.5 w-full accent-mars"
+                  className="mt-1 w-full"
                   type="range"
                   min={Number(min)}
                   max={Number(max)}
@@ -409,18 +436,29 @@ function MissionSidebar() {
         </details>
       </div>
 
-      <div className="border-t border-white/10 p-3 bg-[#0d1117]">
-        <button
+      <div className="border-t border-ink p-3">
+        <Button
           data-testid="route-action"
-          className="w-full h-11 flex items-center justify-center gap-2 rounded-lg bg-[#1f6feb] hover:bg-[#388bfd] text-white text-sm font-semibold border border-[#58a6ff]/40 shadow-lg active:scale-[0.98] transition disabled:opacity-60 disabled:pointer-events-none"
+          className="h-11 w-full"
           disabled={state === 'loading' || (Boolean(plan) && !routeDirty)}
           onClick={() => calculate()}
         >
-          {state === 'loading' ? <span className="spinner" /> : <Navigation size={14} />}
+          {state === 'loading' ? <span className="spinner" /> : !routeDirty && plan ? <Check size={14} /> : null}
           {state === 'loading' ? 'Updating route…' : routeDirty ? (plan ? 'Update route' : 'Plan route') : 'Route up to date'}
-        </button>
+        </Button>
       </div>
     </aside>
+  )
+}
+
+function SidebarExpand() {
+  const open = useMissionStore((state) => state.sidebarOpen)
+  const setOpen = useMissionStore((state) => state.setSidebarOpen)
+  if (open) return null
+  return (
+    <Button variant="secondary" size="icon" className="absolute left-3 top-3 z-20 hidden md:flex" onClick={() => setOpen(true)} aria-label="Expand mission panel">
+      <PanelLeftOpen size={16} />
+    </Button>
   )
 }
 
@@ -437,65 +475,47 @@ function LayerControl() {
     { id: 'traverse', label: 'Perseverance Rover Traverse', kind: 'measured' }
   ]
 
+  const scale = (label: string, from: string, to: string, gradient: string) => (
+    <div>
+      <span className="label mb-1.5 block text-ink-2">{label}</span>
+      <div className="flex items-center gap-2 text-xs text-ink-2">
+        <span>{from}</span>
+        <div className="h-2 flex-1 border border-ink" style={{ background: gradient }} />
+        <span>{to}</span>
+      </div>
+    </div>
+  )
+
   return (
     <div className="absolute right-3 top-3 z-20">
-      <Button variant="secondary" size="icon" className="border border-white/20 bg-[#0d1117] shadow-xl hover:bg-white/10" onClick={() => setOpen(!open)} aria-label="Map layers">
-        <Layers3 />
+      <Button variant="secondary" size="icon" className="ml-auto flex" onClick={() => setOpen(!open)} aria-label="Map layers" aria-expanded={open}>
+        <Layers3 size={16} />
       </Button>
       {open && (
-        <div className="absolute right-0 mt-2 w-72 rounded-xl border border-white/20 bg-[#0d1117] p-3.5 shadow-2xl">
-          <div className="mb-2 flex items-center justify-between border-b border-white/10 pb-2">
-            <h2 className="text-sm font-semibold text-slate-200">Map layers</h2>
-            <span className="text-[10px] text-slate-400">NASA PDS</span>
+        <div className="absolute right-0 mt-2 w-72 border border-ink bg-panel">
+          <h2 className="label border-b border-rule px-3.5 py-2.5 text-ink">Map layers</h2>
+          <div className="py-1">
+            {layers.map((layer) => (
+              <label className="flex min-h-9 cursor-pointer items-center gap-2.5 px-3.5 text-[13px] text-ink hover:bg-panel-2" key={layer.id}>
+                <input className="check" type="checkbox" checked={visibility[layer.id] ?? false} onChange={(event) => setVisibility(layer.id, event.target.checked)} />
+                <span className="flex-1 truncate">{layer.label}</span>
+                <small className="label text-ink-3">{layer.kind}</small>
+              </label>
+            ))}
           </div>
-          {layers.map((layer) => (
-            <label className="flex min-h-9 items-center gap-2.5 text-xs text-slate-200 hover:text-white cursor-pointer" key={layer.id}>
-              <input className="size-3.5 accent-mars" type="checkbox" checked={visibility[layer.id] ?? false} onChange={(event) => setVisibility(layer.id, event.target.checked)} />
-              <span className="flex-1 truncate">{layer.label}</span>
-              <small className="font-mono text-[10px] text-slate-400 uppercase">{layer.kind}</small>
-            </label>
-          ))}
-          <label className="mt-2.5 block border-t border-white/10 pt-2.5 text-xs">
-            <span className="mb-1.5 flex justify-between">
-              <span className="text-slate-300">Overlay Opacity</span>
-              <output className="font-mono text-mars font-bold">{Math.round(opacity * 100)}%</output>
+          <label className="block border-t border-rule px-3.5 py-3 text-[13px]">
+            <span className="flex items-baseline justify-between">
+              <span className="text-ink-2">Overlay opacity</span>
+              <output className="num font-bold text-ink">{Math.round(opacity * 100)}%</output>
             </span>
-            <input className="w-full accent-mars" type="range" min="0.15" max="0.9" step="0.05" value={opacity} onChange={(event) => setOpacity(Number(event.target.value))} />
+            <input className="mt-1 w-full" type="range" min="0.15" max="0.9" step="0.05" value={opacity} onChange={(event) => setOpacity(Number(event.target.value))} />
           </label>
 
           {(visibility.slope || visibility.hazard || visibility.crism) && (
-            <div className="mt-3 border-t border-white/10 pt-2.5 space-y-2">
-              <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 block font-semibold">Active Layer Color Scale</span>
-              {visibility.slope && (
-                <div>
-                  <span className="text-slate-300 block mb-1 font-semibold text-[10px]">Slope Incline:</span>
-                  <div className="flex items-center gap-1.5 font-mono text-[10px]">
-                    <span className="text-emerald-400 font-bold">0°</span>
-                    <div className="h-1.5 flex-1 rounded bg-gradient-to-r from-emerald-500 via-yellow-400 to-rose-600" />
-                    <span className="text-rose-400 font-bold">25°+</span>
-                  </div>
-                </div>
-              )}
-              {visibility.hazard && (
-                <div>
-                  <span className="text-slate-300 block mb-1 font-semibold text-[10px]">Traversability:</span>
-                  <div className="flex items-center gap-1.5 font-mono text-[10px]">
-                    <span className="text-emerald-400">Regolith</span>
-                    <div className="h-1.5 flex-1 rounded bg-gradient-to-r from-emerald-500 via-amber-500 to-red-600" />
-                    <span className="text-rose-400">Rocky</span>
-                  </div>
-                </div>
-              )}
-              {visibility.crism && (
-                <div>
-                  <span className="text-slate-300 block mb-1 font-semibold text-[10px]">CRISM OLINDEX3:</span>
-                  <div className="flex items-center gap-1.5 font-mono text-[10px]">
-                    <span className="text-slate-400">Low</span>
-                    <div className="h-1.5 flex-1 rounded bg-gradient-to-r from-blue-900 via-cyan-400 to-amber-400" />
-                    <span className="text-mars font-bold">Clay/Olivine</span>
-                  </div>
-                </div>
-              )}
+            <div className="space-y-3 border-t border-rule px-3.5 py-3">
+              {visibility.slope && scale('Slope', '0°', '25°+', 'linear-gradient(to right, #10b981, #facc15, #e11d48)')}
+              {visibility.hazard && scale('Traversability', 'Regolith', 'Rocky', 'linear-gradient(to right, #10b981, #f59e0b, #dc2626)')}
+              {visibility.crism && scale('CRISM OLINDEX3', 'Low', 'Clay / olivine', 'linear-gradient(to right, #1e3a8a, #22d3ee, #fbbf24)')}
             </div>
           )}
         </div>
@@ -504,55 +524,84 @@ function LayerControl() {
   )
 }
 
-function RouteSummary() {
+/** Energy spent against the budget, with the return reserve hatched off at the far end. */
+function ReturnMargin({ used, budget, reservePct }: { used: number; budget: number; reservePct: number }) {
+  const limit = 1 - reservePct / 100
+  const ratio = Math.min(used / budget, 1)
+  const over = used / budget > limit
+  return (
+    <div>
+      <div className="relative h-2.5 border border-ink" role="img" aria-label={`${Math.round(ratio * 100)}% of energy budget used; ${reservePct}% held in reserve`}>
+        <div
+          className="absolute inset-y-0 right-0 border-l border-rust"
+          style={{ left: `${limit * 100}%`, background: 'repeating-linear-gradient(135deg, #b8431b 0 1.5px, transparent 1.5px 5px)' }}
+          aria-hidden
+        />
+        <div className={`absolute inset-y-0 left-0 ${over ? 'bg-danger' : 'bg-ink'}`} style={{ width: `${ratio * 100}%` }} />
+      </div>
+      <div className="mt-1.5 flex flex-wrap justify-between gap-x-3 text-xs text-ink-2">
+        <span className="whitespace-nowrap"><span className="num text-ink">{Math.round(used).toLocaleString()}</span> of <span className="num">{Math.round(budget).toLocaleString()}</span> EU</span>
+        <span className="whitespace-nowrap text-rust">reserve from <span className="num">{Math.round(budget * limit).toLocaleString()}</span></span>
+      </div>
+    </div>
+  )
+}
+
+function RouteStrip() {
   const plan = useMissionStore((state) => state.plan)
+  const mission = useMissionStore((state) => state.mission)
   const active = useMissionStore((state) => state.activeRoute)
   const setActive = useMissionStore((state) => state.setActiveRoute)
   const setDetails = useMissionStore((state) => state.setDetailsOpen)
-  const sidebarOpen = useMissionStore((state) => state.sidebarOpen)
-  if (!plan?.primary) return null
-  const route = active === 'alternative' ? plan.alternative ?? plan.primary : plan.primary
-
-  // Dynamically adapt left positioning when sidebar is collapsed to avoid empty space
-  const leftPosition = sidebarOpen ? 'sm:left-[405px]' : 'sm:left-3'
+  const loading = useMissionStore((state) => state.state === 'loading')
+  const route = useActiveRoute()
+  if (!plan || !route || !mission) return null
 
   return (
-    <section data-testid="route-status" aria-live="polite" className={`absolute bottom-3 left-2 right-2 z-10 rounded-xl border border-white/20 bg-[#0d1117]/95 p-3 shadow-2xl transition-all duration-300 ease-in-out ${leftPosition} sm:right-auto sm:max-w-xl md:max-w-2xl backdrop-blur`}>
-      <div className="flex items-center gap-3">
+    <div className="relative z-10 shrink-0 [container-type:inline-size]">
+    <section
+      data-testid="route-status"
+      aria-live="polite"
+      className={`flex flex-wrap items-stretch border-t border-ink bg-panel transition-opacity wide:flex-nowrap ${loading ? 'opacity-60' : ''}`}
+    >
+      <div className="order-1 flex min-w-0 flex-1 items-center gap-3.5 px-4 py-3 wide:w-[21.5rem] wide:flex-none wide:border-r wide:border-rule">
+        <strong className={`wordmark shrink-0 text-[26px] leading-none ${plan.feasible ? 'text-safe' : 'text-danger'}`}>
+          {plan.feasible ? 'Go' : 'No-go'}
+        </strong>
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <span className={`font-mono text-[11px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border ${plan.feasible ? 'border-emerald-600 bg-[#21262d] text-emerald-400' : 'border-amber-600 bg-[#21262d] text-amber-400'}`}>
-              {plan.feasible ? 'SAFE' : 'CAUTION'}
-            </span>
-            <strong className="block text-xs font-mono font-bold uppercase tracking-wider text-white">
-              {plan.feasible ? 'Route is safe to return' : 'Route needs changes'}
-            </strong>
-            <span className="hidden font-mono text-[10px] text-sky-400 font-semibold lg:inline-block">
-              SCI SCORE {route.metrics.science_score}/100
-            </span>
-          </div>
-          <p className="truncate font-mono text-xs text-slate-200 mt-0.5">
-            {formatDistance(route.metrics.distance_m)} · {Math.round(route.metrics.duration_min)} min · {Math.round(route.metrics.energy_units).toLocaleString()} EU · Max slope {route.metrics.maximum_slope_deg}°
+          <p className="mb-1.5 truncate text-[13px] font-semibold text-ink">
+            {plan.feasible ? 'Route is safe to return' : 'Route needs changes'}
+            {active === 'alternative' && plan.alternative && <span className="font-normal text-ink-3"> · alternative</span>}
           </p>
-          {route.explanation[0] && (
-            <p className="hidden text-[11px] text-slate-300 truncate sm:block mt-0.5 font-mono">
-              <span className="text-sky-400 font-semibold mr-1">Why:</span>
-              {route.explanation[0]} {route.explanation[1]}
-            </p>
-          )}
-        </div>
-
-        {/* Clean, consolidated action buttons */}
-        <div className="flex items-center gap-2 shrink-0">
-          <Button variant="ghost" size="sm" className="hidden sm:flex text-xs font-mono border border-white/10 hover:border-white/20 bg-[#161b22]" onClick={() => setActive(active === 'primary' ? 'alternative' : 'primary')}>
-            {active === 'primary' ? 'Show alternative' : 'Show primary'}
-          </Button>
-          <Button variant="secondary" size="sm" className="text-xs font-semibold bg-[#21262d] border border-white/20 hover:bg-[#30363d]" onClick={() => setDetails(true)}>
-            Details
-          </Button>
+          <ReturnMargin used={route.metrics.energy_units} budget={mission.energy_budget} reservePct={mission.return_reserve_pct} />
         </div>
       </div>
+
+      <TraverseProfile
+        compact
+        route={route}
+        stops={mission.route_stops}
+        slopeLimitDeg={mission.preferred_max_slope_deg}
+        className="order-3 hidden h-[84px] flex-1 px-4 pb-2.5 pt-1.5 wide:flex"
+      />
+
+      <dl className="order-4 grid w-full grid-cols-4 gap-3 border-t border-rule px-4 py-2.5 wide:order-3 wide:w-auto wide:grid-cols-[repeat(4,4.25rem)] wide:content-center wide:border-l wide:border-t-0">
+        <Stat label="Distance" value={formatDistance(route.metrics.distance_m)} />
+        <Stat label="Duration" value={`${Math.round(route.metrics.duration_min)} min`} />
+        <Stat label="Max slope" value={`${route.metrics.maximum_slope_deg}°`} />
+        <Stat label="Science" value={`${route.metrics.science_score}`} />
+      </dl>
+
+      <div className="order-2 flex shrink-0 flex-col justify-center gap-1 py-2 pl-1 pr-3 wide:order-4 wide:border-l wide:border-rule wide:pl-3">
+        <Button variant="secondary" size="sm" onClick={() => setDetails(true)}>Details</Button>
+        {plan.alternative && (
+          <Button variant="ghost" size="sm" className="hidden sm:flex" onClick={() => setActive(active === 'primary' ? 'alternative' : 'primary')}>
+            {active === 'primary' ? 'Show alternative' : 'Show primary'}
+          </Button>
+        )}
+      </div>
     </section>
+    </div>
   )
 }
 
@@ -560,59 +609,41 @@ function RouteDetails() {
   const open = useMissionStore((state) => state.detailsOpen)
   const setOpen = useMissionStore((state) => state.setDetailsOpen)
   const plan = useMissionStore((state) => state.plan)
+  const mission = useMissionStore((state) => state.mission)
   const active = useMissionStore((state) => state.activeRoute)
   const applyEnergyLoss = useMissionStore((state) => state.applyEnergyLoss)
   const route: RouteCandidate | null | undefined = active === 'alternative' ? plan?.alternative : plan?.primary
 
   return (
     <Sheet open={open} onOpenChange={setOpen} title="Route details" side="right">
-      {route && (
-        <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-2">
-            {[
-              ['Distance', formatDistance(route.metrics.distance_m)],
-              ['Max Slope', `${route.metrics.maximum_slope_deg}°`],
-              ['Energy Consumed', `${Math.round(route.metrics.energy_units).toLocaleString()} EU`],
-              ['Return Reserve', `${Math.round(route.metrics.return_reserve_units).toLocaleString()} EU`],
-              ['Elevation Gain', `+${route.metrics.elevation_gain_m} m`],
-              ['Science Score', `${route.metrics.science_score} / 100`],
-            ].map(([label, value]) => (
-              <div className="rounded-lg border border-white/10 bg-[#161b22] p-2.5 font-mono" key={label}>
-                <small className="block text-[10px] uppercase text-slate-400 tracking-wider">{label}</small>
-                <strong className="mt-1 block text-sm text-white">{value}</strong>
-              </div>
-            ))}
+      {route && mission && (
+        <div className="space-y-6">
+          <dl className="grid grid-cols-2 gap-x-4 gap-y-4 border-b border-rule pb-5">
+            <Stat label="Distance" value={formatDistance(route.metrics.distance_m)} />
+            <Stat label="Duration" value={`${Math.round(route.metrics.duration_min)} min`} />
+            <Stat label="Energy consumed" value={formatEnergy(route.metrics.energy_units)} />
+            <Stat label="Return reserve" value={formatEnergy(route.metrics.return_reserve_units)} />
+            <Stat label="Elevation gain" value={`+${route.metrics.elevation_gain_m} m`} />
+            <Stat label="Max slope" value={`${route.metrics.maximum_slope_deg}°`} />
+            <Stat label="Science score" value={`${route.metrics.science_score} / 100`} />
+          </dl>
+
+          <div>
+            <h3 className="label mb-2 text-ink">Elevation profile</h3>
+            <TraverseProfile route={route} stops={mission.route_stops} slopeLimitDeg={mission.preferred_max_slope_deg} className="h-56" />
           </div>
 
-          <div className="rounded-lg border border-white/10 bg-[#161b22] p-2.5">
-            <h4 className="mb-2 text-xs font-medium text-slate-300">Elevation profile · HiRISE DTM</h4>
-            <div className="h-44">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={route.elevation_profile}>
-                  <XAxis dataKey="distance_m" hide />
-                  <YAxis width={42} tick={{ fill: '#8b949e', fontSize: 10, fontFamily: 'monospace' }} domain={['dataMin - 5', 'dataMax + 5']} />
-                  <Tooltip
-                    contentStyle={{ background: '#0d1117', borderColor: '#30363d', borderRadius: '8px', fontSize: '11px', fontFamily: 'monospace' }}
-                  />
-                  <Area type="monotone" dataKey="elevation_m" stroke="#e18a55" fill="#e18a5522" strokeWidth={2} />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          <div className="rounded-lg border border-white/10 bg-[#161b22] p-3">
-            <h3 className="mb-2 flex items-center gap-2 text-xs font-mono font-semibold tracking-wider uppercase text-mars">
-              <Activity size={14} /> Why this route
-            </h3>
-            <div className="space-y-1.5">
+          <div>
+            <h3 className="label mb-2 text-ink">Why this route</h3>
+            <div className="space-y-2">
               {route.explanation.map((line) => (
-                <p className="text-xs leading-relaxed text-slate-300" key={line}>{line}</p>
+                <p className="text-[13px] leading-relaxed text-ink-2" key={line}>{line}</p>
               ))}
             </div>
           </div>
 
-          <Button variant="secondary" className="w-full text-xs" onClick={() => applyEnergyLoss()}>
-            <Zap size={14} className="text-amber-400" /> Simulate 20% energy loss
+          <Button variant="secondary" className="w-full" onClick={() => applyEnergyLoss()}>
+            Simulate 20% energy loss
           </Button>
         </div>
       )}
@@ -630,36 +661,38 @@ function DraftStopSheet() {
     <Sheet open={Boolean(draft)} onOpenChange={(open) => !open && cancel()} title="Add checkpoint" side="bottom">
       {draft && (
         <div className="mx-auto max-w-xl space-y-4">
-          <label className="block text-xs font-medium text-slate-200">
+          <label className="block text-[13px] font-semibold text-ink">
             Checkpoint name
             <input
-              className="mt-1.5 min-h-10 w-full rounded-lg border border-white/20 bg-background px-3 text-xs font-mono text-white"
+              className="mt-1.5 h-10 w-full rounded border border-ink bg-white px-3 text-[13px] font-normal text-ink placeholder:text-ink-3"
               value={draft.name}
               placeholder="e.g. North delta stop"
               onChange={(event) => useMissionStore.setState({ draftStop: { ...draft, name: event.target.value } })}
             />
           </label>
           {!validation ? (
-            <div className="flex items-center gap-2 text-xs text-slate-300 font-mono">
+            <div className="flex items-center gap-2 text-[13px] text-ink-2">
               <span className="spinner" /> Checking terrain…
             </div>
           ) : (
-            <div className="rounded-lg border border-white/20 bg-[#161b22] p-3 text-xs">
-              <strong className={`block font-semibold ${validation.valid ? 'text-emerald-400' : 'text-rose-400'}`}>
-                {validation.valid ? '✓ This location is traversable' : '✕ Choose another location'}
+            <div className="border-y border-rule py-3 text-[13px]">
+              <strong className={`block font-semibold ${validation.valid ? 'text-safe' : 'text-danger'}`}>
+                {validation.valid ? 'This location is traversable' : 'Choose another location'}
               </strong>
-              <p className="mt-1 font-mono text-[11px] text-slate-300">
-                Elev: {validation.terrain.elevation_m?.toFixed(1)} m · Slope: {validation.terrain.slope_deg?.toFixed(1)}° · Geology: {validation.science_context.geology_symbol ?? 'Nili Planum'}
-              </p>
+              <dl className="mt-3 grid grid-cols-3 gap-3">
+                <Stat label="Elevation" value={validation.terrain.elevation_m === undefined ? '—' : `${validation.terrain.elevation_m.toFixed(1)} m`} />
+                <Stat label="Slope" value={validation.terrain.slope_deg === undefined ? '—' : `${validation.terrain.slope_deg.toFixed(1)}°`} />
+                <Stat label="Geology" value={validation.science_context.geology_symbol ?? 'Nili Planum'} />
+              </dl>
               {validation.warnings.map((warning) => (
-                <p className="mt-1.5 text-[11px] text-amber-300 font-mono" key={warning}>{warning}</p>
+                <p className="mt-2 text-xs text-caution" key={warning}>{warning}</p>
               ))}
             </div>
           )}
-          <div className="flex justify-end gap-2 pt-2">
+          <div className="flex justify-end gap-2 pt-1">
             <Button variant="ghost" size="sm" onClick={cancel}>Cancel</Button>
             <Button size="sm" disabled={!validation?.valid || !draft.name.trim()} onClick={commit}>
-              Add to Route
+              Add to route
             </Button>
           </div>
         </div>
@@ -670,13 +703,18 @@ function DraftStopSheet() {
 
 export function Planner() {
   return (
-    <div className="absolute inset-0 overflow-hidden bg-[#090b0e]">
-      <MarsMap />
-      <PlacementBanner />
-      <WaypointInspector2D />
+    <div className="absolute inset-0 flex overflow-hidden bg-ground">
       <MissionSidebar />
-      <LayerControl />
-      <RouteSummary />
+      <div className="relative flex min-w-0 flex-1 flex-col">
+        <div className="relative min-h-0 flex-1 overflow-hidden">
+          <MarsMap />
+          <PlacementBanner />
+          <SidebarExpand />
+          <WaypointInspector2D />
+          <LayerControl />
+        </div>
+        <RouteStrip />
+      </div>
       <RouteDetails />
       <DraftStopSheet />
     </div>

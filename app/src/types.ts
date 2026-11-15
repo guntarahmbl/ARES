@@ -49,7 +49,7 @@ export type WaypointValidation = {
   valid: boolean
   coordinate: Coordinate
   terrain: { elevation_m?: number; slope_deg?: number; roughness?: number; traversable: boolean }
-  science_context: { geology_unit?: string; geology_symbol?: string; crism?: Record<string, number | null> }
+  science_context: { geology_unit?: string; geology_symbol?: string; crism?: Record<string, number | null>; crism_coverage?: Record<string, string> }
   warnings: string[]
 }
 
@@ -114,3 +114,76 @@ export type Bootstrap = {
   bounds_projected: number[]
 }
 
+export type AdvisorProposal = {
+  summary: string
+  changes: string[]
+  mission: MissionConfig
+  preview: {
+    feasible: boolean
+    warnings: string[]
+    route: Pick<RouteMetrics, 'distance_m' | 'duration_min' | 'energy_units' | 'return_reserve_units' | 'maximum_slope_deg' | 'elevation_gain_m' | 'science_score'> | null
+  }
+  based_on_revision: string
+}
+
+export type AdvisorIntent = 'configure_mission' | 'explain_route' | 'compare_routes' | 'inspect_location' | 'data_provenance' | 'unsupported'
+
+export type AdvisorEvidence = {
+  evidence_id: string
+  dataset_id: string
+  kind: string
+  label: string
+  value: unknown
+  unit: string | null
+  classification: 'measured' | 'derived' | 'interpreted' | 'assumed'
+  coverage: 'available' | 'partial' | 'outside_coverage' | 'missing'
+  completeness: 'complete' | 'incomplete' | 'unknown'
+  confidence: 'high' | 'medium' | 'low' | 'not_applicable'
+  confidence_reasons: string[]
+  limitations: string[]
+  thumbnail_url: string | null
+  source_url: string | null
+  metadata: Record<string, unknown>
+}
+
+export type AdvisorCitation = {
+  dataset_id: string
+  title: string
+  product_id: string | null
+  catalog_url: string
+  version: string | null
+  resolution_m: number | null
+  classification: string
+  attribution: string | null
+  license: string | null
+  processing: string | null
+}
+
+export type AdvisorRequest = {
+  message: string
+  mission: MissionConfig
+  active_route: 'primary' | 'alternative'
+  selected_waypoint_id?: string
+  selected_coordinate?: Coordinate
+  mission_revision: string
+}
+
+export type AdvisorResponse = {
+  request_id: string
+  intent: AdvisorIntent
+  answer: string
+  citations: AdvisorCitation[]
+  evidence: AdvisorEvidence[]
+  proposal: AdvisorProposal | null
+  warnings: string[]
+  model: string
+  prompt_version: string
+}
+
+export type AdvisorStatus = {
+  available: boolean
+  state: 'disabled' | 'unreachable' | 'model_unavailable' | 'ready'
+  provider: string
+  model: string | null
+  detail: string | null
+}

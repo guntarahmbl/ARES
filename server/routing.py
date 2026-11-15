@@ -109,18 +109,26 @@ class RoutingEngine:
         point = Point(longitude, latitude)
         unit = next((feature["properties"] for feature in self.geology if shape(feature["geometry"]).covers(point)), {})
         indicators: dict[str, float | None] = {}
+        indicator_coverage: dict[str, str] = {}
         x, y = self.to_projected.transform(longitude, latitude)
         for name, path in self.crism_paths.items():
             if not path.exists():
                 indicators[name] = None
+                indicator_coverage[name] = "missing"
                 continue
             with rasterio.open(path) as source:
+                if not (source.bounds.left <= x <= source.bounds.right and source.bounds.bottom <= y <= source.bounds.top):
+                    indicators[name] = None
+                    indicator_coverage[name] = "outside_coverage"
+                    continue
                 value = next(source.sample([(x, y)], masked=True))[0]
                 indicators[name] = round(float(value), 6) if np.isfinite(value) and value != source.nodata else None
+                indicator_coverage[name] = "available" if indicators[name] is not None else "missing"
         return {
             "geology_unit": unit.get("name") or unit.get("unit") or "Mapped Jezero unit",
             "geology_symbol": unit.get("symbol") or unit.get("symbol_noSub") or "—",
             "crism": indicators,
+            "crism_coverage": indicator_coverage,
             "classification": "interpreted",
         }
 

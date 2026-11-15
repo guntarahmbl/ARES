@@ -32,6 +32,8 @@ type MissionStore = {
 let activeRequest = 0
 let validationRequest = 0
 const sidebarPreference = typeof localStorage === 'undefined' ? null : localStorage.getItem('ares-sidebar')
+// On a phone the mission panel covers the map, so it starts closed until asked for.
+const sidebarDefault = typeof window === 'undefined' || window.innerWidth >= 768
 const minimapPreference = typeof localStorage === 'undefined' ? null : localStorage.getItem('ares-minimap')
 const replaceStop = (stops: RouteStop[], id: string, patch: Partial<CustomRouteStop>) => stops.map((stop) => stop.id === id && stop.type === 'custom' ? { ...stop, ...patch } : stop)
 
@@ -53,7 +55,7 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
   bootstrap: null, mission: null, plan: null, emergencyRoute: null, waypointValidation: null, draftStop: null,
   view: 'planner', state: 'idle', error: null, selectedWaypoint: null, hoveredWaypoint: null, activeRoute: 'primary',
   layerVisibility: { imagery: true, slope: false, hazard: true, crism: false, geology: true, traverse: true },
-  layerOpacity: 0.55, placementMode: null, sidebarOpen: sidebarPreference !== 'closed', detailsOpen: false, routeDirty: true,
+  layerOpacity: 0.55, placementMode: null, sidebarOpen: sidebarPreference ? sidebarPreference === 'open' : sidebarDefault, detailsOpen: false, routeDirty: true,
   guided: true, playing: false, speed: 8, reducedMotion: false, progress: 0,
   walkTelemetry: null, minimapOpen: minimapPreference !== 'closed', viewTransitioning: false,
   initialize: async () => {

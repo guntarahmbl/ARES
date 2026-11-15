@@ -2,8 +2,7 @@ import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame, useLoader, useThree } from '@react-three/fiber'
 import { Html, Line, Stars } from '@react-three/drei'
 import {
-  Activity, AlertTriangle, BatteryCharging, ChevronLeft, Compass, FastForward, Footprints, Gauge, Map, MapPin, Minus, Pause, Play,
-  Plus, RotateCcw, ShieldCheck, Target, Zap
+  AlertTriangle, ChevronLeft, Compass, FastForward, Footprints, MapPin, Minus, Pause, Play, Plus, RotateCcw, X
 } from 'lucide-react'
 import * as THREE from 'three'
 import { useMissionStore } from '../store'
@@ -69,7 +68,7 @@ function OverviewTerrain({ scene }: { scene: SceneManifest }) {
   return <mesh geometry={geometry}><meshStandardMaterial map={texture} roughness={1} metalness={0} /></mesh>
 }
 
-function TerrainTile({ tile, lod, elevationOffset }: { tile: SceneTile; lod: number; elevationOffset: number }) {
+function TerrainTile({ tile, lod, elevationOffset, compact }: { tile: SceneTile; lod: number; elevationOffset: number; compact: boolean }) {
   const descriptor = tile.lods.find((item) => item.resolution_m === lod) ?? tile.lods.at(-1)!
   const heights = useBinary(descriptor.url)
   const texture = useLoader(THREE.TextureLoader, tile.texture_url)
@@ -105,7 +104,7 @@ function TerrainTile({ tile, lod, elevationOffset }: { tile: SceneTile; lod: num
   }, [heights, descriptor, tile.bounds_local, elevationOffset])
 
   useEffect(() => () => geometry?.dispose(), [geometry])
-  useEffect(() => { texture.colorSpace = THREE.SRGBColorSpace; texture.anisotropy = 4 }, [texture])
+  useEffect(() => { texture.colorSpace = THREE.SRGBColorSpace; texture.anisotropy = compact ? 4 : 16; texture.needsUpdate = true }, [texture, compact])
   if (!geometry) return null
   return <mesh geometry={geometry} receiveShadow><meshStandardMaterial map={texture} roughness={1} metalness={0} /></mesh>
 }
@@ -114,13 +113,17 @@ function TerrainWorld({ scene, avatar, compact }: { scene: SceneManifest; avatar
   const visible = useMemo(() => scene.tiles.map((tile) => {
     const [xMin, zMin, xMax, zMax] = tile.bounds_local
     const distance = Math.hypot((xMin + xMax) / 2 - avatar[0], (zMin + zMax) / 2 - avatar[2])
-    const lod = distance < (compact ? 450 : 650) ? 5 : distance < (compact ? 800 : 1100) ? 10 : 20
+    const wanted = compact
+      ? (distance < 450 ? 5 : distance < 800 ? 10 : 20)
+      : (distance < 400 ? 2 : distance < 900 ? 5 : distance < 1400 ? 10 : 20)
+    // Older asset builds have no 2 m level: fall back to the finest level that is not finer than requested.
+    const lod = tile.lods.reduce((best, item) => item.resolution_m >= wanted && item.resolution_m < best ? item.resolution_m : best, Infinity)
     return { tile, distance, lod }
   }).filter((item) => item.distance < (compact ? 1050 : 1600)), [scene.tiles, avatar[0], avatar[2], compact])
 
   return <group>
     <OverviewTerrain scene={scene} />
-    {visible.map(({ tile, lod }) => <TerrainTile key={`${tile.id}-${lod}`} tile={tile} lod={lod} elevationOffset={scene.origin.elevation} />)}
+    {visible.map(({ tile, lod }) => <TerrainTile key={`${tile.id}-${lod}`} tile={tile} lod={lod} elevationOffset={scene.origin.elevation} compact={compact} />)}
   </group>
 }
 
@@ -402,7 +405,7 @@ function WaypointMarkers({ scene: _scene }: { scene: SceneManifest }) {
     return <group key={stop.id} position={[x, y + 0.2, z]}>
       <mesh position={[0, 6, 0]}><cylinderGeometry args={[0.18, 0.18, 12, 8]} /><meshBasicMaterial color={color} transparent opacity={0.65} /></mesh>
       <mesh position={[0, 12, 0]}><octahedronGeometry args={[1.2]} /><meshStandardMaterial color={color} emissive={stop.type === 'custom' ? '#16495a' : '#6b2d12'} /></mesh>
-      <Html position={[0, 14.5, 0]} center distanceFactor={22}><button className="rounded border border-white/20 bg-[#0d1117] px-2.5 py-1 text-xs font-mono font-medium text-white shadow-md hover:bg-white/10" onClick={() => useMissionStore.getState().setSelectedWaypoint(stop.id)}>{label}</button></Html>
+      <Html position={[0, 14.5, 0]} center distanceFactor={22}><button className="rounded border border-ink bg-panel px-2.5 py-1 text-xs font-medium text-ink hover:bg-panel-2" onClick={() => useMissionStore.getState().setSelectedWaypoint(stop.id)}>{label}</button></Html>
     </group>
   })}</>
 }
@@ -564,7 +567,7 @@ export default function MarsWalk() {
     onPointerUp={handlePointerUp}
     onPointerCancel={handlePointerUp}
   >
-    <Canvas shadows={false} dpr={compact ? 1 : [1, 1.5]} camera={{ fov: 52, near: 0.2, far: compact ? 3200 : 5000, position: [0, 8, 15] }} gl={{ antialias: !compact, powerPreference: 'high-performance' }}>
+    <Canvas shadows={false} dpr={compact ? 1 : [1, 2]} camera={{ fov: 52, near: 0.2, far: compact ? 3200 : 5000, position: [0, 8, 15] }} gl={{ antialias: !compact, powerPreference: 'high-performance' }}>
       <Suspense fallback={<SuspenseFallback />}>
         <Scene
           route={route}
@@ -580,18 +583,15 @@ export default function MarsWalk() {
       </Suspense>
     </Canvas>
 
-    {/* Top Back Navigation */}
     <div className="absolute left-3 top-3 z-10">
-      <button className="flex min-h-10 items-center gap-2 rounded-lg border border-white/20 bg-[#0d1117] px-3 text-xs font-semibold text-white shadow-md hover:bg-white/10" onClick={() => transitionTo('planner')}>
+      <button className="flex h-10 items-center gap-1.5 rounded border border-ink bg-panel pl-2 pr-3 text-[13px] font-medium text-ink hover:bg-panel-2" onClick={() => transitionTo('planner')}>
         <ChevronLeft size={16} /> Planner
       </button>
     </div>
 
-    {/* UNIFIED MISSION CONSOLE DOCK (DUAL-DECK SYMMETRICAL) */}
-    <div className="absolute inset-x-3 bottom-3 z-20 mx-auto max-w-3xl rounded-xl border border-white/20 bg-[#0d1117] p-2.5 shadow-2xl">
-      {/* 1. Timeline Scrubber */}
-      <div className="flex items-center gap-3 px-1 mb-2">
-        <span className="min-w-8 text-right font-mono text-[10px] text-slate-300 font-bold">{Math.round(progress * 100)}%</span>
+    <div className="absolute inset-x-3 bottom-3 z-20 mx-auto max-w-3xl rounded border border-ink bg-panel p-3">
+      <div className="mb-3 flex items-center gap-3">
+        <span className="num w-9 text-right text-xs text-ink-2">{Math.round(progress * 100)}%</span>
         <input
           type="range"
           min="0"
@@ -605,42 +605,41 @@ export default function MarsWalk() {
           className="flex-1 cursor-pointer"
           aria-label="Route timeline scrub"
         />
-        <span className="min-w-24 font-mono text-[10px] text-slate-300 text-right font-bold">
+        <span className="num min-w-28 text-right text-xs text-ink-2">
           {((route.metrics.distance_m * progress) / 1000).toFixed(2)} / {(route.metrics.distance_m / 1000).toFixed(2)} km
         </span>
       </div>
 
-      {/* 2. Core Playback Console (Centered Master Deck) */}
-      <div className="flex items-center justify-center gap-2 pb-2 border-b border-white/10">
+      <div className="flex items-center justify-center gap-2 border-b border-rule pb-3">
         <button
-          className="flex h-8 items-center gap-1.5 rounded-md border border-white/10 bg-[#161b22] px-3 text-xs text-white hover:bg-white/10 transition"
+          className="flex h-9 items-center gap-1.5 rounded border border-ink px-3 text-[13px] font-medium text-ink hover:bg-panel-2"
           onClick={() => setWalkState({ guided: !guided, playing: false })}
           title={guided ? 'Switch to free walking' : 'Switch to guided tour'}
         >
-          <Footprints size={14} className={guided ? 'text-sky-400' : 'text-slate-400'} />
-          <span className="font-medium text-[11px]">{guided ? 'Guided Tour' : 'Free Walk'}</span>
+          <Footprints size={14} className={guided ? 'text-rust' : 'text-ink-3'} />
+          {guided ? 'Guided Tour' : 'Free Walk'}
         </button>
 
         <button
-          className="grid size-9 place-items-center rounded-md bg-[#1f6feb] text-white hover:bg-[#388bfd] transition shadow-md font-bold border border-[#58a6ff]/40"
+          className="grid size-10 place-items-center rounded bg-ink text-panel hover:bg-ink-2"
           onClick={() => setWalkState({ playing: !playing })}
           title={playing ? 'Pause' : 'Play'}
           aria-label={playing ? 'Pause' : 'Play'}
         >
-          {playing ? <Pause size={16} /> : <Play size={16} className="translate-x-0.5" />}
+          {playing ? <Pause size={16} /> : <Play size={16} className="translate-x-px" />}
         </button>
 
         <button
-          className="flex h-8 items-center gap-1 rounded-md border border-white/10 bg-[#161b22] px-2.5 font-mono text-xs text-white hover:bg-white/10 font-bold transition"
+          className="flex h-9 items-center gap-1.5 rounded border border-ink px-3 text-ink hover:bg-panel-2"
           onClick={cycleSpeed}
           title="Cycle playback speed"
         >
-          <FastForward size={13} className="text-sky-400" />
-          <span>{speed}×</span>
+          <FastForward size={13} className="text-ink-3" />
+          <span className="num text-xs">{speed}×</span>
         </button>
 
         <button
-          className="h-8 w-8 grid place-items-center rounded-md border border-white/10 bg-[#161b22] text-white hover:bg-white/10 transition"
+          className="grid size-9 place-items-center rounded border border-ink text-ink hover:bg-panel-2"
           onClick={() => setWalkState({ progress: 0, playing: false })}
           title="Reset to mission origin"
           aria-label="Reset to mission origin"
@@ -649,80 +648,72 @@ export default function MarsWalk() {
         </button>
       </div>
 
-      {/* 3. Symmetrical Auxiliary Wings (Telemetry Left · Camera Right) */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-2 pt-2">
-        {/* Left Wing: Suit Telemetry & Safety Actions */}
-        <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-start">
-          <div className="flex items-center gap-2 font-mono text-xs px-2.5 py-1 rounded-md bg-[#161b22] border border-white/10">
-            <BatteryCharging size={14} className="text-mars" />
-            <strong className="text-white font-bold">{Math.round(remaining).toLocaleString()} EU</strong>
-            <span className="text-slate-500">·</span>
-            <span className={`font-bold text-[10px] ${remaining > mission.energy_budget * mission.return_reserve_pct / 100 ? 'text-emerald-400' : 'text-amber-400'}`}>
-              {remaining > mission.energy_budget * mission.return_reserve_pct / 100 ? 'SAFE' : 'CAUTION'}
+      <div className="flex flex-col items-center justify-between gap-3 pt-3 sm:flex-row">
+        <div className="flex w-full flex-wrap items-center justify-between gap-x-3 gap-y-2 sm:w-auto sm:justify-start">
+          <div className="flex items-baseline gap-2 whitespace-nowrap">
+            <span className="label text-ink-3">Suit energy</span>
+            <strong className="num text-[15px] font-bold text-ink">{Math.round(remaining).toLocaleString()} EU</strong>
+            <span className={`text-xs font-medium ${remaining > mission.energy_budget * mission.return_reserve_pct / 100 ? 'text-safe' : 'text-caution'}`}>
+              {remaining > mission.energy_budget * mission.return_reserve_pct / 100 ? 'Above reserve' : 'Below reserve'}
             </span>
           </div>
 
           <div className="flex items-center gap-1.5">
             <button
-              className="flex h-7 items-center rounded border border-white/15 bg-[#161b22] px-2 text-[11px] font-mono font-medium text-slate-300 hover:text-white hover:bg-white/10 transition"
+              className="h-8 rounded border border-ink px-2 text-xs text-ink-2 hover:bg-panel-2 hover:text-ink"
               onClick={() => applyEnergyLoss()}
-              title="Simulate 20% Suit Energy Depletion"
+              title="Simulate 20% suit energy loss"
             >
-              <span className="text-amber-400 font-bold">-20%</span>
+              <span className="num">−20%</span>
             </button>
             <button
-              className="flex h-7 items-center gap-1.5 rounded border border-red-700 bg-[#b91c1c] px-2.5 text-[11px] font-mono font-bold uppercase tracking-wider text-white hover:bg-[#dc2626] transition shadow-sm"
+              className="flex h-8 items-center gap-1.5 rounded bg-danger px-3 text-[13px] font-semibold text-panel hover:bg-danger/85"
               onClick={() => requestEmergency(coordinate)}
-              title="Emergency Abort Path to Habitat Base"
+              title="Emergency abort path to habitat"
             >
-              <AlertTriangle size={12} className="text-white" />
-              <span>Abort</span>
+              <AlertTriangle size={13} />
+              Abort
             </button>
           </div>
         </div>
 
-        {/* Right Wing: Camera Optics & Zoom */}
-        <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
-          {/* Zoom In (+) / Zoom Out (-) */}
-          <div className="flex items-center rounded-md border border-white/10 bg-[#161b22] p-0.5">
+        <div className="flex w-full items-center justify-between gap-2 sm:w-auto sm:justify-end">
+          <div className="flex items-center rounded border border-ink">
             <button
-              className="grid size-6 place-items-center rounded text-slate-300 hover:text-white hover:bg-white/10 transition"
+              className="grid size-8 place-items-center text-ink-2 hover:text-ink"
               onClick={handleZoomIn}
-              title="Zoom Camera In"
+              title="Zoom camera in"
               aria-label="Zoom in"
             >
               <Plus size={13} />
             </button>
             <button
-              className="grid size-6 place-items-center rounded text-slate-300 hover:text-white hover:bg-white/10 transition border-l border-white/10"
+              className="grid size-8 place-items-center border-l border-ink text-ink-2 hover:text-ink"
               onClick={handleZoomOut}
-              title="Zoom Camera Out"
+              title="Zoom camera out"
               aria-label="Zoom out"
             >
               <Minus size={13} />
             </button>
           </div>
 
-          {/* Camera View Presets & Compass Reset */}
-          <div className="flex items-center gap-0.5 rounded-md border border-white/10 bg-[#161b22] p-0.5">
+          <div className="flex items-center rounded border border-ink">
             {(['chase', 'drone', 'pov'] as const).map((mode) => (
               <button
                 key={mode}
-                className={`px-2 py-0.5 text-[11px] font-mono font-semibold uppercase rounded transition ${
-                  cameraMode === mode
-                    ? 'bg-[#1f6feb] text-white shadow-sm'
-                    : 'text-slate-400 hover:text-white hover:bg-white/5'
+                className={`h-8 px-2.5 text-xs font-medium capitalize ${
+                  cameraMode === mode ? 'bg-ink text-panel' : 'text-ink-2 hover:text-ink'
                 }`}
                 onClick={() => cameraControllerRef.current.setPreset(mode)}
-                title={`Switch camera view to ${mode.toUpperCase()}`}
+                title={`Switch camera view to ${mode}`}
               >
-                {mode}
+                {mode === 'pov' ? 'POV' : mode}
               </button>
             ))}
             <button
-              className="grid size-6 place-items-center rounded text-slate-400 hover:text-white hover:bg-white/10 transition border-l border-white/10 ml-0.5 pl-0.5"
+              className="grid size-8 place-items-center border-l border-ink text-ink-2 hover:text-ink"
               onClick={() => cameraControllerRef.current.resetCamera()}
-              title="Reset view to Chase angle"
+              title="Reset view to chase angle"
               aria-label="Reset Camera View"
             >
               <Compass size={13} />
@@ -733,8 +724,8 @@ export default function MarsWalk() {
     </div>
 
     {!guided && compact && (
-      <div className="absolute bottom-24 left-4 z-20 size-28 touch-none rounded-full border border-white/20 bg-black/40" onPointerDown={(event) => { event.currentTarget.setPointerCapture(event.pointerId); updateJoystick(event) }} onPointerMove={(event) => event.currentTarget.hasPointerCapture(event.pointerId) && updateJoystick(event)} onPointerUp={() => setTouchInput({ forward: 0, turn: 0 })} onPointerCancel={() => setTouchInput({ forward: 0, turn: 0 })}>
-        <span className="absolute left-1/2 top-1/2 size-10 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/35" />
+      <div className="absolute bottom-24 left-4 z-20 size-28 touch-none rounded-full border border-ink bg-panel/60" onPointerDown={(event) => { event.currentTarget.setPointerCapture(event.pointerId); updateJoystick(event) }} onPointerMove={(event) => event.currentTarget.hasPointerCapture(event.pointerId) && updateJoystick(event)} onPointerUp={() => setTouchInput({ forward: 0, turn: 0 })} onPointerCancel={() => setTouchInput({ forward: 0, turn: 0 })}>
+        <span className="absolute left-1/2 top-1/2 size-10 -translate-x-1/2 -translate-y-1/2 rounded-full bg-ink/60" />
       </div>
     )}
 
@@ -743,7 +734,7 @@ export default function MarsWalk() {
 }
 
 function SuspenseFallback() {
-  return <Html center><div className="terrain-loader flex min-w-48 flex-col items-center gap-3 rounded-lg border border-white/20 bg-[#0d1117] p-5 shadow-2xl"><span className="spinner" /><strong className="font-mono text-xs text-slate-200">Streaming Jezero DTM sectors…</strong></div></Html>
+  return <Html center><div className="terrain-loader flex min-w-48 items-center gap-3 rounded border border-ink bg-panel px-4 py-3"><span className="spinner" /><strong className="text-[13px] font-medium text-ink">Streaming Jezero terrain…</strong></div></Html>
 }
 
 function WaypointOverlay() {
@@ -776,23 +767,20 @@ function WaypointOverlay() {
     const distStr = nearestImage && (nearestImage.distanceM >= 1000 ? `${(nearestImage.distanceM / 1000).toFixed(1)} km` : `${nearestImage.distanceM} m`)
 
     return (
-      <aside className="absolute inset-x-3 bottom-3 z-30 max-h-[70svh] overflow-auto rounded-xl border border-white/20 bg-[#0d1117] p-5 shadow-2xl md:inset-auto md:right-4 md:top-20 md:w-84">
-        <button className="absolute right-3 top-3 grid size-8 place-items-center rounded-lg text-slate-400 hover:bg-white/10 hover:text-white" onClick={() => setSelected(null)}>✕</button>
-        <span className="flex items-center gap-1.5 text-xs font-mono font-semibold tracking-wider text-sky-400 uppercase">
+      <aside className="absolute inset-x-3 bottom-3 z-30 max-h-[70svh] overflow-auto rounded border border-ink bg-panel p-5 md:inset-auto md:right-4 md:top-4 md:w-84">
+        <button className="absolute right-3 top-3 grid size-8 place-items-center rounded text-ink-3 hover:bg-panel-2 hover:text-ink" onClick={() => setSelected(null)} aria-label="Close checkpoint details"><X size={15} /></button>
+        <span className="label flex items-center gap-1.5 text-ink-3">
           <MapPin size={13} /> Custom Checkpoint
         </span>
-        <h2 className="mb-1 mt-2 pr-6 text-lg font-semibold text-white">{customStop.name}</h2>
-        <p className="mb-3 font-mono text-xs text-slate-400">Coord: {customStop.latitude.toFixed(4)}°N, {customStop.longitude.toFixed(4)}°E</p>
+        <h2 className="mb-1 mt-1 pr-8 text-lg font-bold text-ink">{customStop.name}</h2>
+        <p className="num mb-3 text-xs text-ink-3">Coord: {customStop.latitude.toFixed(4)}°N, {customStop.longitude.toFixed(4)}°E</p>
         {nearestImage && (
           <div className="mb-3">
-            <img className="aspect-video w-full rounded-lg border border-white/10 object-cover" src={`/assets/thumbnails/surface/${nearestImage.img.product_id}.jpg`} alt="Nearest rover observation" />
-            <p className="mt-1 font-mono text-[10px] text-slate-400">Nearest Observation · Sol {nearestImage.img.sol} ({distStr} away)</p>
+            <img className="aspect-video w-full rounded-sm object-cover" src={`/assets/thumbnails/surface/${nearestImage.img.product_id}.jpg`} alt="Nearest rover observation" />
+            <p className="mt-1 text-[10px] text-ink-3">Nearest Observation · Sol {nearestImage.img.sol} ({distStr} away)</p>
           </div>
         )}
-        <div className="flex items-center gap-2 border-t border-white/10 pt-2 text-[10px] text-slate-400 font-mono">
-          <Activity size={12} className="text-sky-400" />
-          <span>User-defined exploration stop</span>
-        </div>
+        <p className="border-t border-rule pt-2 text-xs text-ink-3">User-defined exploration stop</p>
       </aside>
     )
   }
@@ -801,34 +789,24 @@ function WaypointOverlay() {
 
   const images = bootstrap.surface_images.filter((item) => item.waypoint_id === id)
   const evidence = bootstrap.science_evidence[id]
-
-  return <aside className="absolute inset-x-3 bottom-3 z-30 max-h-[70svh] overflow-auto rounded-xl border border-white/20 bg-[#0d1117] p-5 shadow-2xl md:inset-auto md:right-4 md:top-20 md:w-84">
-    <button className="absolute right-3 top-3 grid size-8 place-items-center rounded-lg text-slate-400 hover:bg-white/10 hover:text-white" onClick={() => setSelected(null)}>✕</button>
-    <span className="flex items-center gap-1.5 text-xs font-mono font-semibold tracking-wider text-mars uppercase">
-      <Target size={13} /> Science Target · Sol {waypoint.properties.sol}
-    </span>
-    <h2 className="mb-2 mt-2 pr-6 text-lg font-semibold text-white">{waypoint.properties.name}</h2>
-    <p className="mb-3 text-xs leading-relaxed text-slate-300">{waypoint.properties.science_rationale}</p>
+  if (!waypoint) return null
+  const stat = (label: string, value: string) => (
     <div>
-      {images[0] && <img className="aspect-video w-full rounded-lg border border-white/10 object-cover" src={`/assets/thumbnails/surface/${images[0].product_id}.jpg`} alt="Rover observation" />}
+      <dt className="label text-ink-3">{label}</dt>
+      <dd className="num mt-1 text-[15px] font-bold leading-none text-ink">{value}</dd>
     </div>
-    <dl className="mt-3 grid grid-cols-3 gap-1.5 text-xs font-mono">
-      <div className="rounded-md border border-white/10 bg-[#161b22] p-2">
-        <dt className="text-[10px] text-slate-400">Priority</dt>
-        <dd className="font-semibold text-mars">{waypoint.properties.priority}/3</dd>
-      </div>
-      <div className="rounded-md border border-white/10 bg-[#161b22] p-2">
-        <dt className="text-[10px] text-slate-400">Geology</dt>
-        <dd className="font-semibold text-white">{evidence?.geology_symbol ?? '—'}</dd>
-      </div>
-      <div className="rounded-md border border-white/10 bg-[#161b22] p-2">
-        <dt className="text-[10px] text-slate-400">OLINDEX3</dt>
-        <dd className="font-semibold text-white">{evidence?.crism.olindex3?.toFixed(3) ?? 'nodata'}</dd>
-      </div>
+  )
+  return <aside className="absolute inset-x-3 bottom-3 z-30 max-h-[70svh] overflow-auto rounded border border-ink bg-panel p-5 md:inset-auto md:right-4 md:top-4 md:w-84">
+    <button className="absolute right-3 top-3 grid size-8 place-items-center rounded text-ink-3 hover:bg-panel-2 hover:text-ink" onClick={() => setSelected(null)} aria-label="Close target details"><X size={15} /></button>
+    <p className="label text-ink-3">Science target · Sol <span className="num">{waypoint.properties.sol}</span></p>
+    <h2 className="mb-2 mt-1 pr-8 text-lg font-bold leading-snug text-ink">{waypoint.properties.name}</h2>
+    <p className="mb-3 text-[13px] leading-relaxed text-ink-2">{waypoint.properties.science_rationale}</p>
+    {images[0] && <img className="aspect-video w-full rounded-sm object-cover" src={`/assets/thumbnails/surface/${images[0].product_id}.jpg`} alt="Rover observation" />}
+    <dl className="mt-3 grid grid-cols-3 gap-3 border-y border-rule py-3">
+      {stat('Priority', `${waypoint.properties.priority} of 3`)}
+      {stat('Geology', evidence?.geology_symbol ?? '—')}
+      {stat('OLINDEX3', evidence?.crism.olindex3?.toFixed(3) ?? 'nodata')}
     </dl>
-    <div className="mt-3 flex items-center gap-2 border-t border-white/10 pt-2 text-[10px] text-slate-400 font-mono">
-      <Activity size={12} className="text-mars" />
-      <span>Measured Mastcam-Z/Navcam · CRISM & USGS Nili units</span>
-    </div>
+    <p className="mt-3 text-xs text-ink-3">Measured: Mastcam-Z and Navcam imagery. Derived: CRISM and USGS Nili units.</p>
   </aside>
 }

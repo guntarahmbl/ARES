@@ -21,7 +21,6 @@ export default defineConfig({
         manualChunks: {
           'vendor-react': ['react', 'react-dom', 'zustand', 'lucide-react'],
           'vendor-map': ['ol', 'proj4'],
-          'vendor-charts': ['recharts'],
           'vendor-three': ['three', '@react-three/fiber', '@react-three/drei'],
         },
       },

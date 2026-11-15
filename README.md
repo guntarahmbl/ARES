@@ -62,6 +62,28 @@ Start the prepared offline demo with:
 
 The launcher serves the React planner, FastAPI routing service, local map layers, and MarsWalk terrain at `http://127.0.0.1:8000`. No third-party service is required during the demo.
 
+## Mission analyst with 9Router (optional)
+
+The local Mission Analyst explains route results, inspects selected locations, and proposes planner-validated mission changes. Answers include NASA/USGS citations plus deterministic coverage, completeness, and confidence labels. The routing engine—not the language model—remains the source of all route and GO/NO-GO results.
+
+Run development in three terminals:
+
+1. Start 9Router and create a smart combo named `ares-mission-analyst`.
+2. Copy `.env.example` to `.env`, set `ARES_LLM_ENABLED=true`, and optionally set `NINEROUTER_API_KEY`.
+3. Start FastAPI and Vite with the commands in **Development** above.
+
+ARES connects to `http://127.0.0.1:20128/v1` by default. The server checks `/v1/models`; the Advisor panel reports when 9Router is unreachable or the combo is missing. It uses ordinary JSON completions rather than model-specific tool calling, so 9Router can switch providers safely.
+
+Mission proposals are previews. Applying one sends it back to the backend, rejects stale proposals, validates its permitted changes, and recalculates the route. With the analyst disabled, unavailable, or absent from the Cloudflare deployment, planning and MarsWalk continue unchanged.
+
+Evaluate the configured 9Router combo against the bilingual 30-prompt intent set with:
+
+```powershell
+python scripts/evaluate_analyst.py
+```
+
+The command exits unsuccessfully when intent accuracy is below 90%.
+
 ## Cloudflare deployment
 
 The application can also run entirely on Cloudflare Workers with a private R2

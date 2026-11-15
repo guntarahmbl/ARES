@@ -1,4 +1,4 @@
-import type { Bootstrap, Coordinate, MissionConfig, RouteCandidate, RoutePlan, WaypointValidation } from './types'
+import type { AdvisorRequest, AdvisorResponse, AdvisorStatus, Bootstrap, Coordinate, MissionConfig, RouteCandidate, RoutePlan, WaypointValidation } from './types'
 import { browserRouting } from './browserRouting'
 
 let routing: Bootstrap['routing']
@@ -16,6 +16,14 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
 }
 
 export const api = {
+  advisorStatus: (signal?: AbortSignal) =>
+    request<AdvisorStatus>('/api/v1/assistant/status', { signal }),
+  advisorQuery: (body: AdvisorRequest, signal?: AbortSignal) =>
+    request<AdvisorResponse>('/api/v1/assistant/query', { method: 'POST', body: JSON.stringify(body), signal }),
+  applyAdvisorProposal: (currentMission: MissionConfig, proposedMission: MissionConfig, basedOnRevision: string, signal?: AbortSignal) =>
+    request<{ mission: MissionConfig; plan: RoutePlan; mission_revision: string }>('/api/v1/assistant/proposals/apply', {
+      method: 'POST', body: JSON.stringify({ current_mission: currentMission, proposed_mission: proposedMission, based_on_revision: basedOnRevision }), signal,
+    }),
   bootstrap: async (signal?: AbortSignal) => {
     const bootstrap = await request<Bootstrap>('/api/v1/bootstrap', { signal })
     routing = bootstrap.routing
