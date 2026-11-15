@@ -187,6 +187,8 @@ export function MarsTrackingMap() {
         <button className="grid size-7 place-items-center rounded text-ink-3 hover:bg-panel-2 hover:text-ink" onClick={() => setMinimapOpen(false)} aria-label="Collapse tracking map" title="Collapse map"><ChevronDown size={15} /></button>
       </div>
       <div className="absolute inset-0 pt-8" ref={target} />
+      <button className="absolute inset-x-0 bottom-0 top-8 z-[5] cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-cyan-400" onClick={() => useMissionStore.getState().setWalkMapOpen(true)} aria-label="Open full map" aria-keyshortcuts="M" title="Expand map · M" />
+      <span className="pointer-events-none absolute bottom-2 left-2 z-10 rounded bg-panel/90 px-1.5 py-1 text-[10px] text-ink">Expand map · M</span>
       <div className="absolute bottom-2 right-2 z-10 flex overflow-hidden rounded border border-ink bg-panel">
         <button className="grid size-7 place-items-center text-ink-2 hover:text-ink" onClick={() => { const view = mapRef.current?.getView(); if (view) view.setZoom(Math.min(view.getMaxZoom(), (view.getZoom() ?? 5.3) + 0.5)) }} aria-label="Zoom tracking map in"><Plus size={13} /></button>
         <button className="grid size-7 place-items-center border-l border-ink text-ink-2 hover:text-ink" onClick={() => { const view = mapRef.current?.getView(); if (view) view.setZoom(Math.max(view.getMinZoom(), (view.getZoom() ?? 5.3) - 0.5)) }} aria-label="Zoom tracking map out"><Minus size={13} /></button>

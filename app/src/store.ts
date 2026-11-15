@@ -15,6 +15,7 @@ type MissionStore = {
   placementMode: PlacementMode; sidebarOpen: boolean; detailsOpen: boolean; routeDirty: boolean
   guided: boolean; playing: boolean; speed: number; reducedMotion: boolean; progress: number
   walkTelemetry: WalkTelemetry | null; minimapOpen: boolean; viewTransitioning: boolean
+  walkMapOpen: boolean; setWalkMapOpen: (open: boolean) => void
   announcedWaypointIds: string[]
   announceNearbyWaypoint: (id: string | null) => void
   initialize: () => Promise<void>; calculate: () => Promise<void>; previewStop: (coordinate: Coordinate) => Promise<void>
@@ -60,6 +61,8 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
   layerOpacity: 0.55, placementMode: null, sidebarOpen: sidebarPreference ? sidebarPreference === 'open' : sidebarDefault, detailsOpen: false, routeDirty: true,
   guided: true, playing: false, speed: 8, reducedMotion: false, progress: 0,
   walkTelemetry: null, minimapOpen: minimapPreference !== 'closed', viewTransitioning: false,
+  walkMapOpen: false,
+  setWalkMapOpen: (walkMapOpen) => set({ walkMapOpen, ...(walkMapOpen ? { playing: false } : {}) }),
   announcedWaypointIds: [],
   announceNearbyWaypoint: (id) => set((state) => {
     if (!id || state.announcedWaypointIds.includes(id) || (state.selectedWaypoint && state.selectedWaypoint !== id)) return state
@@ -72,6 +75,7 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
       set({
         bootstrap,
         mission: structuredClone(bootstrap.default_mission),
+        walkMapOpen: false,
         announcedWaypointIds: [], selectedWaypoint: null,
         walkTelemetry: telemetryAt(bootstrap, bootstrap.default_mission.habitat),
         state: 'ready',
@@ -188,7 +192,7 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
   },
   setHabitat: (habitat) => set((state) => state.mission ? ({ mission: { ...state.mission, habitat }, routeDirty: true }) : state),
   setPlacementMode: (placementMode) => set({ placementMode }),
-  setView: (view) => set({ view }),
+  setView: (view) => set({ view, walkMapOpen: false }),
   setLayerVisibility: (id, visible) => set((state) => ({ layerVisibility: { ...state.layerVisibility, [id]: visible } })),
   setLayerOpacity: (layerOpacity) => set({ layerOpacity }),
   setActiveRoute: (activeRoute) => set({ activeRoute }),
@@ -216,6 +220,7 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
       emergencyRoute: null,
       progress: 0,
       playing: false,
+      walkMapOpen: false,
       walkTelemetry: telemetryAt(bootstrap, bootstrap.default_mission.habitat),
       routeDirty: true,
     })

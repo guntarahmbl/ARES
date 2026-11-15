@@ -12,7 +12,21 @@ const mission: MissionConfig = {
 }
 
 describe('mission store', () => {
-  beforeEach(() => useMissionStore.setState({ mission: structuredClone(mission), error: null, selectedWaypoint: null, announcedWaypointIds: [] }))
+  beforeEach(() => useMissionStore.setState({ mission: structuredClone(mission), error: null, selectedWaypoint: null, announcedWaypointIds: [], walkMapOpen: false, playing: false, progress: 0 }))
+
+  it('pauses the tour when opening the map and preserves progress when closing it', () => {
+    useMissionStore.setState({ playing: true, progress: 0.4 })
+    useMissionStore.getState().setWalkMapOpen(true)
+    expect(useMissionStore.getState()).toMatchObject({ walkMapOpen: true, playing: false, progress: 0.4 })
+    useMissionStore.getState().setWalkMapOpen(false)
+    expect(useMissionStore.getState()).toMatchObject({ walkMapOpen: false, playing: false, progress: 0.4 })
+  })
+
+  it('clears the walk map when switching to Planner', () => {
+    useMissionStore.getState().setWalkMapOpen(true)
+    useMissionStore.getState().setView('planner')
+    expect(useMissionStore.getState().walkMapOpen).toBe(false)
+  })
 
   it('announces each waypoint once, including after dismissal and returning to it', () => {
     const store = useMissionStore.getState()

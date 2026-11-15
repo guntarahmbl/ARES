@@ -61,7 +61,7 @@ const habitatStyle = () => new Style({
 
 const SCALE_STEPS = [50, 100, 200, 250, 500, 1000, 2000, 5000, 10000]
 
-export function MarsMap() {
+export function MarsMap({ readOnly = false }: { readOnly?: boolean }) {
   const target = useRef<HTMLDivElement>(null)
   const mapRef = useRef<Map | null>(null)
   const bootstrap = useMissionStore((state) => state.bootstrap)
@@ -153,7 +153,7 @@ export function MarsMap() {
     const view = new View({
       projection,
       center: initialCenter,
-      zoom: returningFromMarsWalk ? 6 : 2.8,
+      zoom: returningFromMarsWalk ? (readOnly ? 4.5 : 6) : 2.8,
       minZoom: 2.2,
       maxZoom: 7,
       extent: [bounds[0] - 800, bounds[1] - 800, bounds[2] + 800, bounds[3] + 800],
@@ -276,6 +276,7 @@ export function MarsMap() {
     refreshRoutes()
 
     map.on('pointermove', (event) => {
+      if (readOnly) return
       if (event.dragging) return
       const mode = useMissionStore.getState().placementMode
       if (mode) return
@@ -298,6 +299,7 @@ export function MarsMap() {
     })
 
     map.on('singleclick', (event) => {
+      if (readOnly) return
       const mode = useMissionStore.getState().placementMode
       if (mode) {
         const [longitude, latitude] = transform(event.coordinate, projection, 'EPSG:4326')
@@ -338,7 +340,7 @@ export function MarsMap() {
         } else addMissionFeatures()
       }).catch(() => addMissionFeatures())
     })
-    map.addInteraction(translateInteraction)
+    if (!readOnly) map.addInteraction(translateInteraction)
 
     const unsubscribe = useMissionStore.subscribe((state, previous) => {
       if (state.mission !== previous.mission) {
@@ -382,7 +384,7 @@ export function MarsMap() {
       map.setTarget(undefined)
       mapRef.current = null
     }
-  }, [bootstrap])
+  }, [bootstrap, readOnly])
 
   useEffect(() => {
     const map = mapRef.current
@@ -414,7 +416,16 @@ export function MarsMap() {
 
   return (
     <>
-      <div className={`mars-map map-transition-surface size-full touch-none select-none ${placementMode ? 'is-placing' : ''}`} ref={target} aria-label="Interactive Jezero mission map" />
+      <div className={`mars-map map-transition-surface size-full touch-none select-none ${placementMode && !readOnly ? 'is-placing' : ''}`} ref={target} aria-label="Interactive Jezero mission map" />
+      {readOnly && <div className="absolute left-3 top-3 z-20 flex flex-wrap gap-2">
+        <button className="rounded border border-ink bg-panel px-3 py-2 text-xs font-medium text-ink hover:bg-panel-2" onClick={() => {
+          const position = useMissionStore.getState().walkTelemetry?.projectedPosition
+          if (position) mapRef.current?.getView().animate({ center: position, zoom: 5, duration: 200 })
+        }}>Locate astronaut</button>
+        <button className="rounded border border-ink bg-panel px-3 py-2 text-xs font-medium text-ink hover:bg-panel-2" onClick={() => {
+          if (bootstrap) mapRef.current?.getView().fit(bootstrap.bounds_projected, { padding: [40, 40, 40, 40], duration: 200 })
+        }}>Show full area</button>
+      </div>}
       {scale && (
         <div className="pointer-events-none absolute bottom-3 left-3 z-10 bg-panel/90 px-2 pb-1 pt-1.5" aria-label={`Scale bar: ${scale.meters} metres`}>
           <div className="h-1.5 border-x border-b border-ink" style={{ width: `${scale.pixels}px` }} />

@@ -5,6 +5,7 @@ import { Advisor } from './components/Advisor'
 import { AppSettings } from './components/AppSettings'
 import { Tutorial } from './components/Tutorial'
 import { MarsTrackingMap } from './components/MarsTrackingMap'
+import { MarsWalkMap } from './components/MarsWalkMap'
 import { Planner } from './components/Planner'
 import { Button } from './components/ui/button'
 import { Sheet } from './components/ui/sheet'
@@ -149,6 +150,7 @@ export default function App() {
                 <MarsWalk />
               </Suspense>
               <MarsTrackingMap />
+              <MarsWalkMap />
             </>
           )}
           <Advisor />

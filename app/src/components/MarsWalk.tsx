@@ -390,6 +390,7 @@ function Scene({
 }) {
   const guided = useMissionStore((state) => state.guided)
   const playing = useMissionStore((state) => state.playing)
+  const walkMapOpen = useMissionStore((state) => state.walkMapOpen)
   const speed = useMissionStore((state) => state.speed)
   const setWalkState = useMissionStore((state) => state.setMarsWalkState)
   const setWalkTelemetry = useMissionStore((state) => state.setWalkTelemetry)
@@ -401,6 +402,12 @@ function Scene({
   const smoothedElevation = useRef<number | null>(null)
   const cameraHeading = useRef<number | null>(null)
   const keys = useRef(new Set<string>())
+  useEffect(() => {
+    if (walkMapOpen) {
+      keys.current.clear()
+      inputRef.current = { forward: 0, turn: 0 }
+    }
+  }, [walkMapOpen, inputRef])
   const motion = useRef<AvatarMotion>({ speed: 0, turn: 0 })
   const routePath = useMemo(() => routeInterpolator(route.scene_coordinates), [route])
   useBinary(scene.overview.url)
@@ -440,7 +447,7 @@ function Scene({
   }, [controller, onCameraModeChange])
 
   useEffect(() => {
-    const down = (event: KeyboardEvent) => { if (!isTyping(event.target)) keys.current.add(event.code) }
+    const down = (event: KeyboardEvent) => { if (!useMissionStore.getState().walkMapOpen && !isTyping(event.target)) keys.current.add(event.code) }
     const up = (event: KeyboardEvent) => keys.current.delete(event.code)
     const release = () => keys.current.clear()
     window.addEventListener('keydown', down)
@@ -450,6 +457,7 @@ function Scene({
   }, [])
 
   useFrame((_, frameDelta) => {
+    if (useMissionStore.getState().walkMapOpen) return
     const delta = Math.min(frameDelta, 0.1)
     const previous = position.current
     let next: Position = [previous[0], previous[1], previous[2]]
@@ -602,6 +610,7 @@ function WaypointMarkers({ scene, terrainRevision: _terrainRevision }: { scene: 
 }
 
 export default function MarsWalk() {
+  const walkMapOpen = useMissionStore((state) => state.walkMapOpen)
   const bootstrap = useMissionStore((state) => state.bootstrap)!
   const plan = useMissionStore((state) => state.plan)!
   const activeRoute = useMissionStore((state) => state.activeRoute)
@@ -741,7 +750,7 @@ export default function MarsWalk() {
     onPointerUp={handlePointerUp}
     onPointerCancel={handlePointerUp}
   >
-    <Canvas shadows={!compact} dpr={compact ? 1 : [1, 2]} camera={{ fov: 52, near: 0.2, far: compact ? 3200 : 5000, position: [0, 8, 15] }} gl={{ antialias: !compact, stencil: true, powerPreference: 'high-performance' }}>
+    <Canvas frameloop={walkMapOpen ? 'never' : 'always'} shadows={!compact} dpr={compact ? 1 : [1, 2]} camera={{ fov: 52, near: 0.2, far: compact ? 3200 : 5000, position: [0, 8, 15] }} gl={{ antialias: !compact, stencil: true, powerPreference: 'high-performance' }}>
       <Suspense fallback={<SuspenseFallback />}>
         <Scene
           route={route}
