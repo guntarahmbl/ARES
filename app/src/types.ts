@@ -78,6 +78,7 @@ export type SceneTile = {
   bounds_projected: number[]
   bounds_local: number[]
   texture_url: string
+  texture_preview_url?: string
   normal_url?: string
   lods: { resolution_m: number; url: string; rows: number; cols: number }[]
 }
@@ -89,7 +90,7 @@ export type SceneManifest = {
   bounds_projected: number[]
   bounds_local: number[]
   tiles: SceneTile[]
-  overview: { url: string; rows: number; cols: number; resolution_m: number }
+  overview: { url: string; texture_url?: string; rows: number; cols: number; resolution_m: number }
   limitations: string[]
 }
 

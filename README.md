@@ -52,6 +52,24 @@ npm run dev
 
 Open `http://127.0.0.1:5173`. API documentation is available at `http://127.0.0.1:8000/api/docs`. Vite proxies local API, map, thumbnail, and terrain requests to FastAPI.
 
+### Detailed MarsWalk terrain
+
+With the prepared 1 m HiRISE DTM present, generate the optional 2 m near terrain
+and lossless normal maps at their measured slope:
+
+```bash
+python scripts/web/build_assets.py --scene-only --fine-lod --normal-maps
+```
+
+For sharper textures, pass `--imagery-source data/processed/rasters/hirise_ortho_025m.tif`
+after preparing a 25 cm crop of dataset D-03 using the same AOI, projection, and
+`crop_raster(..., resolution=0.25)` utility in `scripts/data/preprocess.py`.
+The builder preserves the source's available resolution, uses one contrast
+stretch across tiles, and supplies smaller textures for distant/mobile terrain.
+Elevation remains at 1:1 scale. Surface colour and the fixed sun direction are
+illustrative; no synthetic rocks or displacement are added. These generated
+assets stay local until the deployment dataset is explicitly updated.
+
 ## Prepared offline demo
 
 Start the prepared offline demo with:

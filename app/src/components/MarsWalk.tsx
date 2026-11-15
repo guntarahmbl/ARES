@@ -1,6 +1,6 @@
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame, useLoader, useThree } from '@react-three/fiber'
-import { Html, Line, Stars } from '@react-three/drei'
+import { Html, Line } from '@react-three/drei'
 import {
   AlertTriangle, ChevronLeft, Compass, FastForward, Footprints, MapPin, Minus, Pause, Play, Plus, RotateCcw, X
 } from 'lucide-react'
@@ -105,26 +105,28 @@ function footingHeight(scene: SceneManifest, x: number, z: number): number | nul
   return highest
 }
 
-function useOptionalTexture(url: string | undefined, anisotropy: number) {
+function useOptionalTexture(url: string | undefined, anisotropy: number, colorSpace: THREE.ColorSpace = THREE.NoColorSpace) {
   const [texture, setTexture] = useState<THREE.Texture | null>(null)
   useEffect(() => {
     if (!url) { setTexture(null); return }
+    setTexture(null)
     let active = true
     let loaded: THREE.Texture | null = null
     new THREE.TextureLoader().load(url, (result) => {
       if (!active) { result.dispose(); return }
       result.anisotropy = anisotropy
+      result.colorSpace = colorSpace
       loaded = result
       setTexture(result)
     }, undefined, (error) => console.error(`Unable to load ${url}`, error))
     return () => { active = false; loaded?.dispose() }
-  }, [url, anisotropy])
+  }, [url, anisotropy, colorSpace])
   return texture
 }
 
 function OverviewTerrain({ scene }: { scene: SceneManifest }) {
   const heights = useBinary(scene.overview.url)
-  const texture = useLoader(THREE.TextureLoader, '/assets/web/basemap.webp')
+  const texture = useLoader(THREE.TextureLoader, scene.overview.texture_url ?? '/assets/web/basemap.webp')
   const geometry = useMemo(() => {
     if (!heights) return null
     const [xMin, zMin, xMax, zMax] = scene.bounds_local
@@ -164,13 +166,16 @@ function OverviewTerrain({ scene }: { scene: SceneManifest }) {
   useEffect(() => { texture.colorSpace = THREE.SRGBColorSpace }, [texture])
   if (!geometry) return null
   // Backdrop only: detail tiles mark the stencil buffer and the coarse 20 m surface skips those pixels, so it cannot poke through them.
-  return <mesh geometry={geometry} renderOrder={1}><meshStandardMaterial map={texture} roughness={1} metalness={0} stencilWrite stencilRef={1} stencilFunc={THREE.NotEqualStencilFunc} /></mesh>
+  return <mesh geometry={geometry} renderOrder={1}><meshStandardMaterial color="#ffd0b5" map={texture} roughness={1} metalness={0} stencilWrite stencilRef={1} stencilFunc={THREE.NotEqualStencilFunc} /></mesh>
 }
 
 function TerrainTile({ tile, lod, elevationOffset, compact, onShown }: { tile: SceneTile; lod: number; elevationOffset: number; compact: boolean; onShown: () => void }) {
   const descriptor = tile.lods.find((item) => item.resolution_m === lod) ?? tile.lods.at(-1)!
   const heights = useBinary(descriptor.url)
-  const texture = useLoader(THREE.TextureLoader, tile.texture_url)
+  const previewTexture = useLoader(THREE.TextureLoader, tile.texture_preview_url ?? tile.texture_url)
+  // Keep a preview visible while detail streams in; release large textures on LOD changes.
+  const detailTexture = useOptionalTexture(!compact && lod <= 2 && tile.texture_preview_url ? tile.texture_url : undefined, 16, THREE.SRGBColorSpace)
+  const texture = detailTexture ?? previewTexture
   const normalMap = useOptionalTexture(tile.normal_url, compact ? 4 : 16)
   const geometry = useMemo(() => {
     if (!heights) return null
@@ -214,8 +219,8 @@ function TerrainTile({ tile, lod, elevationOffset, compact, onShown }: { tile: S
   }, [geometry, tile.id, descriptor.url, onShown])
   useEffect(() => { texture.colorSpace = THREE.SRGBColorSpace; texture.anisotropy = compact ? 4 : 16; texture.needsUpdate = true }, [texture, compact])
   if (!geometry) return null
-  return <mesh geometry={geometry} receiveShadow>
-    <meshStandardMaterial key={normalMap ? 'relief' : 'plain'} map={texture} normalMap={normalMap} normalMapType={THREE.ObjectSpaceNormalMap} roughness={1} metalness={0} stencilWrite stencilRef={1} stencilZPass={THREE.ReplaceStencilOp} />
+  return <mesh geometry={geometry} receiveShadow castShadow={!compact && lod <= 5}>
+    <meshStandardMaterial key={normalMap ? 'relief' : 'plain'} color="#ffd0b5" map={texture} normalMap={normalMap} normalMapType={THREE.ObjectSpaceNormalMap} roughness={1} metalness={0} stencilWrite stencilRef={1} stencilZPass={THREE.ReplaceStencilOp} />
   </mesh>
 }
 
@@ -241,6 +246,26 @@ function TerrainWorld({ scene, avatar, compact, onShown }: { scene: SceneManifes
 }
 
 type AvatarMotion = { speed: number; turn: number }
+
+function TerrainSun({ position, compact }: { position: React.MutableRefObject<Position>; compact: boolean }) {
+  const light = useRef<THREE.DirectionalLight>(null)
+  const target = useMemo(() => new THREE.Object3D(), [])
+  useFrame(() => {
+    if (!light.current) return
+    const [x, y, z] = position.current
+    // Illustrative fixed sun direction; only the small shadow volume follows the walker.
+    light.current.position.set(x + 120, y + 180, z - 90)
+    target.position.set(x, y, z)
+    target.updateMatrixWorld()
+  })
+  return <>
+    <primitive object={target} />
+    <directionalLight ref={light} target={target} intensity={2.6} color="#fff1dc" castShadow={!compact}
+      shadow-mapSize={[2048, 2048]} shadow-camera-left={-70} shadow-camera-right={70}
+      shadow-camera-top={70} shadow-camera-bottom={-70} shadow-camera-near={1} shadow-camera-far={400}
+      shadow-bias={-0.00005} shadow-normalBias={0.03} />
+  </>
+}
 
 function Astronaut({ motion }: { motion: React.MutableRefObject<AvatarMotion> }) {
   const group = useRef<THREE.Group>(null)
@@ -536,17 +561,16 @@ function Scene({
   const emergencyLine = useMemo(() => emergencyRoute && drape(scene, emergencyRoute.scene_coordinates, 0.7), [scene, emergencyRoute, terrainRevision])
 
   return <>
-    <color attach="background" args={['#c75f32']} />
-    <fog attach="fog" args={['#b95a35', 800, 2600]} />
-    <ambientLight intensity={1.25} />
-    <directionalLight position={[600, 900, -500]} intensity={2.4} color="#ffe0b5" castShadow={false} />
-    <hemisphereLight color="#ffd3ac" groundColor="#4d2118" intensity={0.65} />
+    <color attach="background" args={['#c39273']} />
+    <fog attach="fog" args={['#c39273', 1000, 3200]} />
+    <ambientLight intensity={0.15} />
+    <TerrainSun position={position} compact={compact} />
+    <hemisphereLight color="#f0d3b8" groundColor="#74452e" intensity={0.65} />
     <TerrainWorld scene={scene} avatar={lodAnchor} compact={compact} onShown={onTerrainShown} />
     <Line points={routeLine} color="#38d4f8" lineWidth={2.2} transparent opacity={0.85} />
     {emergencyLine && <Line points={emergencyLine} color="#ff6579" lineWidth={3} dashed dashSize={12} gapSize={8} />}
     <group ref={avatar}><Astronaut motion={motion} /></group>
     <WaypointMarkers scene={scene} terrainRevision={terrainRevision} />
-    <Stars radius={2500} depth={200} count={400} factor={2} saturation={0.2} fade speed={0.1} />
   </>
 }
 
@@ -719,7 +743,7 @@ export default function MarsWalk() {
     onPointerUp={handlePointerUp}
     onPointerCancel={handlePointerUp}
   >
-    <Canvas shadows={false} dpr={compact ? 1 : [1, 2]} camera={{ fov: 52, near: 0.2, far: compact ? 3200 : 5000, position: [0, 8, 15] }} gl={{ antialias: !compact, stencil: true, powerPreference: 'high-performance' }}>
+    <Canvas shadows={!compact} dpr={compact ? 1 : [1, 2]} camera={{ fov: 52, near: 0.2, far: compact ? 3200 : 5000, position: [0, 8, 15] }} gl={{ antialias: !compact, stencil: true, powerPreference: 'high-performance' }}>
       <Suspense fallback={<SuspenseFallback />}>
         <Scene
           route={route}
