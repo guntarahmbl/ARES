@@ -12,7 +12,50 @@ const mission: MissionConfig = {
 }
 
 describe('mission store', () => {
-  beforeEach(() => useMissionStore.setState({ mission: structuredClone(mission), error: null }))
+  beforeEach(() => useMissionStore.setState({ mission: structuredClone(mission), error: null, selectedWaypoint: null, announcedWaypointIds: [] }))
+
+  it('announces each waypoint once, including after dismissal and returning to it', () => {
+    const store = useMissionStore.getState()
+    store.announceNearbyWaypoint('WP-01')
+    expect(useMissionStore.getState().selectedWaypoint).toBe('WP-01')
+    store.setSelectedWaypoint(null)
+    store.announceNearbyWaypoint('WP-01')
+    store.announceNearbyWaypoint(null)
+    store.announceNearbyWaypoint('WP-01')
+    expect(useMissionStore.getState().selectedWaypoint).toBeNull()
+    store.announceNearbyWaypoint('WP-02')
+    expect(useMissionStore.getState().selectedWaypoint).toBe('WP-02')
+    expect(useMissionStore.getState().announcedWaypointIds).toEqual(['WP-01', 'WP-02'])
+  })
+
+  it('allows manual reopening of dismissed waypoint details', () => {
+    const store = useMissionStore.getState()
+    store.announceNearbyWaypoint('WP-01')
+    store.setSelectedWaypoint(null)
+    store.setSelectedWaypoint('WP-01')
+    expect(useMissionStore.getState().selectedWaypoint).toBe('WP-01')
+    expect(useMissionStore.getState().announcedWaypointIds).toEqual(['WP-01'])
+  })
+
+  it('does not replace an open popup or consume another waypoint announcement', () => {
+    const store = useMissionStore.getState()
+    store.announceNearbyWaypoint('WP-01')
+    store.announceNearbyWaypoint('WP-02')
+    expect(useMissionStore.getState().selectedWaypoint).toBe('WP-01')
+    expect(useMissionStore.getState().announcedWaypointIds).toEqual(['WP-01'])
+    store.setSelectedWaypoint(null)
+    store.announceNearbyWaypoint('WP-02')
+    expect(useMissionStore.getState().selectedWaypoint).toBe('WP-02')
+  })
+
+  it('counts details already open manually when arriving as the first announcement', () => {
+    const store = useMissionStore.getState()
+    store.setSelectedWaypoint('WP-01')
+    store.announceNearbyWaypoint('WP-01')
+    store.setSelectedWaypoint(null)
+    store.announceNearbyWaypoint('WP-01')
+    expect(useMissionStore.getState().selectedWaypoint).toBeNull()
+  })
 
   it('updates numeric constraints without losing mission state', () => {
     useMissionStore.getState().setMission({ energy_budget: 36000 })

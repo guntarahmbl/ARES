@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import type { Bootstrap, RoutePlan } from '../../src/types'
 
 const captureErrors = (page: import('@playwright/test').Page) => {
   const errors: string[] = []
@@ -69,6 +70,41 @@ test('MarsWalk loads terrain and returns to planner', async ({ page }) => {
   await page.getByRole('button', { name: /Planner/i }).first().click()
   await expect(page.locator('.mars-map')).toBeVisible()
   await expect.poll(() => page.locator('canvas').count()).toBeGreaterThan(0)
+  expect(errors).toEqual([])
+})
+
+test('waypoint arrival opens once, reopens manually, and triggers at the second stop', async ({ page }) => {
+  const errors = captureErrors(page)
+  const bootstrap: Bootstrap = await (await page.request.get('/api/v1/bootstrap')).json()
+  const plan: RoutePlan = await (await page.request.post('/api/v1/routes/plan', { data: bootstrap.default_mission })).json()
+  const route = plan.primary!
+  const distances = [0]
+  for (let i = 1; i < route.scene_coordinates.length; i++) {
+    const a = route.scene_coordinates[i - 1], b = route.scene_coordinates[i]
+    distances.push(distances[i - 1] + Math.hypot(b[0] - a[0], b[2] - a[2]))
+  }
+  await page.goto('/')
+  await expect(page.getByTestId('route-status')).toContainText('Route is safe to return', { timeout: 20_000 })
+  await page.getByRole('navigation', { name: 'Primary view selector' }).getByRole('button', { name: 'MarsWalk' }).click()
+  await expect(page.locator('.terrain-loader')).toHaveCount(0, { timeout: 20_000 })
+
+  for (const visit of route.stop_visits.slice(0, 2)) {
+    const progress = distances[visit.route_vertex_index] / distances.at(-1)!
+    await page.getByRole('slider', { name: 'Route timeline scrub' }).evaluate((element, value) => {
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!
+      setter.call(element, String(value))
+      element.dispatchEvent(new Event('input', { bubbles: true }))
+    }, progress)
+    const name = bootstrap.waypoints.features.find((feature) => feature.properties.id === visit.id)!.properties.name
+    await expect(page.locator('aside').getByRole('heading', { name, exact: true })).toBeVisible()
+    await page.getByRole('button', { name: 'Close target details' }).click()
+    // Several telemetry updates while stationary must not reopen a dismissed popup.
+    await page.waitForTimeout(1000)
+    await expect(page.getByRole('button', { name: 'Close target details' })).toHaveCount(0)
+    await page.getByRole('button', { name: 'View nearby waypoint details' }).click()
+    await expect(page.locator('aside').getByRole('heading', { name, exact: true })).toBeVisible()
+    await page.getByRole('button', { name: 'Close target details' }).click()
+  }
   expect(errors).toEqual([])
 })
 

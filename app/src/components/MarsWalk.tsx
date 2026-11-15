@@ -8,6 +8,7 @@ import * as THREE from 'three'
 import { useMissionStore } from '../store'
 import { useSettingsStore } from '../settingsStore'
 import { localToProjected, projectedToCoordinate } from '../lib/marsProjection'
+import { nearbyWaypointId } from '../lib/waypointProximity'
 import { useViewTransition } from '../hooks/useViewTransition'
 import type { CustomRouteStop, RouteCandidate, SceneManifest, SceneTile, WalkTelemetry } from '../types'
 
@@ -615,6 +616,7 @@ export default function MarsWalk() {
   const applyEnergyLoss = useMissionStore((state) => state.applyEnergyLoss)
   const requestEmergency = useMissionStore((state) => state.requestEmergencyReturn)
   const selectedWaypoint = useMissionStore((state) => state.selectedWaypoint)
+  const announceNearbyWaypoint = useMissionStore((state) => state.announceNearbyWaypoint)
   const { transitionTo } = useViewTransition()
   const [routeIndex, setRouteIndex] = useState(0)
   const [compact, setCompact] = useState(() => window.innerWidth < 768)
@@ -637,6 +639,7 @@ export default function MarsWalk() {
   const remaining = Math.max(0, mission.energy_budget - route.metrics.energy_units * progress)
   const nextVisit = route.stop_visits.find((visit) => visit.route_vertex_index > routeIndex)
   const nextWaypointId = nextVisit?.id ?? 'HAB'
+  const nearbyWaypoint = nearbyWaypointId(coordinate, mission.route_stops, bootstrap.waypoints.features)
 
   // Human-friendly label resolver for waypoints and checkpoints (prevents raw UUIDs)
   const getWaypointDisplayName = (id: string): string => {
@@ -666,13 +669,8 @@ export default function MarsWalk() {
   }, [])
 
   useEffect(() => {
-    const feature = bootstrap.waypoints.features.find((item) => item.properties.id === nextWaypointId)
-    if (!feature) return
-    const [lon, lat] = feature.geometry.coordinates
-    if (Math.hypot(coordinate.longitude - lon, coordinate.latitude - lat) < 0.00025) {
-      useMissionStore.getState().setSelectedWaypoint(nextWaypointId)
-    }
-  }, [coordinate, nextWaypointId, bootstrap.waypoints.features])
+    announceNearbyWaypoint(nearbyWaypoint)
+  }, [nearbyWaypoint, selectedWaypoint, announceNearbyWaypoint])
 
   // Leaving free walk must not leave a joystick deflection behind.
   useEffect(() => { if (guided) inputRef.current = { forward: 0, turn: 0 } }, [guided])
@@ -767,6 +765,13 @@ export default function MarsWalk() {
 
     {/* The joystick stacks on top of the control panel, so it can never cover it whatever height the panel wraps to. */}
     <div className="pointer-events-none absolute inset-x-[max(.75rem,env(safe-area-inset-left))] bottom-[max(.75rem,env(safe-area-inset-bottom))] z-20 mx-auto flex max-w-3xl flex-col gap-2">
+      {nearbyWaypoint && <button
+        className="pointer-events-auto flex items-center justify-center gap-2 rounded border border-ink bg-panel px-3 py-2 text-[13px] font-medium text-ink hover:bg-panel-2"
+        aria-label="View nearby waypoint details"
+        onClick={() => useMissionStore.getState().setSelectedWaypoint(nearbyWaypoint)}
+      >
+        <MapPin size={14} /> View details · {getWaypointDisplayName(nearbyWaypoint)}
+      </button>}
       {!guided && touch && <Joystick inputRef={inputRef} side={joystickSide} />}
       <div className="pointer-events-auto rounded border border-ink bg-panel p-3">
       {!guided && !touch && <p className="mb-3 text-center text-xs text-ink-3"><span className="num text-ink-2">W/S</span> walk · <span className="num text-ink-2">A/D</span> turn · drag to look · scroll to zoom</p>}

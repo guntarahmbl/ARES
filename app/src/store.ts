@@ -15,6 +15,8 @@ type MissionStore = {
   placementMode: PlacementMode; sidebarOpen: boolean; detailsOpen: boolean; routeDirty: boolean
   guided: boolean; playing: boolean; speed: number; reducedMotion: boolean; progress: number
   walkTelemetry: WalkTelemetry | null; minimapOpen: boolean; viewTransitioning: boolean
+  announcedWaypointIds: string[]
+  announceNearbyWaypoint: (id: string | null) => void
   initialize: () => Promise<void>; calculate: () => Promise<void>; previewStop: (coordinate: Coordinate) => Promise<void>
   commitDraftStop: () => void; cancelPlacement: () => void; updateStop: (id: string, patch: Partial<CustomRouteStop>) => void
   removeStop: (id: string) => void; reorderStop: (id: string, direction: -1 | 1) => void; moveStop: (fromIndex: number, toIndex: number) => void
@@ -58,6 +60,11 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
   layerOpacity: 0.55, placementMode: null, sidebarOpen: sidebarPreference ? sidebarPreference === 'open' : sidebarDefault, detailsOpen: false, routeDirty: true,
   guided: true, playing: false, speed: 8, reducedMotion: false, progress: 0,
   walkTelemetry: null, minimapOpen: minimapPreference !== 'closed', viewTransitioning: false,
+  announcedWaypointIds: [],
+  announceNearbyWaypoint: (id) => set((state) => {
+    if (!id || state.announcedWaypointIds.includes(id) || (state.selectedWaypoint && state.selectedWaypoint !== id)) return state
+    return { selectedWaypoint: id, announcedWaypointIds: [...state.announcedWaypointIds, id] }
+  }),
   initialize: async () => {
     set({ state: 'loading', error: null })
     try {
@@ -65,6 +72,7 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
       set({
         bootstrap,
         mission: structuredClone(bootstrap.default_mission),
+        announcedWaypointIds: [], selectedWaypoint: null,
         walkTelemetry: telemetryAt(bootstrap, bootstrap.default_mission.habitat),
         state: 'ready',
       })
@@ -203,6 +211,7 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
     if (!bootstrap) return
     set({
       mission: structuredClone(bootstrap.default_mission),
+      announcedWaypointIds: [], selectedWaypoint: null,
       activeRoute: 'primary',
       emergencyRoute: null,
       progress: 0,
