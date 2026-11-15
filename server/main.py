@@ -3,11 +3,23 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from fastapi import Depends, FastAPI, HTTPException
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from .assistant import AssistantRequest, advise, get_llm_config
+from .analyst import (
+    AnalystQuery,
+    AnalystResponse,
+    ApplyProposalRequest,
+    ApplyProposalResponse,
+    ProviderError,
+    RateLimitError,
+    StaleProposalError,
+    analyst_status,
+    apply_proposal,
+    get_llm_config,
+    query_analyst,
+)
 from .config import APP_DIST, DATA_ROOT, DEFAULT_MISSION, HABITAT_RADIUS_M, SCENE_ROOT, WEB_ROOT
 from .routing import RoutingEngine, RoutingError, get_engine
 from .schemas import (
@@ -101,20 +113,33 @@ def energy_loss(request: EnergyLossRequest, engine: RoutingEngine = Depends(get_
 
 @app.get("/api/v1/assistant/status")
 def assistant_status() -> dict:
-    config = get_llm_config()
-    return {"available": config is not None, "provider": config.label if config else None, "model": config.model if config else None}
+    return analyst_status()
 
 
-@app.post("/api/v1/assistant/chat")
-def assistant_chat(request: AssistantRequest, engine: RoutingEngine = Depends(get_engine)) -> StreamingResponse:
+@app.post("/api/v1/assistant/query", response_model=AnalystResponse)
+def assistant_query(payload: AnalystQuery, request: Request, engine: RoutingEngine = Depends(get_engine)) -> AnalystResponse:
     config = get_llm_config()
     if config is None:
-        raise HTTPException(status_code=503, detail="The route advisor is not set up. Add a provider API key to .env and restart the server.")
-    return StreamingResponse(
-        advise(engine, config, request),
-        media_type="text/event-stream",
-        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
-    )
+        raise HTTPException(status_code=503, detail="The local ARES Mission Analyst is disabled.")
+    client_id = request.client.host if request.client else "local"
+    try:
+        return query_analyst(engine, config, payload, client_id)
+    except RateLimitError as exc:
+        raise HTTPException(status_code=429, detail=str(exc)) from exc
+    except ProviderError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@app.post("/api/v1/assistant/proposals/apply", response_model=ApplyProposalResponse)
+def assistant_apply_proposal(payload: ApplyProposalRequest, engine: RoutingEngine = Depends(get_engine)) -> ApplyProposalResponse:
+    try:
+        return apply_proposal(engine, payload)
+    except StaleProposalError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
 if WEB_ROOT.exists():
@@ -124,7 +149,7 @@ if SCENE_ROOT.exists():
 if (DATA_ROOT / "samples" / "thumbnails").exists():
     app.mount("/assets/thumbnails", StaticFiles(directory=DATA_ROOT / "samples" / "thumbnails"), name="thumbnails")
 
-if APP_DIST.exists():
+if (APP_DIST / "assets").exists() and (APP_DIST / "index.html").exists():
     app.mount("/assets/app", StaticFiles(directory=APP_DIST / "assets"), name="app-assets")
 
     @app.get("/{path:path}", include_in_schema=False)

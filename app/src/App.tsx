@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
 import { Footprints, Info, Map, Menu, MessageSquareText, RotateCcw } from 'lucide-react'
 import { ErrorBoundary } from './components/ErrorBoundary'
+import { Advisor } from './components/Advisor'
 import { MarsTrackingMap } from './components/MarsTrackingMap'
 import { Planner } from './components/Planner'
 import { Button } from './components/ui/button'
@@ -95,7 +96,7 @@ export default function App() {
 
           <span className="mx-1 hidden h-5 w-px bg-rule sm:block" aria-hidden />
 
-          {view === 'planner' && (advisorStatus === 'ready' || advisorStatus === 'off') && (
+          {(advisorStatus === 'ready' || advisorStatus === 'off') && (
             <button
               onClick={() => setAdvisorOpen(!advisorOpen)}
               className={`flex h-8 items-center gap-1.5 rounded px-2 text-[13px] font-medium transition-colors hover:bg-panel-2 hover:text-ink ${advisorOpen ? 'bg-panel-2 text-ink' : 'text-ink-2'}`}
@@ -134,6 +135,7 @@ export default function App() {
               <MarsTrackingMap />
             </>
           )}
+          <Advisor />
         </main>
 
         <Sheet open={showInfo} onOpenChange={setShowInfo} title="Data sources and limitations">

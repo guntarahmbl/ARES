@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
-import { ArrowUp, Square, X } from 'lucide-react'
+import { ArrowUp, ExternalLink, Square, X } from 'lucide-react'
 import { missionKey, useAdvisorStore, type AdvisorMessage } from '../advisorStore'
 import { useMissionStore } from '../store'
 import { Button } from './ui/button'
@@ -34,7 +34,7 @@ function ProposalCard({ message }: { message: AdvisorMessage }) {
   const stale = proposal.state === 'open' && proposal.basis !== missionKey(mission)
   // "Was" figures only make sense against the plan the proposal was built on.
   const current = proposal.state === 'open' && !stale && !routeDirty ? plan?.primary?.metrics : undefined
-  const { outcome } = proposal
+  const outcome = proposal.preview
 
   return (
     <div className="mt-3 border border-ink">
@@ -43,6 +43,11 @@ function ProposalCard({ message }: { message: AdvisorMessage }) {
         <span className={`wordmark text-[13px] ${outcome.feasible ? 'text-safe' : 'text-danger'}`}>{outcome.feasible ? 'Go' : 'No-go'}</span>
       </div>
       <p className="px-3 pt-2.5 text-[13px] font-semibold leading-snug text-ink">{proposal.summary}</p>
+      {proposal.changes.length > 0 && (
+        <ul className="space-y-1 px-3 pt-2 text-xs text-ink-2">
+          {proposal.changes.map((change) => <li key={change}>• {change}</li>)}
+        </ul>
+      )}
 
       {outcome.route ? (
         <dl className="grid grid-cols-2 gap-x-3 gap-y-3 px-3 py-3">
@@ -62,14 +67,68 @@ function ProposalCard({ message }: { message: AdvisorMessage }) {
       <div className="flex items-center gap-2 border-t border-rule p-2">
         {proposal.state === 'open' && !stale && (
           <>
-            <Button size="sm" className="flex-1" onClick={() => apply(message.id)}>Apply to plan</Button>
+            <Button size="sm" className="flex-1" onClick={() => void apply(message.id)}>Apply to plan</Button>
             <Button size="sm" variant="ghost" onClick={() => dismiss(message.id)}>Dismiss</Button>
           </>
         )}
         {stale && <p className="px-1 py-1 text-xs text-ink-2">The plan has changed since this was suggested. Ask again to get a current proposal.</p>}
+        {proposal.state === 'applying' && <p className="px-1 py-1 text-xs text-ink-2">Validating with the planner…</p>}
         {proposal.state === 'applied' && <p className="px-1 py-1 text-xs font-semibold text-safe">Applied to plan</p>}
         {proposal.state === 'dismissed' && <p className="px-1 py-1 text-xs text-ink-3">Dismissed</p>}
       </div>
+    </div>
+  )
+}
+
+function EvidenceList({ message }: { message: AdvisorMessage }) {
+  const evidence = (message.evidence ?? []).filter((item) => item.kind !== 'route_model')
+  if (!evidence.length && !message.citations?.length) return null
+  const valueLabel = (value: unknown) => {
+    if (value === null || value === undefined) return 'No data'
+    if (typeof value === 'number') return value.toFixed(4).replace(/0+$/, '').replace(/\.$/, '')
+    if (typeof value === 'string') return value
+    if (typeof value === 'object') {
+      const entries = Object.entries(value as Record<string, unknown>).filter(([, item]) => item !== null && item !== undefined)
+      return entries.slice(0, 3).map(([key, item]) => `${key.replaceAll('_', ' ')}: ${String(item)}`).join(' · ')
+    }
+    return String(value)
+  }
+  return (
+    <div className="mt-3 space-y-2">
+      {evidence.slice(0, 6).map((item) => (
+        <article className="border border-rule p-2.5" key={item.evidence_id}>
+          <div className="flex items-start justify-between gap-2">
+            <strong className="text-xs leading-snug text-ink">{item.label}</strong>
+            <span className="label shrink-0 text-[9px] text-ink-3">{item.dataset_id}</span>
+          </div>
+          {item.thumbnail_url && <img className="mt-2 aspect-video w-full object-cover" src={item.thumbnail_url} alt={`${item.label} evidence`} />}
+          <p className="num mt-2 break-words text-[11px] text-ink">{valueLabel(item.value)}{item.unit ? ` ${item.unit}` : ''}</p>
+          <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-ink-3">
+            <span>Coverage: <b className="text-ink-2">{item.coverage.replace('_', ' ')}</b></span>
+            <span>Completeness: <b className="text-ink-2">{item.completeness}</b></span>
+            <span>Confidence: <b className="text-ink-2">{item.confidence}</b></span>
+            <span>Type: <b className="text-ink-2">{item.classification}</b></span>
+          </div>
+          {item.confidence_reasons[0] && <p className="mt-1.5 text-[11px] leading-snug text-ink-2">{item.confidence_reasons[0]}</p>}
+          {item.limitations[0] && <p className="mt-1 text-[10px] leading-snug text-caution">Limit: {item.limitations[0]}</p>}
+        </article>
+      ))}
+      {message.citations && message.citations.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 pt-1">
+          {message.citations.map((citation) => (
+            <a
+              className="inline-flex min-h-7 items-center gap-1 border border-rule px-2 text-[10px] font-semibold text-route hover:border-ink"
+              href={citation.catalog_url}
+              target="_blank"
+              rel="noreferrer"
+              title={citation.title}
+              key={citation.dataset_id}
+            >
+              {citation.dataset_id}<ExternalLink size={10} />
+            </a>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -81,7 +140,9 @@ function Entry({ message, writing }: { message: AdvisorMessage; writing: boolean
       <span className={`label ${message.role === 'user' ? 'text-ink-3' : 'text-route'}`}>{message.role === 'user' ? 'You' : 'Advisor'}</span>
       {message.text && <p className={`mt-1 whitespace-pre-wrap break-words text-[13px] leading-relaxed ${message.role === 'user' ? 'text-ink-2' : 'text-ink'}`}>{message.text}</p>}
       {writing && !message.text && <p className="mt-1.5 flex items-center gap-2 text-[13px] text-ink-3"><span className="spinner" /> Reading the plan…</p>}
+      {message.role === 'assistant' && <EvidenceList message={message} />}
       {message.proposal && <ProposalCard message={message} />}
+      {message.warnings?.map((warning) => <p className="mt-2 text-xs text-caution" key={warning}>{warning}</p>)}
       {message.notice && <p className={`mt-2 text-xs ${message.failed ? 'text-danger' : 'text-ink-3'}`}>{message.notice}</p>}
     </li>
   )
@@ -90,6 +151,7 @@ function Entry({ message, writing }: { message: AdvisorMessage; writing: boolean
 export function Advisor() {
   const open = useAdvisorStore((state) => state.open)
   const status = useAdvisorStore((state) => state.status)
+  const statusDetail = useAdvisorStore((state) => state.statusDetail)
   const provider = useAdvisorStore((state) => state.provider)
   const model = useAdvisorStore((state) => state.model)
   const messages = useAdvisorStore((state) => state.messages)
@@ -121,10 +183,10 @@ export function Advisor() {
   }
 
   return (
-    <aside aria-label="Route advisor" className="absolute inset-y-0 right-0 z-30 flex w-full flex-col border-ink bg-panel md:w-[360px] md:border-l xl:static xl:z-auto xl:shrink-0">
+    <aside aria-label="Route advisor" className="absolute inset-y-0 right-0 z-30 flex w-full flex-col border-ink bg-panel md:w-[360px] md:border-l">
       <div className="flex items-start gap-3 border-b border-ink py-3 pl-4 pr-2">
         <div className="min-w-0 flex-1">
-          <h2 className="text-lg font-bold leading-tight text-ink">Route advisor</h2>
+          <h2 className="text-lg font-bold leading-tight text-ink">Mission analyst</h2>
           <p className="mt-0.5 truncate text-[13px] text-ink-2">{ready ? `${provider} · ${model}` : 'Not set up'}</p>
         </div>
         {messages.length > 0 && <Button variant="ghost" size="sm" className="mt-0.5" onClick={clear}>Clear</Button>}
@@ -135,12 +197,13 @@ export function Advisor() {
 
       {!ready ? (
         <div className="space-y-3 p-4 text-[13px] leading-relaxed text-ink-2">
-          <p>The advisor answers questions about the route and suggests changes. It needs a language model, and none is connected yet.</p>
+          <p>The analyst answers from the prepared NASA and USGS evidence, and can suggest planner-validated changes.</p>
           <ol className="list-decimal space-y-1.5 pl-4 marker:text-ink-3">
             <li>Copy <code className="num text-ink">.env.example</code> to <code className="num text-ink">.env</code> in the project folder.</li>
-            <li>Paste a free API key from Google AI Studio, Groq or OpenRouter, or point it at a local Ollama model.</li>
-            <li>Restart the ARES Path server.</li>
+            <li>Start 9Router locally and configure the <code className="num text-ink">ares-mission-analyst</code> combo.</li>
+            <li>Set <code className="num text-ink">ARES_LLM_ENABLED=true</code> and restart the server.</li>
           </ol>
+          {statusDetail && <p className="border-l-2 border-caution pl-2 text-caution">{statusDetail}</p>}
           <p className="text-ink-3">Planning works the same without it.</p>
         </div>
       ) : (
@@ -176,7 +239,7 @@ export function Advisor() {
               <textarea
                 className="max-h-32 min-h-10 flex-1 resize-none rounded border border-ink bg-white px-3 py-2 text-[13px] leading-snug text-ink placeholder:text-ink-3"
                 rows={2}
-                maxLength={4000}
+                maxLength={1000}
                 value={draft}
                 placeholder="Ask about this route"
                 aria-label="Message to the route advisor"
@@ -194,7 +257,7 @@ export function Advisor() {
               )}
             </div>
             <p className="mt-2 text-[11px] leading-snug text-ink-3">
-              Written by a language model and can be wrong. The planner's GO / NO-GO is the check that counts.
+              Grounded in the listed evidence. The planner's GO / NO-GO is the check that counts.
             </p>
           </form>
         </>
